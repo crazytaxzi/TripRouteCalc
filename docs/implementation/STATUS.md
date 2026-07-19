@@ -2,32 +2,45 @@
 
 ## Project state
 
-- Canonical repository status: local repository prepared; GitHub remote pending
-- Product status: greenfield specification and planning stage
-- Active source: `01_REPOSITORY_AUDIT_AND_PLAN.md`
-- Active stage status: PARTIAL
+- Canonical repository: `crazytaxzi/TripRouteCalc`
+- Repository visibility: private
+- Default branch: `main`
+- Product status: greenfield foundation planning complete; application implementation not started
+- Completed source: `01_REPOSITORY_AUDIT_AND_PLAN.md`
+- Stage 01 status: COMPLETE
+- Next source: `02_PRODUCT_FOUNDATION_DOMAIN_UNITS_TIME.md`
+- Stage 02 status: NOT STARTED
 - Application code: none
 - Database migrations: none
 - Production integrations: none
 
-## Completed
+## Stage 01 completed
 
-- Source pack preserved under `docs/specification/`
-- Controlling specification identified
-- Authority order recorded
+- Complete source pack preserved under `docs/specification/`
+- Controlling specification and authority order identified
 - Greenfield starting state documented
-- Initial architecture direction recorded without generating application code
-- Initial decisions, blockers, risks, gap matrix, stage plan, and handoff created
+- Canonical private GitHub repository created and connected on `main`
+- Initial architecture direction recorded without generating speculative application code
+- Stack direction, capability inventory, gap matrix, risk register, stage plan, decisions, blockers, baseline evidence, and handoff created
+- Temporary repository-import workflow and staging artifacts removed after successful import
+- Exact next implementation source recorded
 
-## Remaining for Stage 01
+## Verification evidence
 
-- Create and connect the canonical GitHub remote
-- Confirm repository visibility and default branch
-- Confirm local development environment and deployment target assumptions
-- Select the exact package versions only when implementation begins
-- Establish baseline install, lint, type-check, test, migration, and build commands after the workspace exists
-- Revisit the architecture map after actual Stage 02 scaffolding creates real paths
+- Repository existence, visibility, permissions, and default branch verified through GitHub
+- Source pack and controlling master specification verified on `main`
+- Application install, lint, type-check, test, migration, and build commands are not applicable because no application workspace exists yet
+- No unsupported success claims were made for commands that could not exist in the greenfield repository
+
+## Deferred decisions
+
+These are future-stage decisions, not Stage 01 blockers:
+
+- Exact package versions and workspace commands will be established during Stage 02 scaffolding
+- Local development and production deployment details will be finalized after the real workspace exists
+- Commercial routing provider and credentials remain unselected
+- Regulatory and licensed data sources remain unselected
 
 ## Next source
 
-Do not begin Stage 02 until the canonical remote exists and this Stage 01 handoff is updated from PARTIAL to COMPLETE.
+Begin a dedicated Stage 02 chat using `docs/specification/02_PRODUCT_FOUNDATION_DOMAIN_UNITS_TIME.md`. Reinspect the canonical repository before creating the real workspace and domain contracts.
