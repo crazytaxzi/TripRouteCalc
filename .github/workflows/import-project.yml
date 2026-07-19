@@ -1,0 +1,40 @@
+name: Import TripRouteCalc project
+
+on:
+  push:
+    paths:
+      - .github/workflows/import-project.yml
+
+permissions:
+  contents: write
+
+jobs:
+  import-project:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Restore project files
+        shell: bash
+        run: |
+          set -euo pipefail
+          cat .github/import/chunk-*.b64 > /tmp/triproutecalc-project.b64
+          base64 --decode /tmp/triproutecalc-project.b64 > /tmp/triproutecalc-project.tar.gz
+          test "$(sha256sum /tmp/triproutecalc-project.tar.gz | awk '{print $1}')" = "8a5c93ad7efa29a2830103fb2f9c631f45345ebcd390872f99955ca74cb19dcf"
+          tar -xzf /tmp/triproutecalc-project.tar.gz -C "$GITHUB_WORKSPACE"
+          rm -rf "$GITHUB_WORKSPACE/.github/import"
+          rm -f "$GITHUB_WORKSPACE/.github/workflows/import-project.yml"
+          rmdir "$GITHUB_WORKSPACE/.github/workflows" 2>/dev/null || true
+          rmdir "$GITHUB_WORKSPACE/.github" 2>/dev/null || true
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          if git diff --cached --quiet; then
+            echo "Project files already match the archive."
+            exit 0
+          fi
+          git commit -m "Import TripRouteCalc specifications and Stage 01 ledger"
+          git push origin HEAD:main
