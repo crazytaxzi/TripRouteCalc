@@ -1,0 +1,29 @@
+# Environment and secrets
+.env
+.env.*
+!.env.example
+
+# Dependencies and build output
+node_modules/
+dist/
+build/
+coverage/
+.playwright/
+playwright-report/
+test-results/
+
+# Runtime data
+*.log
+*.pid
+*.sqlite
+*.sqlite3
+
+# Editors and operating systems
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+
+# Local tooling
+.tmp/
+tmp/
