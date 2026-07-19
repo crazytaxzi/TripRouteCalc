@@ -6,9 +6,9 @@ The product is intended to produce transparent, defensible planning estimates fo
 
 ## Current state
 
-The repository is greenfield. It contains the controlling product specification, the ordered implementation source pack, and the Stage 01 repository-audit records. No application framework or production code has been selected or generated yet.
+The canonical private repository is established on `main`. Stage 01 repository audit and implementation planning are complete.
 
-This is deliberate. The project starts with repository audit and architecture planning. It does not jump ahead to UI work or create placeholder routing, legal, or HOS behavior.
+The repository remains intentionally greenfield: it contains the controlling product specification, ordered implementation source pack, architecture plan, risks, decisions, blockers, baseline evidence, and completed Stage 01 handoff. Application scaffolding and production code have not started.
 
 ## Authority order
 
@@ -19,17 +19,18 @@ This is deliberate. The project starts with repository audit and architecture pl
 5. Existing repository documentation
 6. Existing implementation when it does not violate the specification
 
-## Active stage
+## Stage status
 
-Stage 01: Repository Audit and Implementation Plan
+- Stage 01: Repository Audit and Implementation Plan, COMPLETE
+- Stage 02: Product Foundation, Domain, Units, and Time, NOT STARTED
 
 See:
 
-- `docs/specification/01_REPOSITORY_AUDIT_AND_PLAN.md`
 - `docs/implementation/STATUS.md`
 - `docs/implementation/DECISIONS.md`
 - `docs/implementation/BLOCKERS.md`
 - `docs/implementation/handoffs/01-repository-audit-and-plan.md`
+- `docs/specification/02_PRODUCT_FOUNDATION_DOMAIN_UNITS_TIME.md`
 
 ## First-release scope
 
@@ -55,4 +56,4 @@ No exception, exemption, emergency declaration, pilot program, adverse-driving r
 
 ## Next action
 
-Establish the canonical remote repository, then complete Stage 01 against that repository before beginning `02_PRODUCT_FOUNDATION_DOMAIN_UNITS_TIME.md`.
+Begin a dedicated Stage 02 implementation chat using `docs/specification/02_PRODUCT_FOUNDATION_DOMAIN_UNITS_TIME.md`. Reinspect the canonical repository before scaffolding the real workspace.
