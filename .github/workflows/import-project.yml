@@ -4,12 +4,16 @@ on:
   push:
     paths:
       - .github/workflows/import-project.yml
+  issues:
+    types: [opened]
 
 permissions:
   contents: write
+  issues: read
 
 jobs:
   import-project:
+    if: github.event_name == 'push' || github.event.issue.title == 'Run TripRouteCalc project import'
     runs-on: ubuntu-latest
     steps:
       - name: Check out repository
