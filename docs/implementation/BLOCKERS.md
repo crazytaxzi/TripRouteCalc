@@ -68,3 +68,12 @@ Stage 07 required accepted Stage 04 sleeper metadata, the verified Stage 05 core
 B-002 through B-004 remain visible future concerns. Pilot-program participation, personal conveyance, yard move, short haul, the 16-hour exception, agriculture, emergency declarations, and other unsupported rules are deliberately blocked from automatic clock alteration rather than hidden behind approximations.
 
 The local container's outbound DNS and package access remained unavailable, but connected GitHub and GitHub Actions supplied a complete recovery and verification path without weakening requirements or claiming unobserved local success.
+
+## Stage 08 blocker review
+
+**Status:** No active Stage 08 blocker
+
+Stage 08 required accepted HOS contracts and engines, a clean PostgreSQL integration target, and the existing strict repository gates. Those inputs were sufficient to add and verify the complete master-scenario, boundary, replay, isolation, timezone, and persistence-mapping suite. No provider credential, regulatory feed, production deployment, schema migration, or new legal interpretation was required.
+
+The expanded suite exposed no verified production HOS defect. Commercial routing, production regulatory data, and deployment remain visible future blockers and were not replaced with mocks or approximations.
+

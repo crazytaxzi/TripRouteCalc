@@ -221,3 +221,10 @@ An adverse-driving-condition extension requires explicit selection, source and e
 **Status:** Accepted
 
 Carrier driving and duty caps are stricter planning constraints and are reported independently from federal maxima. Nightly-rest preferences are planning-policy conflicts, not federal violations. Personal conveyance, yard move, short haul, the 16-hour exception, agriculture, emergency declarations, emergency exceptions, team operation, and pilot programs remain unsupported/manual and cannot alter clocks automatically.
+
+## D-034: Treat the Stage 08 suite as acceptance evidence, not a second implementation
+
+**Status:** Accepted
+
+The Stage 08 master scenarios, exact-boundary tables, deterministic replay, pure-engine isolation checks, and persistence mapping tests exercise the accepted Stage 04 through Stage 07 contracts. Tests may expose a production defect, but they may not redefine verified legal behavior merely to obtain a passing result. Reusable fixtures remain test-only evidence builders and cannot become production defaults or provider fallbacks.
+
