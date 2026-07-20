@@ -6,17 +6,18 @@ The product is intended to produce transparent, defensible planning estimates fo
 
 ## Current state
 
-The canonical private repository is established on `main`. Stages 01 through 09 are complete, verified, and merged. Stage 10 stops, appointments, and service implementation is complete on an isolated branch; full repository verification is in progress.
+The canonical private repository is established on `main`. Stages 01 through 10 are complete, verified, and merged.
 
-- `@trip-route-calc/foundation` provides product terminology, first-release scope boundaries, explicit measurement primitives, UTC and IANA time-zone handling, DST-safe local appointment and regulatory-boundary resolution, provider-neutral domain contracts, validated driver HOS departure-state and duty-event contracts, the pure Stage 05 core clock engine, the pure Stage 06 rolling cycle engine, the pure Stage 07 advanced-rule evaluator, and the Stage 09 equipment/load physical-validation domain.
+- `@trip-route-calc/foundation` provides product terminology, first-release scope boundaries, explicit measurement primitives, UTC and IANA time-zone handling, DST-safe local appointment and regulatory-boundary resolution, provider-neutral domain contracts, validated driver HOS departure-state and duty-event contracts, the pure Stage 05 core clock engine, the pure Stage 06 rolling cycle engine, the pure Stage 07 advanced-rule evaluator, the Stage 09 equipment/load physical-validation domain, and the Stage 10 ordered stop-processing domain.
 - Stage 05 covers the standard 10-hour reset, 11-hour driving allowance, 14-hour window, cycle-availability blocking, and 30-minute interruption.
 - Stage 06 derives 60-hour/7-day and 70-hour/8-day availability from timestamped history, reconciles entered facts, returns correctly timed recaps, blocks on-duty work at zero cycle, and applies only explicitly selected and fully evidenced 34-hour restarts.
 - Stage 07 validates explicitly selected 7/3 and 8/2 sleeper pairs, evidence-backed adverse-driving-condition extensions, stricter carrier planning limits, rest-preference conflicts, and unsupported special-rule selections without automatically activating exceptions.
 - Stage 08 adds the comprehensive HOS acceptance, boundary, replay, isolation, and persistence-mapping suite without changing verified production HOS arithmetic.
 - Stage 09 adds explicit tractor, trailer, and load profiles; provenance; KPRA and physical consistency checks; structured issues; route physical input; additive profile persistence; and audited tenant-scoped CRUD without inventing legal thresholds or axle distribution.
-- `@trip-route-calc/persistence` provides PostgreSQL and Prisma persistence, tenant-scoped repositories, ordered stops, immutable trip revisions, evidence retention, regulatory history, export history, audit records, immutable HOS input revisions, and additive equipment-profile details.
+- Stage 10 adds unlimited ordered stop configuration, appointments, facility hours, independent waiting/check-in/service behavior, parking-dependent HOS overlap, legal-departure processing, deterministic multi-stop progression, and additive immutable stop-detail persistence.
+- `@trip-route-calc/persistence` provides PostgreSQL and Prisma persistence, tenant-scoped repositories, immutable trip revisions, ordered stops, evidence retention, regulatory history, export history, audit records, immutable HOS input revisions, additive equipment-profile details, and additive stop-processing details.
 
-Commercial routing, compliance evaluation, ETA simulation, API behavior, and UI behavior have not started.
+Commercial routing, regulatory compliance evaluation, complete ETA simulation, API behavior, and UI behavior have not started.
 
 ## Workspace checks
 
@@ -64,7 +65,7 @@ PostgreSQL 18 uses the named volume mounted at `/var/lib/postgresql`.
 - Stage 07: Sleeper Split, Adverse Conditions, and Carrier Policy, COMPLETE
 - Stage 08: HOS Automated Acceptance Suite, COMPLETE
 - Stage 09: Equipment, Load, Dimensions, and Weight, COMPLETE
-- Stage 10: Stops, Appointments, and Service, IMPLEMENTATION COMPLETE, VERIFICATION IN PROGRESS
+- Stage 10: Stops, Appointments, Waiting, and Service Simulation, COMPLETE
 
 See:
 
@@ -87,7 +88,7 @@ See:
 - `docs/hos/README.md`
 - `docs/hos/test-fixtures.md`
 - `docs/persistence/README.md`
-- `docs/specification/10_STOPS_APPOINTMENTS_AND_SERVICE.md`
+- `docs/specification/11_COMMERCIAL_ROUTING_PROVIDER_LAYER.md`
 
 ## First-release scope
 
@@ -114,4 +115,4 @@ No exception, exemption, emergency declaration, pilot program, adverse-driving r
 
 ## Next action
 
-Complete the full GitHub Actions gate for Stage 10. Correct verified defects without weakening the accepted Stage 01 through Stage 09 boundaries or the explicit stop-time and HOS requirements.
+Begin `docs/specification/11_COMMERCIAL_ROUTING_PROVIDER_LAYER.md` under the Prime Directive, preserving the accepted equipment, stop-order, HOS, time-zone, persistence, and audit boundaries.
