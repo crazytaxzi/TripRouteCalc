@@ -52,3 +52,9 @@ Stage 04 required no commercial-routing provider, production regulatory source, 
 **Status:** No active Stage 05 blocker
 
 Stage 05 required current official federal property-carrying HOS verification but no commercial-routing provider, production regulatory feed, authentication system, new database migration, or deployment target. Current FMCSA guidance was checked on 2026-07-20, the pure engine and complete boundary suite passed repository CI, and no mandatory Stage 05 requirement remains blocked. B-002 through B-004 remain visible future concerns. Stage 06 can proceed with the existing historical duty data model and must calculate cycle history, recap timing, and explicitly selected restart behavior without inventing a provider or silently trusting entered cycle totals.
+
+## Stage 06 blocker review
+
+**Status:** No active Stage 06 blocker
+
+Stage 06 required complete timestamped duty history, an explicit carrier-designated home-terminal regulatory boundary, and current federal cycle and restart verification. Those inputs and authorities were sufficient to implement and verify rolling 60-hour/7-day and 70-hour/8-day calculations, recap timing, discrepancy reporting, cycle blocking, and explicitly selected 34-hour restart behavior. No production routing provider, regulatory feed, authentication system, new database migration, or deployment target was required. B-002 through B-004 remain visible future concerns. The local execution container lacked outbound DNS and package-registry access, but the connected canonical repository and GitHub Actions environment provided a complete verified recovery path without altering requirements or claiming unobserved local success.
