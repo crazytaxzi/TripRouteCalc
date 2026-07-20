@@ -46,3 +46,9 @@ Stage 03 required a reproducible PostgreSQL migration target but did not require
 **Status:** No active Stage 04 blocker
 
 Stage 04 required no commercial-routing provider, production regulatory source, authentication system, or deployment target. The complete driver departure state, timestamped duty-event history, provenance, tenant-scoped append-only persistence, PostgreSQL migration, unit and integration tests, lint, type-check, and build are verified. B-002 through B-004 remain visible later-stage concerns and must not be disguised with inferred clocks, fake providers, placeholder legal rules, or unverified operational claims.
+
+## Stage 05 blocker review
+
+**Status:** No active Stage 05 blocker
+
+Stage 05 required current official federal property-carrying HOS verification but no commercial-routing provider, production regulatory feed, authentication system, new database migration, or deployment target. Current FMCSA guidance was checked on 2026-07-20, the pure engine and complete boundary suite passed repository CI, and no mandatory Stage 05 requirement remains blocked. B-002 through B-004 remain visible future concerns. Stage 06 can proceed with the existing historical duty data model and must calculate cycle history, recap timing, and explicitly selected restart behavior without inventing a provider or silently trusting entered cycle totals.
