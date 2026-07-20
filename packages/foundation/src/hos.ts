@@ -312,7 +312,7 @@ function enumValue<T extends readonly string[]>(record: Record<string, unknown>,
     issues.push({ code: value === undefined ? 'MISSING_FIELD' : 'INVALID_VALUE', path: `${path}.${key}`, message: `Expected one of: ${values.join(', ')}.` });
     return values[0] as T[number];
   }
-  return value as T[number];
+  return value;
 }
 
 function parseDuration(value: unknown, path: string, issues: HosValidationIssue[]): Duration {
@@ -442,7 +442,7 @@ function parseSleeperPeriod(value: unknown, path: string, issues: HosValidationI
   }
   const minimum = candidateRole === 'LONG_PERIOD' ? 7 * 60 : 2 * 60;
   if (parsedDuration.value < minimum) {
-    issues.push({ code: 'INVALID_SLEEPER_PERIOD', path: `${path}.duration`, message: `${candidateRole} requires at least ${minimum} minutes.` });
+    issues.push({ code: 'INVALID_SLEEPER_PERIOD', path: `${path}.duration`, message: `${candidateRole} requires at least ${String(minimum)} minutes.` });
   }
   return freeze({
     id: requiredString(record, 'id', path, issues),
@@ -509,7 +509,7 @@ export function validateDriverHosDepartureState(input: unknown): DriverHosDepart
     issues.push({ code: 'CLOCK_EXCEEDS_MAXIMUM', path: 'departureState.shiftTimeRemaining', message: 'Shift time remaining cannot exceed 840 minutes.' });
   }
   if (cycleTimeRemaining.value > CYCLE_MINUTES[cycleType]) {
-    issues.push({ code: 'CLOCK_EXCEEDS_MAXIMUM', path: 'departureState.cycleTimeRemaining', message: `Cycle time remaining cannot exceed ${CYCLE_MINUTES[cycleType]} minutes for ${cycleType}.` });
+    issues.push({ code: 'CLOCK_EXCEEDS_MAXIMUM', path: 'departureState.cycleTimeRemaining', message: `Cycle time remaining cannot exceed ${String(CYCLE_MINUTES[cycleType])} minutes for ${cycleType}.` });
   }
   if (drivenSinceLastQualifyingInterruption.value > LEGAL_DRIVING_MINUTES) {
     issues.push({ code: 'CLOCK_EXCEEDS_MAXIMUM', path: 'departureState.drivenSinceLastQualifyingInterruption', message: 'Driven time since the last qualifying interruption cannot exceed the 11-hour driving maximum.' });
@@ -539,60 +539,60 @@ export function validateDriverHosDepartureState(input: unknown): DriverHosDepart
 
   const priorDayInput = record.priorDutyDays;
   const priorDutyDays = Array.isArray(priorDayInput)
-    ? priorDayInput.map((value, index) => parsePriorDutyDay(value, `departureState.priorDutyDays[${index}]`, issues))
+    ? priorDayInput.map((value, index) => parsePriorDutyDay(value, `departureState.priorDutyDays[${String(index)}]`, issues))
     : [];
   if (!Array.isArray(priorDayInput)) {
     issues.push({ code: priorDayInput === undefined ? 'MISSING_FIELD' : 'INVALID_TYPE', path: 'departureState.priorDutyDays', message: 'Expected an array.' });
   }
   const requiredPriorDays = PRIOR_DAY_COUNT[cycleType];
   if (priorDutyDays.length !== requiredPriorDays) {
-    issues.push({ code: 'INVALID_PRIOR_DAY_HISTORY', path: 'departureState.priorDutyDays', message: `${cycleType} requires exactly ${requiredPriorDays} prior daily totals.` });
+    issues.push({ code: 'INVALID_PRIOR_DAY_HISTORY', path: 'departureState.priorDutyDays', message: `${cycleType} requires exactly ${String(requiredPriorDays)} prior daily totals.` });
   }
   const departureLocalDate = localDateAt(departureAt, departureTimeZone);
   priorDutyDays.forEach((day, index) => {
     const expectedDate = addDays(departureLocalDate, index - requiredPriorDays);
     if (day.date !== expectedDate) {
-      issues.push({ code: 'INVALID_PRIOR_DAY_HISTORY', path: `departureState.priorDutyDays[${index}].date`, message: `Expected ${expectedDate} for an ordered, consecutive prior-day history.` });
+      issues.push({ code: 'INVALID_PRIOR_DAY_HISTORY', path: `departureState.priorDutyDays[${String(index)}].date`, message: `Expected ${expectedDate} for an ordered, consecutive prior-day history.` });
     }
     if (day.onDutyTime.value > 24 * 60) {
-      issues.push({ code: 'INVALID_PRIOR_DAY_HISTORY', path: `departureState.priorDutyDays[${index}].onDutyTime`, message: 'A daily total cannot exceed 1,440 minutes.' });
+      issues.push({ code: 'INVALID_PRIOR_DAY_HISTORY', path: `departureState.priorDutyDays[${String(index)}].onDutyTime`, message: 'A daily total cannot exceed 1,440 minutes.' });
     }
   });
 
   const recapInput = record.recapReturns;
   const recapReturns = Array.isArray(recapInput)
-    ? recapInput.map((value, index) => parseRecapReturn(value, `departureState.recapReturns[${index}]`, issues))
+    ? recapInput.map((value, index) => parseRecapReturn(value, `departureState.recapReturns[${String(index)}]`, issues))
     : [];
   if (!Array.isArray(recapInput)) {
     issues.push({ code: recapInput === undefined ? 'MISSING_FIELD' : 'INVALID_TYPE', path: 'departureState.recapReturns', message: 'Expected an array.' });
   }
   recapReturns.forEach((recap, index) => {
     if (timestamp(recap.availableAt) < timestamp(departureAt)) {
-      issues.push({ code: 'INVALID_RECAP_RETURN', path: `departureState.recapReturns[${index}].availableAt`, message: 'Expected recap returns must become available at or after departure.' });
+      issues.push({ code: 'INVALID_RECAP_RETURN', path: `departureState.recapReturns[${String(index)}].availableAt`, message: 'Expected recap returns must become available at or after departure.' });
     }
     if (recap.returnedTime.value <= 0) {
-      issues.push({ code: 'INVALID_RECAP_RETURN', path: `departureState.recapReturns[${index}].returnedTime`, message: 'A recap return must add at least one minute.' });
+      issues.push({ code: 'INVALID_RECAP_RETURN', path: `departureState.recapReturns[${String(index)}].returnedTime`, message: 'A recap return must add at least one minute.' });
     }
     const previous = recapReturns[index - 1];
     if (previous !== undefined && timestamp(recap.availableAt) < timestamp(previous.availableAt)) {
-      issues.push({ code: 'INVALID_RECAP_RETURN', path: `departureState.recapReturns[${index}].availableAt`, message: 'Recap returns must be ordered by availability.' });
+      issues.push({ code: 'INVALID_RECAP_RETURN', path: `departureState.recapReturns[${String(index)}].availableAt`, message: 'Recap returns must be ordered by availability.' });
     }
   });
 
   const sleeperInput = record.existingSleeperPeriods;
   const existingSleeperPeriods = Array.isArray(sleeperInput)
-    ? sleeperInput.map((value, index) => parseSleeperPeriod(value, `departureState.existingSleeperPeriods[${index}]`, issues))
+    ? sleeperInput.map((value, index) => parseSleeperPeriod(value, `departureState.existingSleeperPeriods[${String(index)}]`, issues))
     : [];
   if (!Array.isArray(sleeperInput)) {
     issues.push({ code: sleeperInput === undefined ? 'MISSING_FIELD' : 'INVALID_TYPE', path: 'departureState.existingSleeperPeriods', message: 'Expected an array.' });
   }
   existingSleeperPeriods.forEach((period, index) => {
     if (timestamp(period.endAt) > timestamp(departureAt)) {
-      issues.push({ code: 'INVALID_SLEEPER_PERIOD', path: `departureState.existingSleeperPeriods[${index}].endAt`, message: 'Existing sleeper evidence cannot end after departure.' });
+      issues.push({ code: 'INVALID_SLEEPER_PERIOD', path: `departureState.existingSleeperPeriods[${String(index)}].endAt`, message: 'Existing sleeper evidence cannot end after departure.' });
     }
     const previous = existingSleeperPeriods[index - 1];
     if (previous !== undefined && timestamp(period.startAt) < timestamp(previous.endAt)) {
-      issues.push({ code: 'INVALID_SLEEPER_PERIOD', path: `departureState.existingSleeperPeriods[${index}]`, message: 'Existing sleeper periods must be ordered and non-overlapping.' });
+      issues.push({ code: 'INVALID_SLEEPER_PERIOD', path: `departureState.existingSleeperPeriods[${String(index)}]`, message: 'Existing sleeper periods must be ordered and non-overlapping.' });
     }
   });
 
@@ -712,9 +712,10 @@ export function validateDutyEvent(input: unknown, path = 'dutyEvent'): DutyEvent
     issues.push({ code: 'CONTRADICTORY_STATE', path: `${path}.sleeperPair`, message: 'Only sleeper-berth events may participate in a sleeper pairing.' });
   }
   if (sleeperPair.participates) {
-    const minimum = sleeperPair.candidateRole === 'LONG_PERIOD' ? 7 * 60 : 2 * 60;
+    const candidateRole = sleeperPair.candidateRole ?? 'SHORT_PERIOD';
+    const minimum = candidateRole === 'LONG_PERIOD' ? 7 * 60 : 2 * 60;
     if (parsedDuration.value < minimum) {
-      issues.push({ code: 'CONTRADICTORY_STATE', path: `${path}.sleeperPair.candidateRole`, message: `${sleeperPair.candidateRole} requires at least ${minimum} minutes.` });
+      issues.push({ code: 'CONTRADICTORY_STATE', path: `${path}.sleeperPair.candidateRole`, message: `${candidateRole} requires at least ${String(minimum)} minutes.` });
     }
   }
 
@@ -754,7 +755,7 @@ export function validateDutyEventHistory(input: unknown, options: DutyEventHisto
   const events: DutyEvent[] = [];
   input.forEach((value, index) => {
     try {
-      events.push(validateDutyEvent(value, `dutyEvents[${index}]`));
+      events.push(validateDutyEvent(value, `dutyEvents[${String(index)}]`));
     } catch (error) {
       if (error instanceof HosValidationError) issues.push(...error.issues);
       else throw error;
@@ -765,19 +766,19 @@ export function validateDutyEventHistory(input: unknown, options: DutyEventHisto
     const previous = events[index - 1];
     if (previous === undefined) return;
     if (timestamp(event.startAt) < timestamp(previous.startAt)) {
-      issues.push({ code: 'EVENT_ORDER', path: `dutyEvents[${index}].startAt`, message: 'Duty events must already be ordered by start time; validation does not silently sort them.' });
+      issues.push({ code: 'EVENT_ORDER', path: `dutyEvents[${String(index)}].startAt`, message: 'Duty events must already be ordered by start time; validation does not silently sort them.' });
     }
     if (timestamp(event.startAt) < timestamp(previous.endAt)) {
-      issues.push({ code: 'EVENT_OVERLAP', path: `dutyEvents[${index}].startAt`, message: 'Duty events cannot overlap.' });
+      issues.push({ code: 'EVENT_OVERLAP', path: `dutyEvents[${String(index)}].startAt`, message: 'Duty events cannot overlap.' });
     } else if (timestamp(event.startAt) > timestamp(previous.endAt) && options.allowGaps !== true) {
-      issues.push({ code: 'EVENT_GAP', path: `dutyEvents[${index}].startAt`, message: 'A complete duty-event history cannot contain unexplained gaps.' });
+      issues.push({ code: 'EVENT_GAP', path: `dutyEvents[${String(index)}].startAt`, message: 'A complete duty-event history cannot contain unexplained gaps.' });
     }
   });
   if (options.expectedStartAt !== undefined && events[0]?.startAt !== utcInstant(options.expectedStartAt)) {
     issues.push({ code: 'EVENT_GAP', path: 'dutyEvents[0].startAt', message: 'Duty-event history does not begin at the expected boundary.' });
   }
   if (options.expectedEndAt !== undefined && events.at(-1)?.endAt !== utcInstant(options.expectedEndAt)) {
-    issues.push({ code: 'EVENT_GAP', path: `dutyEvents[${Math.max(0, events.length - 1)}].endAt`, message: 'Duty-event history does not end at the expected boundary.' });
+    issues.push({ code: 'EVENT_GAP', path: `dutyEvents[${String(Math.max(0, events.length - 1))}].endAt`, message: 'Duty-event history does not end at the expected boundary.' });
   }
   if (issues.length > 0) throw new HosValidationError(freeze(issues));
   return freeze(events);
