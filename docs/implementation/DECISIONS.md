@@ -195,3 +195,29 @@ Cycle days use a caller-supplied home-terminal IANA time zone and carrier-design
 **Status:** Accepted
 
 A historical restart affects cycle history only when the caller explicitly selects a fully evidenced interval containing at least 2,040 consecutive off-duty or sleeper-berth minutes. A future restart affects the timeline only when restart intent is recorded and the supplied duty-event sequence actually completes the qualifying period. Consecutive qualifying rest already underway before departure may continue across the departure boundary.
+
+## D-030: Keep advanced HOS rules in a pure composition layer
+
+**Status:** Accepted
+
+`calculateHosAdvancedRules` consumes validated Stage 04 evidence and a matching Stage 05 result. It validates and explains advanced-rule effects without duplicating the standard daily-clock or rolling-cycle engines. Stage 05 remains authoritative for its standard transitions, Stage 06 remains authoritative for cycle history, and callers must compose all applicable results.
+
+## D-031: Require an explicit, fully qualified sleeper pair
+
+**Status:** Accepted
+
+A sleeper pair alters clocks only when the caller selects a specific pair identifier and both periods are present, ordered, non-overlapping, role-distinct, long enough, and clock-feasible. The long period must include at least seven consecutive sleeper-berth hours. The short period may be off duty or sleeper berth and must last at least two consecutive hours. The pair must total at least ten hours.
+
+An explicitly selected valid pair may be used even when a ten-consecutive-hour period could independently reset the standard clocks. This preserves the driver or carrier's documented choice under FMCSA guidance issued July 1, 2026 instead of silently forcing one interpretation.
+
+## D-032: Treat adverse conditions as evidence-backed selection, not a weather flag
+
+**Status:** Accepted
+
+An adverse-driving-condition extension requires explicit selection, source and explanation, sufficient evidence confidence, a normally completable run, and documented facts showing the condition was not reasonably knowable before the relevant duty period or dispatch. The extension may add no more than 120 minutes to the federal driving limit and driving window. It never restores cycle time or waives the 30-minute interruption.
+
+## D-033: Keep carrier policy and unsupported rules visibly separate from federal legality
+
+**Status:** Accepted
+
+Carrier driving and duty caps are stricter planning constraints and are reported independently from federal maxima. Nightly-rest preferences are planning-policy conflicts, not federal violations. Personal conveyance, yard move, short haul, the 16-hour exception, agriculture, emergency declarations, emergency exceptions, team operation, and pilot programs remain unsupported/manual and cannot alter clocks automatically.
