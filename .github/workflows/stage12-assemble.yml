@@ -78,7 +78,7 @@ jobs:
           4e1152b47a34be85c69d3348cb7fef20d12108eb9fdbd356ccf33a0e499525a1  packages/compliance/src/regulatory-engine.ts
           892ae137b15f436e653e8d372be622a544a73b51747dd2e21bb34683cecc9958  packages/persistence/src/regulatory-rule-repository.ts
           dcd4ee941a0aaebaba4fe6af7785f5442809df240e521cd858a7ff444f02326a  packages/persistence/test/regulatory-rule-workflow.integration.test.ts
-          0ec214a00ab75dc8c9ab0e75fa99bdaf98168c21ce674509f4711e6c29aa607d  packages/compliance/test/regulatory-fixtures.ts
+          bc0fcb448bc9bfa632039942ce17e777e8cc814bc6d46183d3ee2af220d598da  packages/compliance/test/regulatory-fixtures.ts
           EOF
           sha256sum --check /tmp/stage12-expected.sha256
 
