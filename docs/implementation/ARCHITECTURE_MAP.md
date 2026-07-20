@@ -45,13 +45,15 @@ TripRouteCalc/
 │           ├── 03-persistence-revisions-auditability.md
 │           ├── 04-driver-hos-inputs-duty-events.md
 │           ├── 05-hos-core-clocks-interruption.md
-│           └── 06-hos-cycle-recaps-restart.md
+│           ├── 06-hos-cycle-recaps-restart.md
+│           └── 07-hos-sleeper-adverse-and-carrier-policy.md
 └── packages/
     ├── foundation/
     │   ├── package.json
     │   ├── tsconfig.json
     │   ├── src/
     │   │   ├── domain.ts
+    │   │   ├── hos-advanced.ts
     │   │   ├── hos-core.ts
     │   │   ├── hos-cycle.ts
     │   │   ├── hos.ts
@@ -62,6 +64,7 @@ TripRouteCalc/
     │   │   └── units.ts
     │   └── test/
     │       ├── domain.test.ts
+    │       ├── hos-advanced.test.ts
     │       ├── hos-core-boundaries.test.ts
     │       ├── hos-core.test.ts
     │       ├── hos-cycle.test.ts
@@ -108,6 +111,7 @@ The Prisma-generated client is created under `packages/persistence/src/generated
 - Pure Stage 05 standard property-carrying HOS core with immutable snapshots and transitions
 - Integer-minute 10-hour reset, 11-hour driving, 14-hour window, cycle blocking, and 30-minute interruption behavior
 - Pure Stage 06 rolling cycle engine with regulatory-day history, reconciliation, recaps, cycle blocking, and explicitly selected 34-hour restart behavior
+- Pure Stage 07 advanced HOS composition with explicit sleeper-pair validation, adverse-driving-condition selection, carrier caps, preferred-rest conflicts, and unsupported-rule warnings
 - Explicit carrier-designated home-terminal boundaries with UTC, IANA time zones, and DST gap and repeated-time resolution
 - PostgreSQL 18 local and CI service configuration
 - Prisma 7 schema, generated client, and committed migrations
@@ -118,16 +122,19 @@ The Prisma-generated client is created under `packages/persistence/src/generated
 
 ## Current HOS boundaries
 
-- `hos.ts` owns validated departure facts, duty-event evidence, API-shaped mapping, and serialization.
+- `hos.ts` owns validated departure facts, duty-event evidence, API-shaped mapping, serialization, and candidate sleeper-pair status rules.
 - `hos-core.ts` owns pure Stage 05 daily clock, shift-window, interruption, and 10-hour-reset arithmetic.
 - `hos-cycle.ts` owns pure Stage 06 rolling 60-hour/7-day and 70-hour/8-day history, recap timing, reconciliation, cycle blocking, and explicitly selected 34-hour restart behavior.
-- Stage 05 and Stage 06 return separate immutable results. Callers must obey the most restrictive applicable constraint without duplicating either engine.
-- Persistence stores immutable HOS inputs and event history but does not yet store Stage 05 or Stage 06 derived results.
-- Stage 07 owns split sleeper, adverse conditions, and carrier policy.
-- Stage 08 owns the broader automated HOS acceptance suite.
+- `hos-advanced.ts` owns pure Stage 07 validation and explanation for selected sleeper pairs, adverse-driving-condition extensions, stricter carrier caps, rest preferences, and unsupported special-rule selections.
+- Stage 07 consumes and verifies a matching Stage 05 result rather than recreating Stage 05 transitions.
+- Stage 07 leaves Stage 06 cycle availability unchanged and does not reimplement cycle history.
+- Persistence stores immutable HOS inputs and event history but does not yet store Stage 05 through Stage 07 derived results.
+- Stage 08 owns the broader automated HOS acceptance suite across the accepted modules.
 
 ## Boundaries not yet created
 
-There is no frontend, backend application, REST API, authentication system, advanced HOS policy layer, commercial-routing adapter, regulatory evaluation engine, ETA simulator, map UI, export renderer, or production deployment configuration.
+There is no frontend, backend application, REST API, authentication system, commercial-routing adapter, regulatory evaluation engine, ETA simulator, map UI, export renderer, or production deployment configuration.
 
-Future packages and applications must import `@trip-route-calc/foundation` and `@trip-route-calc/persistence` rather than duplicating unit, time, domain, HOS input, HOS core, HOS cycle, tenant, revision, or audit contracts.
+Unsupported personal conveyance, yard move, exceptions, exemptions, emergency rules, team-driver behavior, and pilot programs remain manual/blocking boundaries rather than automatic fallbacks.
+
+Future packages and applications must import `@trip-route-calc/foundation` and `@trip-route-calc/persistence` rather than duplicating unit, time, domain, HOS input, HOS core, HOS cycle, advanced HOS, tenant, revision, or audit contracts.
