@@ -1,4 +1,4 @@
-name: Stage 06 test diagnostics
+name: Stage 06 restart fixture fix
 
 on:
   push:
@@ -6,81 +6,39 @@ on:
       - agent/stage-06-hos-cycle-recaps-restart
 
 permissions:
-  contents: read
-  pull-requests: write
+  contents: write
 
 jobs:
-  test-diagnostics:
+  apply-fix:
+    if: github.event.head_commit.message != 'Fix Stage 06 restart boundary fixtures'
     runs-on: ubuntu-24.04
-    services:
-      postgres:
-        image: postgres:18-alpine
-        env:
-          POSTGRES_DB: trip_route_calc_test
-          POSTGRES_USER: postgres
-          POSTGRES_PASSWORD: postgres
-        ports:
-          - 5432:5432
-        options: >-
-          --health-cmd "pg_isready -U postgres -d trip_route_calc_test"
-          --health-interval 5s
-          --health-timeout 5s
-          --health-retries 12
-    env:
-      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/trip_route_calc_test?schema=public
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
-      - name: Set up Node.js
-        uses: actions/setup-node@v4
         with:
-          node-version: 22
-      - name: Enable pnpm
+          ref: agent/stage-06-hos-cycle-recaps-restart
+      - name: Remove unintended predeparture restart credit
+        shell: python
         run: |
-          corepack enable
-          corepack prepare pnpm@9.15.4 --activate
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile
-      - name: Generate Prisma client
-        run: pnpm db:generate
-      - name: Apply migrations
-        run: pnpm db:migrate:deploy
-      - name: Capture test output
+          from pathlib import Path
+
+          tests = Path('packages/foundation/test/hos-cycle.test.ts')
+          text = tests.read_text()
+          old = """        startAt: '2026-07-19T00:00:00.000Z',
+                  endAt: '2026-07-19T23:20:00.000Z',
+          """
+          new = """        startAt: '2026-07-19T12:40:00.000Z',
+                  endAt: '2026-07-20T12:00:00.000Z',
+          """
+          count = text.count(old)
+          if count != 2:
+              raise SystemExit(f'Expected two restart fixture intervals, found {count}.')
+          tests.write_text(text.replace(old, new))
+      - name: Commit exact fixture correction
         shell: bash
         run: |
-          set +e
-          pnpm test:source > stage06-test.log 2>&1
-          status=$?
-          printf '%s\n' "$status" > stage06-test.exit
-          exit 0
-      - name: Post test diagnostics to the draft pull request
-        uses: actions/github-script@v7
-        with:
-          script: |
-            const fs = require('fs');
-            const output = fs.readFileSync('stage06-test.log', 'utf8');
-            const exitCode = fs.readFileSync('stage06-test.exit', 'utf8').trim();
-            const marker = '<!-- stage06-test-diagnostics -->';
-            const body = `${marker}\nTemporary Stage 06 test diagnostics, exit code ${exitCode}:\n\n\`\`\`text\n${output.slice(-60000)}\n\`\`\``;
-            const comments = await github.paginate(github.rest.issues.listComments, {
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              issue_number: 8,
-            });
-            const existing = comments.find((comment) =>
-              comment.user?.type === 'Bot' && comment.body?.includes(marker));
-            if (existing) {
-              await github.rest.issues.updateComment({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                comment_id: existing.id,
-                body,
-              });
-            } else {
-              await github.rest.issues.createComment({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                issue_number: 8,
-                body,
-              });
-            }
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add packages/foundation/test/hos-cycle.test.ts
+          git commit -m "Fix Stage 06 restart boundary fixtures"
+          git push origin HEAD:agent/stage-06-hos-cycle-recaps-restart
