@@ -51,18 +51,36 @@ jobs:
           done
           printf "%s\n" "export * from './regulatory-engine.js';" > packages/compliance/src/index.ts
 
+      - name: Record reconstructed source hashes
+        shell: bash
+        run: |
+          sha256sum \
+            packages/foundation/src/regulatory.ts \
+            packages/compliance/src/regulatory-engine.ts \
+            packages/persistence/src/regulatory-rule-repository.ts \
+            packages/persistence/test/regulatory-rule-workflow.integration.test.ts \
+            packages/compliance/test/regulatory-fixtures.ts \
+            > /tmp/stage12-actual.sha256
+          cat /tmp/stage12-actual.sha256
+
+      - name: Upload reconstructed source hashes
+        uses: actions/upload-artifact@v4
+        with:
+          name: stage12-assembly-hashes
+          path: /tmp/stage12-actual.sha256
+
       - name: Verify reconstructed source hashes
         shell: bash
         run: |
           set -euo pipefail
-          cat > /tmp/stage12.sha256 <<'EOF'
+          cat > /tmp/stage12-expected.sha256 <<'EOF'
           146774cf551e6fd13b6000b8f47307e17c5edd28213534dac74505fc2597f2cd  packages/foundation/src/regulatory.ts
           4e1152b47a34be85c69d3348cb7fef20d12108eb9fdbd356ccf33a0e499525a1  packages/compliance/src/regulatory-engine.ts
           892ae137b15f436e653e8d372be622a544a73b51747dd2e21bb34683cecc9958  packages/persistence/src/regulatory-rule-repository.ts
           dcd4ee941a0aaebaba4fe6af7785f5442809df240e521cd858a7ff444f02326a  packages/persistence/test/regulatory-rule-workflow.integration.test.ts
           0ec214a00ab75dc8c9ab0e75fa99bdaf98168c21ce674509f4711e6c29aa607d  packages/compliance/test/regulatory-fixtures.ts
           EOF
-          sha256sum --check /tmp/stage12.sha256
+          sha256sum --check /tmp/stage12-expected.sha256
 
       - name: Update package metadata and lockfile
         shell: bash
