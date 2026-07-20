@@ -66,10 +66,15 @@ TripRouteCalc/
         ├── src/
         │   ├── client.ts
         │   ├── errors.ts
+        │   ├── export-history-repository.ts
         │   ├── index.ts
         │   ├── json.ts
+        │   ├── regulatory-rule-repository.ts
         │   ├── repositories.ts
-        │   └── tenant.ts
+        │   ├── repository-shared.ts
+        │   ├── route-provider-response-repository.ts
+        │   ├── tenant.ts
+        │   └── trip-revision-repository.ts
         └── test/
             └── persistence.integration.test.ts
 ```
