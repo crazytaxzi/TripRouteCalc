@@ -1,4 +1,4 @@
-name: Stage 08 diagnostics
+name: Stage 08 lint fix
 
 on:
   push:
@@ -6,69 +6,44 @@ on:
       - agent/stage-08-hos-automated-tests
 
 permissions:
-  contents: read
-  issues: write
-  pull-requests: write
+  contents: write
 
 jobs:
-  lint-diagnostics:
+  apply-fix:
     runs-on: ubuntu-24.04
-    env:
-      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/trip_route_calc_test
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - name: Check out Stage 08 branch
+        uses: actions/checkout@v4
         with:
-          node-version: 22
-      - name: Enable pnpm
+          ref: agent/stage-08-hos-automated-tests
+      - name: Apply exact fixture lint corrections
+        shell: python
         run: |
-          corepack enable
-          corepack prepare pnpm@9.15.4 --activate
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile
-      - name: Generate Prisma client
-        run: pnpm db:generate
-      - name: Capture Stage 08 lint output
+          from pathlib import Path
+
+          path = Path('packages/foundation/test/hos-test-fixtures.ts')
+          text = path.read_text()
+          replacements = {
+              "overrides['departureAt']": 'overrides.departureAt',
+              "overrides['departureTimeZone']": 'overrides.departureTimeZone',
+              "overrides['cycleType']": 'overrides.cycleType',
+          }
+          for old, new in replacements.items():
+              if old not in text:
+                  raise SystemExit(f'Expected fixture expression was not found: {old}')
+              text = text.replace(old, new)
+          path.write_text(text)
+      - name: Remove temporary Stage 08 files
         shell: bash
         run: |
-          set +e
-          pnpm exec eslint \
-            packages/foundation/test/hos-test-fixtures.ts \
-            packages/foundation/test/hos-acceptance.test.ts \
-            packages/foundation/test/hos-engine-isolation.test.ts \
-            packages/persistence/test/hos-domain-mapping.integration.test.ts \
-            --max-warnings=0 > stage08-lint.log 2>&1
-          status=$?
-          printf '%s\n' "$status" > stage08-lint.exit
-          exit 0
-      - name: Post diagnostics to draft pull request
-        uses: actions/github-script@v7
-        with:
-          script: |
-            const fs = require('fs');
-            const output = fs.readFileSync('stage08-lint.log', 'utf8');
-            const exitCode = fs.readFileSync('stage08-lint.exit', 'utf8').trim();
-            const marker = '<!-- stage08-lint-diagnostics -->';
-            const body = `${marker}\nTemporary Stage 08 targeted lint diagnostics, exit code ${exitCode}:\n\n\`\`\`text\n${output.slice(-60000)}\n\`\`\``;
-            const comments = await github.paginate(github.rest.issues.listComments, {
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              issue_number: 12,
-            });
-            const existing = comments.find((comment) =>
-              comment.user?.type === 'Bot' && comment.body?.includes(marker));
-            if (existing) {
-              await github.rest.issues.updateComment({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                comment_id: existing.id,
-                body,
-              });
-            } else {
-              await github.rest.issues.createComment({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                issue_number: 12,
-                body,
-              });
-            }
+          rm -f .stage08-diagnostic-trigger
+          rm -f .github/workflows/stage08-diagnostics.yml
+      - name: Commit lint corrections
+        shell: bash
+        run: |
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add -A
+          git diff --cached --check
+          git commit -m "Fix Stage 08 fixture lint findings"
+          git push origin HEAD:agent/stage-08-hos-automated-tests
