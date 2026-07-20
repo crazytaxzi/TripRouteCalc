@@ -9,15 +9,24 @@
     "pnpm": ">=9.15.0"
   },
   "scripts": {
-    "build": "tsc -b",
-    "lint": "eslint . --max-warnings=0",
-    "test": "vitest run",
-    "test:watch": "vitest",
-    "typecheck": "tsc -p tsconfig.typecheck.json --noEmit --pretty false",
-    "check": "pnpm lint && pnpm typecheck && pnpm test && pnpm build"
+    "build": "pnpm db:generate && pnpm build:source",
+    "build:source": "tsc -b",
+    "lint": "pnpm db:generate && pnpm lint:source",
+    "lint:source": "eslint . --max-warnings=0",
+    "test": "pnpm db:generate && pnpm test:source",
+    "test:source": "vitest run",
+    "test:watch": "pnpm db:generate && vitest",
+    "typecheck": "pnpm db:generate && pnpm typecheck:source",
+    "typecheck:source": "tsc -p tsconfig.typecheck.json --noEmit --pretty false",
+    "db:generate": "pnpm --filter @trip-route-calc/persistence db:generate",
+    "db:validate": "pnpm --filter @trip-route-calc/persistence db:validate",
+    "db:migrate:deploy": "pnpm --filter @trip-route-calc/persistence db:migrate:deploy",
+    "db:migrate:status": "pnpm --filter @trip-route-calc/persistence db:migrate:status",
+    "check": "pnpm db:generate && pnpm db:validate && pnpm lint:source && pnpm typecheck:source && pnpm test:source && pnpm build:source"
   },
   "devDependencies": {
     "@eslint/js": "^9.29.0",
+    "@types/node": "^22.15.32",
     "eslint": "^9.29.0",
     "typescript": "^5.8.3",
     "typescript-eslint": "^8.34.1",

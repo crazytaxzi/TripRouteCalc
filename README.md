@@ -6,9 +6,12 @@ The product is intended to produce transparent, defensible planning estimates fo
 
 ## Current state
 
-The canonical private repository is established on `main`. Stage 01 repository audit and implementation planning are complete, and Stage 02 establishes the first buildable TypeScript workspace and shared foundation package.
+The canonical private repository is established on `main`. Stages 01 through 03 are complete.
 
-`@trip-route-calc/foundation` now provides authoritative product terminology, first-release scope boundaries, explicit measurement primitives, UTC and IANA time-zone handling, DST-safe local appointment resolution, and provider-neutral domain contracts. HOS, routing, compliance, ETA, persistence, API, and UI engines have not started.
+- `@trip-route-calc/foundation` provides product terminology, first-release scope boundaries, explicit measurement primitives, UTC and IANA time-zone handling, DST-safe local appointment resolution, and provider-neutral domain contracts.
+- `@trip-route-calc/persistence` provides PostgreSQL and Prisma persistence, tenant-scoped repositories, ordered stops, immutable trip revisions, evidence retention, regulatory history, export history, and audit records.
+
+HOS calculations, commercial routing, compliance evaluation, ETA simulation, API behavior, and UI behavior have not started.
 
 ## Workspace checks
 
@@ -21,7 +24,20 @@ pnpm install --frozen-lockfile
 pnpm check
 ```
 
-`pnpm check` runs lint, type-check, unit tests, and the production TypeScript build.
+`pnpm check` generates and validates the Prisma client, then runs lint, type-check, unit and integration tests, and the production TypeScript build. Database integration tests require `DATABASE_URL` and an applied migration.
+
+## Local PostgreSQL
+
+```bash
+cp .env.example .env
+docker compose up -d postgres
+pnpm db:generate
+pnpm db:validate
+pnpm db:migrate:deploy
+pnpm check
+```
+
+PostgreSQL 18 uses the named volume mounted at `/var/lib/postgresql`.
 
 ## Authority order
 
@@ -36,7 +52,8 @@ pnpm check
 
 - Stage 01: Repository Audit and Implementation Plan, COMPLETE
 - Stage 02: Product Foundation, Domain, Units, and Time, COMPLETE
-- Stage 03: Persistence, Revisions, and Auditability, NOT STARTED
+- Stage 03: Persistence, Revisions, and Auditability, COMPLETE
+- Stage 04: Driver HOS Inputs and Duty Events, NOT STARTED
 
 See:
 
@@ -45,8 +62,10 @@ See:
 - `docs/implementation/BLOCKERS.md`
 - `docs/implementation/handoffs/01-repository-audit-and-plan.md`
 - `docs/implementation/handoffs/02-product-foundation-domain-units-time.md`
+- `docs/implementation/handoffs/03-persistence-revisions-auditability.md`
 - `docs/domain/product-foundation.md`
-- `docs/specification/03_PERSISTENCE_REVISIONS_AUDITABILITY.md`
+- `docs/persistence/README.md`
+- `docs/specification/04_DRIVER_HOS_INPUTS_AND_DUTY_EVENTS.md`
 
 ## First-release scope
 
@@ -68,8 +87,9 @@ No exception, exemption, emergency declaration, pilot program, adverse-driving r
 - Keep HOS, routing, compliance, ETA, persistence, API, and UI concerns separated.
 - Use UTC for authoritative timestamps and IANA identifiers for location time zones.
 - Use integer duration precision for authoritative HOS arithmetic.
+- Preserve prior calculations and their evidence as immutable revisions.
 - Do not add fake production providers, placeholder legal data, or demo calculations.
 
 ## Next action
 
-Begin Stage 03 using `docs/specification/03_PERSISTENCE_REVISIONS_AUDITABILITY.md`. Reinspect the canonical repository and import the stable Stage 02 foundation contracts rather than duplicating them.
+Begin Stage 04 using `docs/specification/04_DRIVER_HOS_INPUTS_AND_DUTY_EVENTS.md`. Reinspect the canonical repository and import the existing foundation and persistence packages rather than duplicating their contracts.
