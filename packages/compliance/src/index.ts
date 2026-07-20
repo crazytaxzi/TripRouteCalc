@@ -1,1 +1,1 @@
-export { evaluateRegulatoryCompliance } from './regulatory-engine.js';
+export * from './regulatory-engine.js';

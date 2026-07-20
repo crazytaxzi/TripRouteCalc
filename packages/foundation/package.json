@@ -49,6 +49,10 @@
     "./commercial-routing": {
       "types": "./dist/commercial-routing.d.ts",
       "import": "./dist/commercial-routing.js"
+    },
+    "./regulatory": {
+      "types": "./dist/regulatory.d.ts",
+      "import": "./dist/regulatory.js"
     }
   },
   "files": [

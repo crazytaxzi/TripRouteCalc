@@ -27,6 +27,12 @@ importers:
         specifier: ^3.2.4
         version: 3.2.7(@types/node@22.20.1)(jiti@2.7.0)
 
+  packages/compliance:
+    dependencies:
+      '@trip-route-calc/foundation':
+        specifier: workspace:*
+        version: link:../foundation
+
   packages/foundation:
     dependencies:
       '@js-temporal/polyfill':
