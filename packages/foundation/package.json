@@ -14,6 +14,10 @@
       "types": "./dist/domain.d.ts",
       "import": "./dist/domain.js"
     },
+    "./hos-advanced": {
+      "types": "./dist/hos-advanced.d.ts",
+      "import": "./dist/hos-advanced.js"
+    },
     "./hos-core": {
       "types": "./dist/hos-core.d.ts",
       "import": "./dist/hos-core.js"
@@ -37,15 +41,9 @@
     "./units": {
       "types": "./dist/units.d.ts",
       "import": "./dist/units.js"
-    },
-    "./hos-advanced": {
-      "types": "./dist/hos-advanced.d.ts",
-      "import": "./dist/hos-advanced.js"
     }
   },
-  "files": [
-    "dist"
-  ],
+  "files": ["dist"],
   "dependencies": {
     "@js-temporal/polyfill": "^0.5.1",
     "zod": "^3.25.67"
