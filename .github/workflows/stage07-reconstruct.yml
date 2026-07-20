@@ -86,7 +86,7 @@ jobs:
               f"{indent}  ? dutyStatus === 'SLEEPER_BERTH'",
               f"{indent}  : dutyStatus === 'OFF_DUTY' || dutyStatus === 'SLEEPER_BERTH';",
               f'{indent}if (!statusQualifies) {{',
-              f"{indent}  issues.push({{ code: 'CONTRADICTORY_STATE', path: `${{path}}.sleeperPair`, message: 'A long paired period must be sleeper-berth time; a short paired period may be off-duty or sleeper-berth time.' }});",
+              indent + "  issues.push({ code: 'CONTRADICTORY_STATE', path: `${path}.sleeperPair`, message: 'A long paired period must be sleeper-berth time; a short paired period may be off-duty or sleeper-berth time.' });",
               f'{indent}}}',
           ]
           lines[candidate_index + 1:candidate_index + 1] = inserted
