@@ -415,7 +415,6 @@ export class TripRevisionRepository {
               : {
                   details: {
                     create: {
-                      carrierId: this.context.carrierId,
                       lockedPosition: stop.details.lockedPosition,
                       locationDescription: stop.details.location.description,
                       addressText: stop.details.location.addressText ?? null,

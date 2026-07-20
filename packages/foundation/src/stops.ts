@@ -44,7 +44,7 @@ function freeze<T extends object>(value: T): Readonly<T> {
 }
 
 function freezeArray<T>(value: T[]): readonly T[] {
-  return Object.freeze(value);
+  return Object.freeze([...value]);
 }
 
 function timestamp(value: UtcInstant): number {
@@ -354,20 +354,34 @@ export function validateTripStopPlan(input: unknown): TripStopPlan {
     ]);
   }
 
-  switch (parsed.appointment.mode) {
-    case 'none':
-      break;
-    case 'earliest':
-    case 'latest':
-    case 'fixed':
-      resolveZonedLocalDateTime(parsed.appointment.at);
-      break;
-    case 'window':
-    case 'open-window':
-      resolveAppointmentWindow(parsed.appointment.window);
-      break;
+  try {
+    switch (parsed.appointment.mode) {
+      case 'none':
+        break;
+      case 'earliest':
+      case 'latest':
+      case 'fixed':
+        resolveZonedLocalDateTime(parsed.appointment.at);
+        break;
+      case 'window':
+      case 'open-window':
+        resolveAppointmentWindow(parsed.appointment.window);
+        break;
+    }
+    resolveFacilityWindows(parsed.facilityHours, parsed.location.timeZone);
+  } catch (error) {
+    if (error instanceof StopValidationError) throw error;
+    throw new StopValidationError([
+      freeze({
+        code: 'INVALID_TIME_ORDER',
+        path: 'stop.timeConfiguration',
+        message:
+          error instanceof Error
+            ? error.message
+            : 'Invalid stop appointment or facility-hours time configuration.',
+      }),
+    ]);
   }
-  resolveFacilityWindows(parsed.facilityHours, parsed.location.timeZone);
   return parsed;
 }
 
@@ -1004,9 +1018,9 @@ function facilityAvailability(
 function dutyEventType(stopType: StopType): DutyEventType {
   switch (stopType) {
     case 'fuel':
-      return 'fuel';
+      return 'FUEL';
     case 'scale':
-      return 'scale';
+      return 'SCALE';
     case 'shipper':
     case 'intermediate-pickup':
     case 'tractor-pickup':
@@ -1018,7 +1032,7 @@ function dutyEventType(stopType: StopType): DutyEventType {
     case 'inspection':
       return 'PRE_TRIP_INSPECTION';
     case 'maintenance':
-      return 'maintenance';
+      return 'MAINTENANCE';
     case 'driver-break':
     case 'food':
       return 'BREAK';
@@ -1029,7 +1043,7 @@ function dutyEventType(stopType: StopType): DutyEventType {
     case 'start-location':
     case 'terminal':
     case 'other':
-      return 'other';
+      return 'OTHER';
   }
 }
 
@@ -1080,7 +1094,7 @@ function calculatedDutyEvent(
           : 'BREAK'
         : dutyStatus === 'OFF_DUTY' || dutyStatus === 'SLEEPER_BERTH'
           ? 'BREAK'
-          : 'other';
+          : 'OTHER';
   return validateDutyEvent({
     id: `${stop.id}:${kind}:${String(index)}`,
     startAt,
@@ -1749,7 +1763,7 @@ export function processOrderedStops(
     const leg = input.legs[index];
     if (
       leg?.fromStopId !== stop.id ||
-      leg?.toStopId !== nextStop.id
+      leg.toStopId !== nextStop.id
     ) {
       throw new StopProcessingError(
         `Leg ${String(index + 1)} must connect ${stop.id} to ${nextStop.id}.`,
