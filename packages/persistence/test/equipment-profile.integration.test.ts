@@ -7,6 +7,7 @@ import {
   lengthInFeet,
   lengthInInches,
   speedInMilesPerHour,
+  utcInstant,
   volumeInUsGallons,
   weightInPounds,
 } from '@trip-route-calc/foundation';
@@ -123,7 +124,7 @@ function trailer(trailerNumber = 'R-53'): TrailerProfile {
         railPosition: '12',
         kpra: lengthInFeet(40),
         verificationSource: 'Physical tape measurement',
-        verifiedAt: '2026-07-20T12:00:00.000Z',
+        verifiedAt: utcInstant('2026-07-20T12:00:00.000Z'),
       },
     ],
     emptyWeight: weightInPounds(14_000),

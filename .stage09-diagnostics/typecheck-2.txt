@@ -1,7 +1,0 @@
-
-> trip-route-calc@0.0.0 typecheck:source /home/runner/work/TripRouteCalc/TripRouteCalc
-> tsc -p tsconfig.typecheck.json --noEmit --pretty false
-
-packages/persistence/test/equipment-profile.integration.test.ts(126,9): error TS2322: Type 'string' is not assignable to type 'string & { readonly __brand: "UtcInstant"; }'.
-  Type 'string' is not assignable to type '{ readonly __brand: "UtcInstant"; }'.
- ELIFECYCLE  Command failed with exit code 2.
