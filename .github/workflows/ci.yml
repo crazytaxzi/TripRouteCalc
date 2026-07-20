@@ -57,14 +57,41 @@ jobs:
       - name: Apply migrations to clean PostgreSQL database
         run: pnpm db:migrate:deploy
 
+      - name: Prepare verification logs
+        run: mkdir -p ci-logs
+
       - name: Lint
-        run: pnpm lint:source
+        id: lint
+        continue-on-error: true
+        run: pnpm lint:source 2>&1 | tee ci-logs/lint.log
 
       - name: Type-check
-        run: pnpm typecheck:source
+        id: typecheck
+        continue-on-error: true
+        run: pnpm typecheck:source 2>&1 | tee ci-logs/typecheck.log
 
       - name: Test
-        run: pnpm test:source
+        id: test
+        continue-on-error: true
+        run: pnpm test:source 2>&1 | tee ci-logs/test.log
 
       - name: Build
-        run: pnpm build:source
+        id: build
+        continue-on-error: true
+        run: pnpm build:source 2>&1 | tee ci-logs/build.log
+
+      - name: Upload verification logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: verification-logs
+          path: ci-logs
+          if-no-files-found: error
+
+      - name: Enforce verification gates
+        if: always()
+        run: |
+          test "${{ steps.lint.outcome }}" = "success"
+          test "${{ steps.typecheck.outcome }}" = "success"
+          test "${{ steps.test.outcome }}" = "success"
+          test "${{ steps.build.outcome }}" = "success"
