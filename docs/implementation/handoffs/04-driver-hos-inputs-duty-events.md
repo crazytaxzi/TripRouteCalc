@@ -6,7 +6,7 @@
 - Date: 2026-07-19
 - Branch: `stage-04-clean-hos-inputs`
 - Pull request: `#4 Implement Stage 04 driver HOS inputs and duty events`
-- Completion status: VERIFICATION PENDING
+- Completion status: COMPLETE
 
 ## Repository state inspected before coding
 
@@ -54,6 +54,7 @@ Stage 04 was restarted from the accepted Stage 03 state. No earlier Stage 04 sou
 
 - `README.md`
 - `docs/implementation/ARCHITECTURE_MAP.md`
+- `docs/implementation/BLOCKERS.md`
 - `docs/implementation/DECISIONS.md`
 - `docs/implementation/STATUS.md`
 - `packages/foundation/package.json`
@@ -92,14 +93,27 @@ tsc -p tsconfig.local-typecheck.json --pretty false
 node --test packages/foundation/test/hos.test.mjs packages/persistence/test/driver-hos-repository.test.mjs
 ```
 
-Observed tool versions:
+Observed local tool versions:
 
 - Node.js: 22.16.0
 - TypeScript: 5.8.3
 
-The local environment could not download pnpm packages and did not provide Docker, Podman, or PostgreSQL. No claim is made that local pnpm, Prisma, migration-deployment, ESLint, Vitest, full repository type-check, or production-build checks ran locally.
+The local environment could not download pnpm packages and did not provide Docker, Podman, or PostgreSQL. No claim is made that pnpm, Prisma, PostgreSQL migration, ESLint, Vitest, full repository type-check, or production-build checks ran locally.
 
-## Verification results before final pull-request CI
+GitHub Actions CI run 128 actually ran:
+
+```bash
+pnpm install --frozen-lockfile
+pnpm db:generate
+pnpm db:validate
+pnpm db:migrate:deploy
+pnpm lint:source
+pnpm typecheck:source
+pnpm test:source
+pnpm build:source
+```
+
+## Verification results
 
 - Isolated HOS source strict TypeScript compile: PASS
 - Isolated persistence repository strict TypeScript compile: PASS
@@ -117,19 +131,17 @@ The local environment could not download pnpm packages and did not provide Docke
 - Migration static assertions: PASS
 - Frozen-lockfile installation: PASS in pull-request CI
 - Prisma client generation and schema validation: PASS in pull-request CI
-- Clean PostgreSQL 18 migration deployment: PASS after correcting foreign-key references to the existing Prisma camelCase columns
-- ESLint diagnostics: 21 strict template-expression and assertion findings identified and corrected
-- Full normal ESLint rerun: PASS in pull-request CI
-- Type-check diagnostics: the new uppercase HOS status type conflicted with the existing lowercase domain `DutyStatus`, and one integration-test boundary supplied an unbranded timestamp; both findings were corrected without changing behavior
-- Full repository TypeScript rerun: PENDING CI
-- Vitest unit and integration tests: PENDING CI
-- Production TypeScript build: PENDING CI
+- Clean PostgreSQL 18 migration deployment: PASS in pull-request CI
+- ESLint: PASS in pull-request CI
+- Full repository TypeScript check: PASS in pull-request CI
+- Vitest unit and integration tests: PASS in pull-request CI
+- Production TypeScript build: PASS in pull-request CI
 
-Stage 04 must not be merged or marked complete until every pending CI gate passes.
+The pull-request workflow exposed and verified corrections for foreign-key references to existing Prisma camelCase columns, strict lint interpolation rules, an exported type-name collision, and one unbranded test timestamp. No check is reported as passed unless it actually ran.
 
 ## Requirement-by-requirement exit-gate audit
 
-1. Every required driver and HOS input is represented: SATISFIED IN SOURCE.
+1. Every required driver and HOS input is represented: SATISFIED.
 2. Drive, shift, and cycle remaining are independent constraints: SATISFIED IN SOURCE AND TESTS.
 3. Current duty status and start time are explicit: SATISFIED.
 4. Prior days, recaps, sleeper periods, restart intent, carrier limits, and optional rest preference are explicit: SATISFIED.
@@ -137,7 +149,7 @@ Stage 04 must not be merged or marked complete until every pending CI gate passe
 6. Timestamped events include every required field and effect: SATISFIED.
 7. Contradictory or impossible states are rejected without repair: SATISFIED IN SOURCE AND TESTS.
 8. API-shaped and persistence mappers exist: SATISFIED; no API framework was added early.
-9. Validation, serialization, ordering, overlap, gap, zone, and independent-clock tests exist: SATISFIED; authoritative repository execution remains pending CI.
+9. Validation, serialization, ordering, overlap, gap, zone, and independent-clock tests exist and passed: SATISFIED.
 10. User-entered, provider-derived, calculated, and verified states are documented: SATISFIED.
 
 Hard-boundary audit:
@@ -150,7 +162,6 @@ Hard-boundary audit:
 
 ## Remaining blockers and limitations
 
-- Pull-request CI must validate the full type graph, Vitest suite, and production build before acceptance.
 - Stage 04 records validated facts but does not implement the legal clock arithmetic reserved for Stages 05 through 08.
 - Sleeper pair participation is candidate evidence only.
 - Commercial-routing provider and credentials remain unselected.
@@ -158,8 +169,10 @@ Hard-boundary audit:
 - No route may be called legal or provider-verified.
 - Request authentication, API authorization, UI, map, export rendering, and production deployment are later-stage concerns.
 
+No remaining item blocks Stage 04 acceptance.
+
 ## Next source
 
 - Required next file after Stage 04 acceptance: `docs/specification/05_HOS_CORE_CLOCKS_AND_INTERRUPTION.md`
-- Preconditions: all Stage 04 CI gates pass, the exit-gate audit is re-opened and confirmed, this handoff is updated with authoritative results, and the Stage 04 pull request is accepted into `main`
+- Preconditions: merge the verified Stage 04 pull request into `main`, then reinspect the accepted Stage 04 contracts before coding
 - Instruction: build a pure core clock and interruption engine that consumes these Stage 04 facts without replacing or inferring them
