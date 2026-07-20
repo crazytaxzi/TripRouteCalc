@@ -36,7 +36,7 @@ The planned stack remains:
 - Playwright
 - Docker Compose
 
-Stage 02 established the TypeScript, pnpm, Zod, and Vitest foundation. Later stages will introduce the remaining pieces only when their active source requires them.
+Stage 02 established the TypeScript, pnpm, Zod, and Vitest foundation. Stage 03 established PostgreSQL, Prisma, and Docker Compose. Later stages will introduce the remaining pieces only when their active source requires them.
 
 ## D-005: Keep safety-critical domains separate
 
@@ -87,3 +87,45 @@ The foundation defines the minimum master-spec entities and their relationships 
 **Status:** Accepted
 
 The repository uses Node.js 22, pnpm 9.15.4, a committed pnpm lockfile, strict TypeScript, typed ESLint rules, Vitest, and GitHub Actions. CI installs with `--frozen-lockfile` and runs lint, type-check, tests, and build as separate visible gates.
+
+## D-012: Use PostgreSQL 18 and Prisma 7 for durable persistence
+
+**Status:** Accepted
+
+`@trip-route-calc/persistence` owns the database schema, generated Prisma client, migrations, tenant-scoped repositories, and persistence integration tests. PostgreSQL-specific constraints and triggers are permitted when they enforce safety or audit behavior that Prisma cannot express.
+
+## D-013: Use the carrier as the tenant boundary
+
+**Status:** Accepted
+
+Carrier-owned records include `carrierId`. Repository operations require a carrier and acting user, verify carrier membership, and scope object queries by carrier. API authentication and request authorization arrive later, but unscoped persistence access is not an accepted application boundary.
+
+## D-014: Preserve calculations as append-only trip revisions
+
+**Status:** Accepted
+
+A trip points to its latest committed revision, but prior revisions and their evidence remain queryable. Revision creation is transactional and stores calculation inputs, timestamps, rule and provider versions, results, warnings, acknowledgements, overrides, actor identity, and a canonical SHA-256 content hash. PostgreSQL triggers reject mutation or deletion of revisions and revision-owned evidence.
+
+## D-015: Store authoritative measurements in explicit value and unit columns
+
+**Status:** Accepted
+
+Relational records use separate value and unit columns that map to the Stage 02 canonical units. Database check constraints enforce non-negative ranges, integer-minute durations, explicit ordering, and canonical unit labels. Serialized JSON remains supporting evidence rather than a replacement for queryable authoritative columns.
+
+## D-016: Retain route-provider evidence according to license capability
+
+**Status:** Accepted
+
+Provider credentials and secrets are never stored with trip records. Evidence uses one of three modes: licensed raw JSON, normalized provider-neutral snapshots, or provider references. Repository guards and database constraints reject contradictory retention combinations.
+
+## D-017: Version regulatory records and preserve administrative changes
+
+**Status:** Accepted
+
+Regulatory rule sets and jurisdiction rules are versioned, effective-dated, source-attributed, last-verified, and activatable or deactivatable. Administrative changes create immutable change-history and audit records. Stage 03 supplies persistence structure only and does not populate production legal rules.
+
+## D-018: Record export history without storing generated documents
+
+**Status:** Accepted
+
+Export history stores revision, actor, timestamp, format, content hash, and metadata. Generated document bodies remain outside the database unless a later retention decision explicitly requires otherwise.
