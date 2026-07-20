@@ -1,0 +1,87 @@
+name: Stage 10 Defect Fix
+
+on:
+  pull_request:
+    branches:
+      - main
+    types:
+      - synchronize
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out branch
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          ref: ${{ github.head_ref }}
+
+      - name: Apply exact Stage 10 corrections
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+
+          def replace_once(path: Path, before: str, after: str) -> None:
+              text = path.read_text()
+              count = text.count(before)
+              if count != 1:
+                  raise SystemExit(f'{path}: expected one exact match, found {count}: {before!r}')
+              path.write_text(text.replace(before, after))
+
+          stops = Path('packages/foundation/src/stops.ts')
+          replace_once(
+              stops,
+              'function freezeArray<T>(value: T[]): readonly T[] {\n  return Object.freeze(value);\n}',
+              'function freezeArray<T>(value: T[]): readonly T[] {\n  return Object.freeze([...value]);\n}',
+          )
+          replace_once(stops, "      return 'fuel';", "      return 'FUEL';")
+          replace_once(stops, "      return 'scale';", "      return 'SCALE';")
+          replace_once(stops, "      return 'maintenance';", "      return 'MAINTENANCE';")
+          replace_once(stops, "      return 'other';", "      return 'OTHER';")
+          replace_once(
+              stops,
+              "          ? 'BREAK'\n          : 'other';",
+              "          ? 'BREAK'\n          : 'OTHER';",
+          )
+          replace_once(
+              stops,
+              "  switch (parsed.appointment.mode) {\n    case 'none':\n      break;\n    case 'earliest':\n    case 'latest':\n    case 'fixed':\n      resolveZonedLocalDateTime(parsed.appointment.at);\n      break;\n    case 'window':\n    case 'open-window':\n      resolveAppointmentWindow(parsed.appointment.window);\n      break;\n  }\n  resolveFacilityWindows(parsed.facilityHours, parsed.location.timeZone);\n  return parsed;",
+              "  try {\n    switch (parsed.appointment.mode) {\n      case 'none':\n        break;\n      case 'earliest':\n      case 'latest':\n      case 'fixed':\n        resolveZonedLocalDateTime(parsed.appointment.at);\n        break;\n      case 'window':\n      case 'open-window':\n        resolveAppointmentWindow(parsed.appointment.window);\n        break;\n    }\n    resolveFacilityWindows(parsed.facilityHours, parsed.location.timeZone);\n  } catch (error) {\n    if (error instanceof StopValidationError) throw error;\n    throw new StopValidationError([\n      freeze({\n        code: 'INVALID_TIME_ORDER',\n        path: 'stop.timeConfiguration',\n        message:\n          error instanceof Error\n            ? error.message\n            : 'Invalid stop appointment or facility-hours time configuration.',\n      }),\n    ]);\n  }\n  return parsed;",
+          )
+          replace_once(
+              stops,
+              "      leg?.fromStopId !== stop.id ||\n      leg?.toStopId !== nextStop.id",
+              "      leg?.fromStopId !== stop.id ||\n      leg.toStopId !== nextStop.id",
+          )
+
+          repository = Path('packages/persistence/src/trip-revision-repository.ts')
+          replace_once(
+              repository,
+              '                    create: {\n                      carrierId: this.context.carrierId,\n                      lockedPosition: stop.details.lockedPosition,',
+              '                    create: {\n                      lockedPosition: stop.details.lockedPosition,',
+          )
+
+          for temporary in (
+              '.github/workflows/stage10-full-diagnostic.yml',
+              '.github/workflows/stage10-defect-fix.yml',
+          ):
+              Path(temporary).unlink(missing_ok=True)
+          PY
+
+      - name: Commit corrections
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git diff --cached --check
+          git commit -m "Fix Stage 10 validation and persistence defects"
+          git push origin HEAD:agent/stage-10-stops-appointments-service
