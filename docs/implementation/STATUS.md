@@ -5,11 +5,11 @@
 - Canonical repository: `crazytaxzi/TripRouteCalc`
 - Repository visibility: private
 - Default branch: `main`
-- Active implementation branch: `agent/stage-09-equipment-load-validation`
-- Active pull request: `#14`
-- Last completed pull request: `#12`
-- Product status: Stage 09 equipment, trailer, and load profile implementation complete; full repository verification in progress
-- Completed sources on `main`: `01_REPOSITORY_AUDIT_AND_PLAN.md` through `08_HOS_AUTOMATED_TEST_SUITE.md`
+- Active implementation branch: none
+- Active pull request: none
+- Last completed pull request: `#14`
+- Product status: Stage 09 equipment, trailer, and load profiles complete, verified, and merged
+- Completed sources: `01_REPOSITORY_AUDIT_AND_PLAN.md` through `09_EQUIPMENT_LOAD_DIMENSIONS_WEIGHT.md`
 - Stage 01 status: COMPLETE
 - Stage 02 status: COMPLETE
 - Stage 03 status: COMPLETE
@@ -18,8 +18,8 @@
 - Stage 06 status: COMPLETE
 - Stage 07 status: COMPLETE
 - Stage 08 status: COMPLETE
-- Stage 09 status: IMPLEMENTATION COMPLETE, VERIFICATION IN PROGRESS
-- Active source: `09_EQUIPMENT_LOAD_DIMENSIONS_WEIGHT.md`
+- Stage 09 status: COMPLETE
+- Next source: `10_STOPS_APPOINTMENTS_AND_SERVICE.md`
 - Application code: `@trip-route-calc/foundation` and `@trip-route-calc/persistence`
 - Database migrations: Stage 03 initial migration, Stage 04 append-only HOS evidence migration, and Stage 09 additive equipment-profile migration
 - Production integrations: none
@@ -35,13 +35,13 @@
 - Added additive Prisma detail models and migration while preserving existing tractor, trailer, load, trip-revision, HOS, tenant, and audit boundaries.
 - Added tenant-scoped audited CRUD persistence plus domain and PostgreSQL integration coverage.
 
-## Verification state
+## Verification evidence
 
 A strict isolated TypeScript compile and focused smoke harness passed for the new foundation equipment module before repository reconstruction.
 
-The local execution environment did not provide a usable private-repository checkout, GitHub CLI, package-registry access, Docker, or the repository dependency graph. Those limitations were classified under `ERROR_RECOVERY_PROTOCOL.md`; no unavailable local repository check is represented as successful.
+The local execution environment did not provide a usable private-repository checkout, GitHub CLI, package-registry access, Docker, or the repository dependency graph. Those limitations were classified under `ERROR_RECOVERY_PROTOCOL.md`; no unavailable local repository check was represented as successful.
 
-The complete GitHub Actions gate is authoritative and must pass before Stage 09 is marked complete:
+GitHub Actions CI run 375 passed on implementation head `cf46769b0a000cea2f885b062658dede35f1f0e0` and completed:
 
 - `pnpm install --frozen-lockfile`
 - `pnpm db:generate`
@@ -49,8 +49,10 @@ The complete GitHub Actions gate is authoritative and must pass before Stage 09 
 - `pnpm db:migrate:deploy`
 - `pnpm lint:source`
 - `pnpm typecheck:source`
-- `pnpm test:source`
+- `pnpm test:source`, 133 tests passed
 - `pnpm build:source`
+
+The verified Stage 09 pull request `#14` was squash-merged into `main` as commit `71d5d267851dafd65df9e9f520c7a913dce0c5e9`.
 
 ## Preserved Stage 08 evidence
 
@@ -73,4 +75,4 @@ The verified Stage 08 pull request was squash-merged into `main` as commit `16e1
 
 ## Next action
 
-Complete the full repository gate on pull request `#14`. Correct verified defects without weakening tests or validation. After successful verification, merge Stage 09, close its implementation ledger on `main`, reopen the Prime Directive and Error Recovery Protocol, and load the next numbered source.
+Reopen the Prime Directive and Error Recovery Protocol, then begin `docs/specification/10_STOPS_APPOINTMENTS_AND_SERVICE.md` from the accepted foundation, persistence, equipment, audit, and HOS boundaries.

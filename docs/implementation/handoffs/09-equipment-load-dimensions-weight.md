@@ -3,12 +3,14 @@
 - Source: `docs/specification/09_EQUIPMENT_LOAD_DIMENSIONS_WEIGHT.md`
 - Date: 2026-07-20
 - Implementation branch: `agent/stage-09-equipment-load-validation`
-- Pull request: `#14`
-- Completion status: IMPLEMENTATION COMPLETE, VERIFICATION PENDING
+- Pull request: `#14 Implement Stage 09 equipment and load profiles`
+- Final documented pull-request head: `cf46769b0a000cea2f885b062658dede35f1f0e0`
+- Merge commit: `71d5d267851dafd65df9e9f520c7a913dce0c5e9`
+- Completion status: COMPLETE, VERIFIED, AND MERGED
 
 ## Protected governance
 
-Stage 09 was executed under `PRIME_DIRECTIVE.md`. The missing local GitHub CLI and unavailable direct private-repository checkout were classified as environment/tool failures under `ERROR_RECOVERY_PROTOCOL.md`. The Stage 08 main checkpoint was preserved, changes were isolated on a dedicated branch, an isolated strict TypeScript compile and smoke harness were run for the new domain module, and GitHub Actions remains the authoritative full-repository gate. No unavailable local check is represented as successful.
+Stage 09 was executed under `PRIME_DIRECTIVE.md`. The missing local GitHub CLI and unavailable direct private-repository checkout were classified as environment and tool failures under `ERROR_RECOVERY_PROTOCOL.md`. The Stage 08 main checkpoint was preserved, changes were isolated on a dedicated branch, an isolated strict TypeScript compile and smoke harness were run for the new domain module, and GitHub Actions remained the authoritative full-repository gate. No unavailable local check was represented as successful.
 
 ## Implemented scope
 
@@ -27,26 +29,34 @@ Stage 09 was executed under `PRIME_DIRECTIVE.md`. The missing local GitHub CLI a
 ## Preserved boundaries
 
 - Existing tractor, trailer, load, trip-revision, HOS, audit, and tenant boundaries remain intact.
-- No routing provider, regulatory threshold, permit threshold, axle distribution, combined clearance, or legal route status is invented.
-- Existing migrations are not rewritten.
+- No routing provider, regulatory threshold, permit threshold, axle distribution, combined clearance, or legal route status was invented.
+- Existing migrations were not rewritten.
 - Production provider-specific fields remain outside the foundation domain.
 
-## Verification corrections applied
+## Recovery and verification corrections
 
+- Reconstructed a hash-verified implementation payload on the isolated GitHub branch after the local environment could not clone or install the private repository dependency graph.
+- Repaired one corrupted transfer segment before allowing reconstruction to continue.
 - Added the explicit return type required by the repository lint policy.
-- Corrected readonly test fixtures and branded UTC domain and integration test evidence without weakening the domain contracts.
+- Corrected readonly test fixtures and branded UTC domain and integration test evidence without weakening domain contracts.
 - Mapped optional rail-mapping explanations to Prisma nullable fields under exact optional property semantics.
 - Imported equipment domain types from the foundation package rather than leaking them through persistence.
-- Removed every temporary diagnostic and recovery workflow after use.
+- Removed every temporary payload, diagnostic, trigger, and recovery workflow before merge.
 
-## Verification pending
+## Verification results
 
-The implementation must pass the complete GitHub Actions gate before this handoff may be marked complete:
+GitHub Actions CI run 375 passed on `cf46769b0a000cea2f885b062658dede35f1f0e0`:
 
-- frozen-lockfile install
-- Prisma generate and validate
-- clean PostgreSQL 18 migration deployment
-- ESLint
-- strict TypeScript type-check
-- complete Vitest unit and integration suite
-- production build
+- frozen-lockfile install: PASS
+- Prisma generation and validation: PASS
+- clean PostgreSQL 18 migration deployment: PASS
+- ESLint: PASS
+- strict TypeScript type-check: PASS
+- complete Vitest unit and integration suite: PASS, 133 tests
+- production build: PASS
+
+Pull request `#14` was squash-merged into `main` as `71d5d267851dafd65df9e9f520c7a913dce0c5e9`.
+
+## Next source
+
+Stage 09 is complete, verified, and merged. Reopen the Prime Directive and Error Recovery Protocol and begin `docs/specification/10_STOPS_APPOINTMENTS_AND_SERVICE.md` from the accepted foundation, persistence, equipment, audit, and HOS boundaries.
