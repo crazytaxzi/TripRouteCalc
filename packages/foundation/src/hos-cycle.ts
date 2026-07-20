@@ -721,7 +721,7 @@ function reconcileRecaps(
   const derivedByDate = new Map(
     derivedSeeds
       .filter((value) => value.kind === 'RECAP' && value.sourceDate !== undefined)
-      .map((value) => [value.sourceDate as string, value]),
+      .map((value) => [value.sourceDate!, value]),
   );
   for (const [sourceDate, derived] of derivedByDate) {
     const enteredValue = enteredByDate.get(sourceDate);
