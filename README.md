@@ -6,7 +6,7 @@ The product is intended to produce transparent, defensible planning estimates fo
 
 ## Current state
 
-The canonical private repository is established on `main`. Stages 01 through 08 are complete, verified, and merged. Stage 09 equipment, trailer, and load profile implementation is complete on pull request `#14`; full repository verification is in progress.
+The canonical private repository is established on `main`. Stages 01 through 09 are complete, verified, and merged.
 
 - `@trip-route-calc/foundation` provides product terminology, first-release scope boundaries, explicit measurement primitives, UTC and IANA time-zone handling, DST-safe local appointment and regulatory-boundary resolution, provider-neutral domain contracts, validated driver HOS departure-state and duty-event contracts, the pure Stage 05 core clock engine, the pure Stage 06 rolling cycle engine, the pure Stage 07 advanced-rule evaluator, and the Stage 09 equipment/load physical-validation domain.
 - Stage 05 covers the standard 10-hour reset, 11-hour driving allowance, 14-hour window, cycle-availability blocking, and 30-minute interruption.
@@ -63,7 +63,7 @@ PostgreSQL 18 uses the named volume mounted at `/var/lib/postgresql`.
 - Stage 06: HOS Cycle, Recaps, and 34-Hour Restart, COMPLETE
 - Stage 07: Sleeper Split, Adverse Conditions, and Carrier Policy, COMPLETE
 - Stage 08: HOS Automated Acceptance Suite, COMPLETE
-- Stage 09: Equipment, Load, Dimensions, and Weight, IMPLEMENTATION COMPLETE, VERIFICATION IN PROGRESS
+- Stage 09: Equipment, Load, Dimensions, and Weight, COMPLETE
 
 See:
 
@@ -84,7 +84,7 @@ See:
 - `docs/hos/README.md`
 - `docs/hos/test-fixtures.md`
 - `docs/persistence/README.md`
-- `docs/specification/09_EQUIPMENT_LOAD_DIMENSIONS_WEIGHT.md`
+- `docs/specification/10_STOPS_APPOINTMENTS_AND_SERVICE.md`
 
 ## First-release scope
 
@@ -111,4 +111,4 @@ No exception, exemption, emergency declaration, pilot program, adverse-driving r
 
 ## Next action
 
-Complete the full GitHub Actions gate on pull request `#14`. Correct verified defects without weakening the accepted Stage 01 through Stage 08 boundaries or Stage 09 physical-validation requirements.
+Begin `docs/specification/10_STOPS_APPOINTMENTS_AND_SERVICE.md` under the Prime Directive, preserving the accepted measurement, persistence, audit, and HOS boundaries.
