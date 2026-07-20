@@ -1,80 +1,70 @@
-name: Stage 04 one-time type fix
+name: CI
 
 on:
+  push:
+    branches: [main, 'agent/**']
   pull_request:
     branches: [main]
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
-  apply-fix:
-    if: github.head_ref == 'stage-04-clean-hos-inputs'
+  verification:
     runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/trip_route_calc_test?schema=public
+
+    services:
+      postgres:
+        image: postgres:18-alpine
+        env:
+          POSTGRES_DB: trip_route_calc_test
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d trip_route_calc_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 12
+
     steps:
-      - name: Check out Stage 04 branch
+      - name: Check out repository
         uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
         with:
-          ref: ${{ github.event.pull_request.head.ref }}
-          fetch-depth: 0
+          node-version: 22
 
-      - name: Apply verified type corrections and restore permanent CI
-        shell: bash
+      - name: Enable pnpm
         run: |
-          node <<'NODE'
-          const { readFileSync, writeFileSync } = require('node:fs');
+          corepack enable
+          corepack prepare pnpm@9.15.4 --activate
 
-          function replaceRequired(source, search, replacement, minimum = 1) {
-            const count = source.split(search).length - 1;
-            if (count < minimum) {
-              throw new Error(`Expected at least ${minimum} occurrence(s) of: ${search}`);
-            }
-            return source.split(search).join(replacement);
-          }
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
 
-          const hosPath = 'packages/foundation/src/hos.ts';
-          let hos = readFileSync(hosPath, 'utf8');
-          hos = replaceRequired(
-            hos,
-            'export type DutyStatus = (typeof DUTY_STATUSES)[number];',
-            'export type HosDutyStatus = (typeof DUTY_STATUSES)[number];',
-          );
-          hos = replaceRequired(
-            hos,
-            'readonly currentDutyStatus: DutyStatus;',
-            'readonly currentDutyStatus: HosDutyStatus;',
-            2,
-          );
-          hos = replaceRequired(
-            hos,
-            'readonly dutyStatus: DutyStatus;',
-            'readonly dutyStatus: HosDutyStatus;',
-          );
-          hos = replaceRequired(
-            hos,
-            'function expectedClockEffects(status: DutyStatus): DutyEventClockEffects {',
-            'function expectedClockEffects(status: HosDutyStatus): DutyEventClockEffects {',
-          );
-          writeFileSync(hosPath, hos);
+      - name: Generate Prisma client
+        run: pnpm db:generate
 
-          const testPath = 'packages/persistence/test/driver-hos.integration.test.ts';
-          let test = readFileSync(testPath, 'utf8');
-          test = replaceRequired(
-            test,
-            "import {\n  validateDriverHosDepartureState,",
-            "import {\n  utcInstant,\n  validateDriverHosDepartureState,",
-          );
-          test = replaceRequired(
-            test,
-            "expectedHistoryStartAt: '2026-07-20T11:30:00.000Z',",
-            "expectedHistoryStartAt: utcInstant('2026-07-20T11:30:00.000Z'),",
-          );
-          writeFileSync(testPath, test);
-          NODE
+      - name: Validate Prisma schema
+        run: pnpm db:validate
 
-          git show origin/main:.github/workflows/ci.yml > .github/workflows/ci.yml
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add packages/foundation/src/hos.ts packages/persistence/test/driver-hos.integration.test.ts .github/workflows/ci.yml
-          git commit -m "Fix Stage 04 type-check findings"
-          git push origin "HEAD:${{ github.event.pull_request.head.ref }}"
+      - name: Apply migrations to clean PostgreSQL database
+        run: pnpm db:migrate:deploy
+
+      - name: Lint
+        run: pnpm lint:source
+
+      - name: Type-check
+        run: pnpm typecheck:source
+
+      - name: Test
+        run: pnpm test:source
+
+      - name: Build
+        run: pnpm build:source

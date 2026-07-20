@@ -1,6 +1,7 @@
 import { randomUUID } from 'node:crypto';
 
 import {
+  utcInstant,
   validateDriverHosDepartureState,
   validateDutyEvent,
 } from '@trip-route-calc/foundation';
@@ -145,7 +146,7 @@ describe('driver HOS revisions', () => {
     const created = await createDriverHosRevision(client, tenant.context, {
       state: departureState(tenant.driverId),
       dutyEvents: [preTripEvent()],
-      expectedHistoryStartAt: '2026-07-20T11:30:00.000Z',
+      expectedHistoryStartAt: utcInstant('2026-07-20T11:30:00.000Z'),
     });
 
     expect(created.eventCount).toBe(1);

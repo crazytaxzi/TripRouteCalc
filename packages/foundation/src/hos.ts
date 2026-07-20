@@ -9,7 +9,7 @@ export const DUTY_STATUSES = [
   'DRIVING',
   'ON_DUTY_NOT_DRIVING',
 ] as const;
-export type DutyStatus = (typeof DUTY_STATUSES)[number];
+export type HosDutyStatus = (typeof DUTY_STATUSES)[number];
 
 export const HOS_CYCLE_TYPES = [
   'SIXTY_HOURS_SEVEN_DAYS',
@@ -114,7 +114,7 @@ export interface DriverHosDepartureState {
   readonly driver: DriverReference;
   readonly departureAt: UtcInstant;
   readonly departureTimeZone: IanaTimeZone;
-  readonly currentDutyStatus: DutyStatus;
+  readonly currentDutyStatus: HosDutyStatus;
   readonly currentDutyStatusStartedAt: UtcInstant;
   readonly drivingTimeRemaining: Duration;
   readonly shiftTimeRemaining: Duration;
@@ -158,7 +158,7 @@ export interface DutyEvent {
   readonly startAt: UtcInstant;
   readonly endAt: UtcInstant;
   readonly duration: Duration;
-  readonly dutyStatus: DutyStatus;
+  readonly dutyStatus: HosDutyStatus;
   readonly eventType: DutyEventType;
   readonly location: DutyEventLocation;
   readonly source: DutyEventSource;
@@ -180,7 +180,7 @@ export interface DriverHosDepartureApiModel {
   readonly driverNameOrIdentifier: string;
   readonly departureAt: string;
   readonly departureTimeZone: string;
-  readonly currentDutyStatus: DutyStatus;
+  readonly currentDutyStatus: HosDutyStatus;
   readonly currentDutyStatusStartedAt: string;
   readonly drivingMinutesRemaining: number;
   readonly shiftMinutesRemaining: number;
@@ -630,7 +630,7 @@ export function validateDriverHosDepartureState(input: unknown): DriverHosDepart
   });
 }
 
-function expectedClockEffects(status: DutyStatus): DutyEventClockEffects {
+function expectedClockEffects(status: HosDutyStatus): DutyEventClockEffects {
   switch (status) {
     case 'DRIVING':
       return freeze({ driving: 'CONSUMES', shift: 'ADVANCES_WINDOW', cycle: 'CONSUMES' });
