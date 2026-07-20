@@ -10,3 +10,4 @@ export * from './time.js';
 export * from './units.js';
 export * from './equipment.js';
 export * from './commercial-routing.js';
+export * from './regulatory.js';
