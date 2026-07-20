@@ -600,7 +600,7 @@ function assertLockedPositionsUnchanged(
 ): void {
   for (const stop of before.filter((candidate) => candidate.lockedPosition)) {
     const next = after.find((candidate) => candidate.id === stop.id);
-    if (next === undefined || next.sequence !== stop.sequence) {
+    if (next?.sequence !== stop.sequence) {
       throw new StopMutationError(
         'LOCKED_POSITION',
         `Stop ${stop.id} is locked at sequence ${String(stop.sequence)}.`,
@@ -1748,9 +1748,8 @@ export function processOrderedStops(
     if (nextStop === undefined) continue;
     const leg = input.legs[index];
     if (
-      leg === undefined ||
-      leg.fromStopId !== stop.id ||
-      leg.toStopId !== nextStop.id
+      leg?.fromStopId !== stop.id ||
+      leg?.toStopId !== nextStop.id
     ) {
       throw new StopProcessingError(
         `Leg ${String(index + 1)} must connect ${stop.id} to ${nextStop.id}.`,
