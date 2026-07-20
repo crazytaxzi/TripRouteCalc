@@ -1,10 +1,9 @@
+import { lengthInFeet, utcInstant } from '../src/index.js';
 import {
-  lengthInFeet,
   validateJurisdictionRule,
   validateRegulatoryRuleSet,
-  utcInstant,
-} from '../src/index.js';
-import type { JurisdictionRule } from '../src/index.js';
+} from '../src/regulatory.js';
+import type { JurisdictionRule } from '../src/regulatory.js';
 import { describe, expect, it } from 'vitest';
 
 const source = {

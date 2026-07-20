@@ -190,11 +190,14 @@ export const RegulatoryRequiredActionSchema = z
     requiredUpdatedFacts: z.array(nonEmptyText).default([]),
   })
   .strict();
-export type RegulatoryRequiredAction = Readonly<
-  z.infer<typeof RegulatoryRequiredActionSchema>
->;
+export interface RegulatoryRequiredAction {
+  readonly code: string;
+  readonly instruction: string;
+  readonly mustCompleteBeforeSegment: boolean;
+  readonly requiredUpdatedFacts: readonly string[];
+}
 
-export const RegulatoryRoadScopeSchema = z.discriminatedUnion('kind', [
+export const RegulatoryRoadScopeSchema = z.union([
   z
     .object({
       kind: z.literal('jurisdiction-wide'),
@@ -296,7 +299,7 @@ export interface RegulatoryIntegerCondition {
 export interface RegulatoryPermitCondition {
   readonly kind: 'permit';
   readonly operator: 'contains' | 'missing' | 'present';
-  readonly permitIdentifier?: string;
+  readonly permitIdentifier?: string | undefined;
 }
 
 export interface RegulatoryTimeWindowCondition {
@@ -319,7 +322,7 @@ export type RegulatoryCondition =
 
 const RegulatoryConditionSchemaInternal: z.ZodType<RegulatoryCondition> = z.lazy(
   () =>
-    z.discriminatedUnion('kind', [
+    z.union([
       z
         .object({
           kind: z.literal('all'),
@@ -495,9 +498,11 @@ export const RegulatoryCoverageSchema = z
     limitations: z.array(nonEmptyText).default([]),
   })
   .strict();
-export type RegulatoryCoverage = Readonly<
-  z.infer<typeof RegulatoryCoverageSchema>
->;
+export interface RegulatoryCoverage {
+  readonly jurisdictionCodes: readonly string[];
+  readonly status: 'complete' | 'partial' | 'unknown';
+  readonly limitations: readonly string[];
+}
 
 export const RegulatoryRuleSetSchema = z
   .object({

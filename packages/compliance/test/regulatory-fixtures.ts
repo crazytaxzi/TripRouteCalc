@@ -5,17 +5,19 @@ import {
   lengthInInches,
   speedInMilesPerHour,
   utcInstant,
-  validateJurisdictionRule,
-  validateRegulatoryRuleSet,
   volumeInUsGallons,
   weightInPounds,
 } from '@trip-route-calc/foundation';
+import {
+  validateJurisdictionRule,
+  validateRegulatoryRuleSet,
+} from '@trip-route-calc/foundation/regulatory';
 import type {
   JurisdictionRule,
   RegulatoryEvaluationInput,
   RegulatoryRouteSegmentContext,
   RegulatoryRuleSet,
-} from '@trip-route-calc/foundation';
+} from '@trip-route-calc/foundation/regulatory';
 
 
 const source = {

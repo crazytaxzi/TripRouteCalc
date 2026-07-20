@@ -16,8 +16,8 @@ import type {
   RegulatorySource,
   RegulatoryStringFact,
   RegulatoryWeightFact,
-} from '@trip-route-calc/foundation';
-import { validateRegulatoryEvaluationInput } from '@trip-route-calc/foundation';
+} from '@trip-route-calc/foundation/regulatory';
+import { validateRegulatoryEvaluationInput } from '@trip-route-calc/foundation/regulatory';
 import type { Length, UtcInstant, Weight } from '@trip-route-calc/foundation';
 
 interface EvaluationTrace {

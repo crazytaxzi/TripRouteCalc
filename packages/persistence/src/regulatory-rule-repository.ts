@@ -1,18 +1,18 @@
+import { utcInstant } from '@trip-route-calc/foundation';
+import type { UtcInstant } from '@trip-route-calc/foundation';
 import {
   regulatoryComplianceResultSnapshot,
   regulatoryRuleSetSnapshot,
   regulatoryRuleSnapshot,
-  utcInstant,
   validateJurisdictionRule,
   validateRegulatoryComplianceResult,
   validateRegulatoryRuleSet,
-} from '@trip-route-calc/foundation';
+} from '@trip-route-calc/foundation/regulatory';
 import type {
   RegulatoryComplianceResult,
   RegulatoryRuleSet,
   RegulatoryRuleSetStatus,
-  UtcInstant,
-} from '@trip-route-calc/foundation';
+} from '@trip-route-calc/foundation/regulatory';
 
 import type { PersistenceClient } from './client.js';
 import { TenantObjectNotFoundError } from './errors.js';

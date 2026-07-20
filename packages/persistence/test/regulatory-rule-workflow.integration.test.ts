@@ -5,11 +5,16 @@ import {
   ianaTimeZone,
   lengthInFeet,
   utcInstant,
+} from '@trip-route-calc/foundation';
+import {
   validateJurisdictionRule,
   validateRegulatoryComplianceResult,
   validateRegulatoryRuleSet,
-} from '@trip-route-calc/foundation';
-import type { JurisdictionRule, RegulatoryRuleSet } from '@trip-route-calc/foundation';
+} from '@trip-route-calc/foundation/regulatory';
+import type {
+  JurisdictionRule,
+  RegulatoryRuleSet,
+} from '@trip-route-calc/foundation/regulatory';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 
 import {
