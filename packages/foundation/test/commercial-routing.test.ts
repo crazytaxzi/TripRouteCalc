@@ -14,7 +14,10 @@ import {
   weightInPounds,
 } from '../src/index.js';
 
-function location(referenceId: string, longitude: number) {
+function location(
+  referenceId: string,
+  longitude: number,
+): Readonly<Record<string, unknown>> {
   return {
     referenceId,
     description: referenceId,
@@ -27,7 +30,7 @@ function location(referenceId: string, longitude: number) {
   };
 }
 
-function request() {
+function request(): Readonly<Record<string, unknown>> {
   return {
     requestId: 'route-request-1',
     requestedAt: utcInstant('2026-07-20T19:00:00Z'),
@@ -80,12 +83,7 @@ function request() {
     },
     origin: location('origin', -117.0),
     orderedStops: [
-      {
-        stopId: 'stop-1',
-        sequence: 10,
-        required: true,
-        location: location('destination', -116.9),
-      },
+      { stopId: 'stop-1', sequence: 10, required: true, location: location('destination', -116.9) },
     ],
     avoidances: ['ferries'] as const,
     routePolicy: 'fastest-compliant' as const,
@@ -94,13 +92,12 @@ function request() {
   };
 }
 
-function payload(overrides: Record<string, unknown> = {}) {
+function payload(
+  overrides: Record<string, unknown> = {},
+): Readonly<Record<string, unknown>> {
   const geometry = {
     format: 'geojson-line-string' as const,
-    coordinates: [
-      [-117.0, 46.4],
-      [-116.9, 46.4],
-    ] as [number, number][],
+    coordinates: [[-117.0, 46.4], [-116.9, 46.4]] as [number, number][],
   };
   return {
     routeId: 'route-1',
@@ -154,31 +151,17 @@ describe('commercial-routing contracts', () => {
       validateCommercialRouteRequest({
         ...request(),
         orderedStops: [
-          {
-            stopId: 'a',
-            sequence: 10,
-            required: true,
-            location: location('a', -117),
-          },
-          {
-            stopId: 'b',
-            sequence: 10,
-            required: true,
-            location: location('b', -116),
-          },
+          { stopId: 'a', sequence: 10, required: true, location: location('a', -117) },
+          { stopId: 'b', sequence: 10, required: true, location: location('b', -116) },
         ],
       }),
     ).toThrow(/sequence/iu);
   });
 
   it('blocks consumer comparisons from commercial planning and legal finalization', () => {
-    const result = assessCommercialRoute(
-      payload({ routeKind: 'consumer-comparison' }),
-    );
+    const result = assessCommercialRoute(payload({ routeKind: 'consumer-comparison' }));
     expect(result.assessment.commercialPlanningStatus).toBe('blocked');
-    expect(result.assessment.providerVerificationStatus).toBe(
-      'consumer-comparison-only',
-    );
+    expect(result.assessment.providerVerificationStatus).toBe('consumer-comparison-only');
     expect(result.assessment.legalFinalizationStatus).toBe(
       'blocked-pending-regulatory-evaluation',
     );
@@ -203,8 +186,7 @@ describe('commercial-routing contracts', () => {
                   restrictionId: 'restriction-1',
                   type: 'low-clearance',
                   severity: 'prohibited',
-                  explanation:
-                    'Entered vehicle height exceeds the provider-supported clearance.',
+                  explanation: 'Entered vehicle height exceeds the provider-supported clearance.',
                   sourceTitle: 'Test-only provider fixture',
                   sourceReference: 'fixture://commercial-provider/restriction-1',
                 },

@@ -31,7 +31,9 @@ const license: ProviderLicenseCapabilities = {
   coverageDescription: 'Test-only contract fixture; no production coverage claim.',
 };
 
-function location(referenceId: string) {
+function location(
+  referenceId: string,
+): Readonly<Record<string, unknown>> {
   return {
     referenceId,
     description: referenceId,
@@ -44,7 +46,7 @@ function location(referenceId: string) {
   };
 }
 
-function routeRequest() {
+function routeRequest(): Readonly<Record<string, unknown>> {
   return {
     requestId: 'request-1',
     requestedAt: utcInstant('2026-07-20T19:00:00Z'),
@@ -97,12 +99,7 @@ function routeRequest() {
     },
     origin: location('origin'),
     orderedStops: [
-      {
-        stopId: 'stop-1',
-        sequence: 10,
-        required: true,
-        location: location('destination'),
-      },
+      { stopId: 'stop-1', sequence: 10, required: true, location: location('destination') },
     ],
     avoidances: [],
     routePolicy: 'fastest-compliant' as const,
@@ -113,13 +110,10 @@ function routeRequest() {
 
 function routePayload(
   routeKind: 'commercial-vehicle' | 'consumer-comparison' = 'commercial-vehicle',
-) {
+): Readonly<Record<string, unknown>> {
   const geometry = {
     format: 'geojson-line-string' as const,
-    coordinates: [
-      [-117, 46.4],
-      [-116.9, 46.4],
-    ] as [number, number][],
+    coordinates: [[-117, 46.4], [-116.9, 46.4]] as [number, number][],
   };
   return {
     routeId: `route-${routeKind}`,
@@ -188,7 +182,7 @@ function provider(
     getRouteRestrictions: async () => [],
     calculateConsumerComparison: async () =>
       routePayload('consumer-comparison'),
-    ...overrides,
+   ...overrides,
   };
 }
 
@@ -203,9 +197,13 @@ describe('commercial-routing runtime and execution', () => {
 
   it('keeps credentials redacted in strings and JSON', () => {
     const credential =
-      ServerOnlyProviderCredential.fromServerConfiguration('super-secret-key');
+      ServerOnlyProviderCredential.fromServerConfiguration(
+        'super-secret-key',
+      );
     expect(String(credential)).toBe('[REDACTED]');
-    expect(JSON.stringify({ credential })).not.toContain('super-secret-key');
+    expect(JSON.stringify { credential })).not.toContain(
+      'super-secret-key',
+    );
     expect(credential.use((value) => value.length)).toBe(16);
   });
 
@@ -249,7 +247,9 @@ describe('commercial-routing runtime and execution', () => {
   });
 
   it('enforces timeout even when an adapter ignores the abort signal', async () => {
-    const fixture = provider(async () => new Promise<never>(() => undefined));
+    const fixture = provider(
+      async () => new Promise<never>(() => undefined),
+    );
     const service = new CommercialRoutingService(fixture, license, undefined, {
       timeoutMs: 5,
       maximumAttempts: 1,
@@ -262,7 +262,9 @@ describe('commercial-routing runtime and execution', () => {
   });
 
   it('rejects a consumer result from the commercial operation and keeps comparison separate', async () => {
-    const fixture = provider(async () => routePayload('consumer-comparison'));
+    const fixture = provider(async () =>
+      routePayload('consumer-comparison'),
+    );
     const service = new CommercialRoutingService(fixture, license);
     await expect(
       service.calculateCommercialRoute(routeRequest()),
@@ -287,53 +289,36 @@ describe('commercial-routing runtime and execution', () => {
     });
     const error = await service
       .calculateCommercialRoute(routeRequest())
-      .catch((value: unknown) => value);
-    expect(error).toBeInstanceOf(CommercialRoutingProviderError);
-    expect(String(error)).not.toContain('super-secret-key');
-    expect(String(error)).toContain('[REDACTED]');
-  });
+      .catch(˜[YNˆ[šÛ›İÛŠHOˆ˜[YJNÂˆ^Xİ
+\œ›ÜŠKĞ™R[œİ[˜ÙSÙŠÛÛ[Y\˜ÚX[›İ][™Ô›İšY\‘\œ›ÜŠNÂˆ^Xİ
+İš[™Ê\œ›ÜŠJK››İĞÛÛZ[Š	Üİ\\‹\ÙXÜ™]ZÙ^IÊNÂˆ^Xİ
+İš[™Ê\œ›ÜŠJKĞÛÛZ[Š	ÖÔ‘QPÕQIÊNÂˆJNÂ‚ˆ]
+	ÜİÜÈY\ˆ™YH™]XX›H›İšY\‹[İ]YÙH][\ÉË\Ş[˜È
 
-  it('stops after three retryable provider-outage attempts', async () => {
-    let attempts = 0;
-    const dependencies: CommercialRoutingExecutionDependencies = {
-      sleep: async (): Promise<void> => undefined,
-      createAbortController: () => new AbortController(),
-    };
-    const fixture = provider(async () => {
-      attempts += 1;
-      throw new CommercialRoutingProviderError(
-        'PROVIDER_OUTAGE',
-        'Provider unavailable.',
-        true,
-        'test-only-provider',
-      );
-    });
-    const service = new CommercialRoutingService(
-      fixture,
-      license,
-      undefined,
-      {
-        timeoutMs: 1_000,
-        maximumAttempts: 3,
-        initialRetryDelayMs: 0,
-        maximumRetryDelayMs: 0,
-      },
-      dependencies,
-    );
-    await expect(
-      service.calculateCommercialRoute(routeRequest()),
-    ).rejects.toMatchObject({ code: 'PROVIDER_OUTAGE' });
-    expect(attempts).toBe(3);
-  });
+HOˆÂˆ]][\ÈHÂˆÛÛœİ\[™[˜ÚY\ÎˆÛÛ[Y\˜ÚX[›İ][™Ñ^Xİ][Û‘\[™[˜ÚY\ÈHÂˆÛY\ˆ\Ş[˜È
 
-  it('blocks a configured provider when commercial routing licensing is absent', () => {
-    const fixture = provider(async () => routePayload());
-    const runtime = createCommercialRoutingRuntime({
-      provider: fixture,
-      license: { ...license, commercialVehicleRoutingLicensed: false },
-    });
-    expect(runtime.status).toBe('blocked');
-    if (runtime.status !== 'blocked') throw new Error('Expected blocked runtime.');
-    expect(runtime.blocker.code).toBe('LICENSE_CONFIGURATION_INVALID');
-  });
-});
+Nˆ›ÛZ\ÙO›ÚYˆOˆ[™Yš[™YˆÜ™X]PX›ÜÛÛ›Û\ˆ
+
+HOˆ™]ÈX›ÜÛÛ›Û\Š
+KˆNÂˆÛÛœİš^\™HH›İšY\Š\Ş[˜È
+
+HOˆÂˆ][\È
+ÏHNÂˆ›İÈ™]ÈÛÛ[Y\˜ÚX[›İ][™Ô›İšY\‘\œ›ÜŠˆ	Ô“Õ’QT—ÓÕUQÑIËˆ	Ô›İšY\ˆ[˜]˜Z[X›K‰ËˆYKˆ	İ\İ[Û›K\›İšY\‰Ëˆ
+NÂˆJNÂˆÛÛœİÙ\šXÙHH™]ÈÛÛ[Y\˜ÚX[›İ][™ÔÙ\šXÙJˆš^\™KˆXÙ[œÙKˆ[™Yš[™YˆÂˆ[Y[İ]\ÎˆWÌˆX^[][P][\ÎˆËˆ[š]X[™]Q[^S\ÎˆˆX^[][T™]Q[^S\ÎˆˆKˆ\[™[˜ÚY\Ëˆ
+NÂˆ]ØZ]^Xİ
+ˆÙ\šXÙK˜Ø[İ[]PÛÛ[Y\˜ÚX[›İ]J›İ]T™\]Y\İ
+
+JKˆ
+Kœ™Z™XİËÓX]ÚØš™Xİ
+ÈÛÙNˆ	Ô“Õ’QT—ÓÕUQÑIÈJNÂˆ^Xİ
+][\ÊKĞ™JÊNÂˆJNÂ‚ˆ]
+	Ø›ØÚÜÈHÛÛ™šYİ\™Y›İšY\ˆÚ[ˆÛÛ[Y\˜ÚX[›İ][™ÈXÙ[œÚ[™È\ÈXœÙ[	Ë
+
+HOˆÂˆÛÛœİš^\™HH›İšY\Š\Ş[˜È
+
+HOˆ›İ]T^[ØY
+
+JNÂˆÛÛœİ[[YHHÜ™X]PÛÛ[Y\˜ÚX[›İ][™Ô[[YJÂˆ›İšY\ˆš^\™KˆXÙ[œÙNˆÈ‹‹›XÙ[œÙKÛÛ[Y\˜ÚX[™ZXÛT›İ][™ÓXÙ[œÙYˆ˜[ÙHKˆJNÂˆ^Xİ
+[[YKœİ]\ÊKĞ™J	Ø›ØÚÙY	ÊNÂˆYˆ
+[[YKœİ]\ÈOOH	Ø›ØÚÙY	ÊBˆ›İÈ™]È\œ›ÜŠ	Ñ^XİY›ØÚÙY[[YK‰ÊNÂˆ^Xİ
+[[YK˜›ØÚÙ\‹˜ÛÙJKĞ™J	ÓPÑS”ÑWĞÓÓ‘’QÕTUSÓ—ÒS•SQ	ÊNÂˆJNÂŸJNÂ
