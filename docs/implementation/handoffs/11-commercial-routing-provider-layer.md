@@ -60,7 +60,7 @@ Until that setup exists, the runtime returns a blocked result and no route may b
 
 ## Verification pending
 
-CI run `463` accepted the frozen workspace lock, generated and validated Prisma, and deployed every migration to clean PostgreSQL 18. It stopped at ESLint. Diagnostic run `465` identified nine mechanical findings: exact fixture typing, one missing persistence helper return type, three binding-safe provider callbacks, one optional-chain preference, and one malformed test expression. The first repair attempt made no changes because an exact fixture pattern matched two helpers; the pattern was narrowed to the full function signature before retry. No routing behavior or strictness is changed.
+CI run `463` accepted the frozen workspace lock, generated and validated Prisma, and deployed every migration to clean PostgreSQL 18. It stopped at ESLint. Diagnostic run `465` identified nine mechanical findings: exact fixture typing, one missing persistence helper return type, three binding-safe provider callbacks, one optional-chain preference, and one malformed test expression. The first repair attempt made no changes because an exact fixture pattern matched two helpers; the repair was then made idempotent and verifies every corrected form before committing. No routing behavior or strictness is changed.
 
 The complete repository gate must pass before the stage is marked complete:
 
