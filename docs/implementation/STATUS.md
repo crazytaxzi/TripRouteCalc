@@ -5,17 +5,17 @@
 - Canonical repository: `crazytaxzi/TripRouteCalc`
 - Repository visibility: private
 - Default branch: `main`
-- Active implementation branch: `agent/stage-06-hos-cycle-recaps-restart`
-- Active pull request: `#8`
-- Last completed pull request: `#6`
-- Product status: rolling federal property-carrying HOS cycle history, recap timing, and explicitly selected 34-hour restart behavior complete and verified, pending merge
+- Active implementation branch: none
+- Active pull request: none
+- Last completed pull request: `#8`
+- Product status: rolling federal property-carrying HOS cycle history, recap timing, and explicitly selected 34-hour restart behavior complete, verified, and merged
 - Completed sources: `01_REPOSITORY_AUDIT_AND_PLAN.md` through `06_HOS_CYCLE_RECAPS_AND_RESTART.md`
 - Stage 01 status: COMPLETE
 - Stage 02 status: COMPLETE
 - Stage 03 status: COMPLETE
 - Stage 04 status: COMPLETE
 - Stage 05 status: COMPLETE
-- Stage 06 status: COMPLETE, VERIFIED, PENDING MERGE
+- Stage 06 status: COMPLETE
 - Next source: `07_HOS_ADVANCED_RULES_AND_CARRIER_POLICY.md`
 - Application code: `@trip-route-calc/foundation` and `@trip-route-calc/persistence`
 - Database migrations: Stage 03 initial migration plus the verified Stage 04 append-only HOS evidence migration; Stages 05 and 06 added no migration
@@ -39,7 +39,9 @@
 
 ## Verification evidence
 
-GitHub Actions CI run 210 passed against a clean PostgreSQL 18 service on implementation head `32f1ac6be7ecd33dc3a891819d648f977d8b3097`:
+GitHub Actions CI run 210 passed against a clean PostgreSQL 18 service on implementation head `32f1ac6be7ecd33dc3a891819d648f977d8b3097`.
+
+Final GitHub Actions CI run 224 passed on the documented pull-request head `9367738b3061a8ca2626a61aa5d747946bb3b75b`:
 
 - `pnpm install --frozen-lockfile`
 - `pnpm db:generate`
@@ -51,6 +53,8 @@ GitHub Actions CI run 210 passed against a clean PostgreSQL 18 service on implem
 - `pnpm build:source`
 
 The Stage 06 suite contributed 13 cycle, recap, restart, time-zone, and DST tests, and the complete repository test suite passed without modifying a database schema.
+
+The verified Stage 06 pull request was squash-merged into `main` as commit `4e35a594bb483dca234f324ca877c3a1261cd767`.
 
 A strict isolated TypeScript 5.8.3 harness also passed on Node.js 22.16.0. The container could not clone GitHub or install packages because outbound DNS and registry access were unavailable, so canonical repository reads, writes, and CI verification used the connected GitHub environment. No success was inferred from the unavailable local network path.
 
@@ -71,4 +75,4 @@ Current federal cycle and restart behavior was checked on 2026-07-20 against off
 
 ## Next source
 
-After pull request `#8` is merged and the implementation ledger is closed on `main`, begin `07_HOS_ADVANCED_RULES_AND_CARRIER_POLICY.md` by reopening the Prime Directive and Error Recovery Protocol and reinspecting the accepted Stage 04 evidence contracts plus the Stage 05 and Stage 06 pure calculation boundaries.
+Stage 06 is complete, verified, and merged. Begin the next dedicated implementation stage with `07_HOS_ADVANCED_RULES_AND_CARRIER_POLICY.md` after reopening the Prime Directive and Error Recovery Protocol and reinspecting the accepted Stage 04 evidence contracts plus the Stage 05 and Stage 06 pure calculation boundaries on `main`.
