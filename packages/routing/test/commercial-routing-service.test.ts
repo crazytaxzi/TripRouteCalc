@@ -180,9 +180,8 @@ function provider(
     geocodeLocation: async () => location('geocoded'),
     calculateCommercialRoute,
     getRouteRestrictions: async () => [],
-    calculateConsumerComparison: async () =>
-      routePayload('consumer-comparison'),
-   ...overrides,
+    calculateConsumerComparison: async () => routePayload('consumer-comparison'),
+    ...overrides,
   };
 }
 
@@ -196,14 +195,9 @@ describe('commercial-routing runtime and execution', () => {
   });
 
   it('keeps credentials redacted in strings and JSON', () => {
-    const credential =
-      ServerOnlyProviderCredential.fromServerConfiguration(
-        'super-secret-key',
-      );
+    const credential = ServerOnlyProviderCredential.fromServerConfiguration('super-secret-key');
     expect(String(credential)).toBe('[REDACTED]');
-    expect(JSON.stringify { credential })).not.toContain(
-      'super-secret-key',
-    );
+    expect(JSON.stringify({ credential })).not.toContain('super-secret-key');
     expect(credential.use((value) => value.length)).toBe(16);
   });
 
@@ -231,51 +225,41 @@ describe('commercial-routing runtime and execution', () => {
       fixture,
       license,
       undefined,
-      {
-        timeoutMs: 1_000,
-        maximumAttempts: 3,
-        initialRetryDelayMs: 1,
-        maximumRetryDelayMs: 2,
-      },
+      { timeoutMs: 1_000, maximumAttempts: 3, initialRetryDelayMs: 1, maximumRetryDelayMs: 2 },
       dependencies,
     );
-    await expect(
-      service.calculateCommercialRoute(routeRequest()),
-    ).resolves.toMatchObject({ routeKind: 'commercial-vehicle' });
+    await expect(service.calculateCommercialRoute(routeRequest())).resolves.toMatchObject({
+      routeKind: 'commercial-vehicle',
+    });
     expect(attempts).toBe(3);
     expect(sleep).toHaveBeenCalledTimes(2);
   });
 
   it('enforces timeout even when an adapter ignores the abort signal', async () => {
-    const fixture = provider(
-      async () => new Promise<never>(() => undefined),
-    );
+    const fixture = provider(async () => new Promise<never>(() => undefined));
     const service = new CommercialRoutingService(fixture, license, undefined, {
       timeoutMs: 5,
       maximumAttempts: 1,
       initialRetryDelayMs: 0,
       maximumRetryDelayMs: 0,
     });
-    await expect(
-      service.calculateCommercialRoute(routeRequest()),
-    ).rejects.toMatchObject({ code: 'TIMEOUT' });
+    await expect(service.calculateCommercialRoute(routeRequest())).rejects.toMatchObject({
+      code: 'TIMEOUT',
+    });
   });
 
   it('rejects a consumer result from the commercial operation and keeps comparison separate', async () => {
-    const fixture = provider(async () =>
-      routePayload('consumer-comparison'),
-    );
+    const fixture = provider(async () => routePayload('consumer-comparison'));
     const service = new CommercialRoutingService(fixture, license);
-    await expect(
-      service.calculateCommercialRoute(routeRequest()),
-    ).rejects.toMatchObject({ code: 'INVALID_PROVIDER_RESPONSE' });
-    await expect(
-      service.calculateConsumerComparison(routeRequest()),
-    ).resolves.toMatchObject({
+    await expect(service.calculateCommercialRoute(routeRequest())).rejects.toMatchObject({
+      code: 'INVALID_PROVIDER_RESPONSE',
+    });
+    await expect(service.calculateConsumerComparison(routeRequest())).resolves.toMatchObject({
       routeKind: 'consumer-comparison',
       assessment: { commercialPlanningStatus: 'blocked' },
     });
   });
+
 
   it('redacts credential-like text from mapped provider failures', async () => {
     const fixture = provider(async () => {
@@ -287,38 +271,48 @@ describe('commercial-routing runtime and execution', () => {
       initialRetryDelayMs: 0,
       maximumRetryDelayMs: 0,
     });
-    const error = await service
-      .calculateCommercialRoute(routeRequest())
-      .catch(˜[YNˆ[šÛ›ÝÛŠHOˆ˜[YJNÂˆ^XÝ
-\œ›ÜŠKÐ™R[œÝ[˜ÙSÙŠÛÛ[Y\˜ÚX[›Ý][™Ô›ÝšY\‘\œ›ÜŠNÂˆ^XÝ
-Ýš[™Ê\œ›ÜŠJK››ÝÐÛÛZ[Š	ÜÝ\\‹\ÙXÜ™]ZÙ^IÊNÂˆ^XÝ
-Ýš[™Ê\œ›ÜŠJKÐÛÛZ[Š	ÖÔ‘QPÕQIÊNÂˆJNÂ‚ˆ]
-	ÜÝÜÈY\ˆ™YH™]žXX›H›ÝšY\‹[Ý]YÙH][\ÉË\Þ[˜È
+    const error = await service.calculateCommercialRoute(routeRequest()).catch((value: unknown) => value);
+    expect(error).toBeInstanceOf(CommercialRoutingProviderError);
+    expect(String(error)).not.toContain('super-secret-key');
+    expect(String(error)).toContain('[REDACTED]');
+  });
 
-HOˆÂˆ]][\ÈHÂˆÛÛœÝ\[™[˜ÚY\ÎˆÛÛ[Y\˜ÚX[›Ý][™Ñ^XÝ][Û‘\[™[˜ÚY\ÈHÂˆÛY\ˆ\Þ[˜È
+  it('stops after three retryable provider-outage attempts', async () => {
+    let attempts = 0;
+    const dependencies: CommercialRoutingExecutionDependencies = {
+      sleep: async (): Promise<void> => undefined,
+      createAbortController: () => new AbortController(),
+    };
+    const fixture = provider(async () => {
+      attempts += 1;
+      throw new CommercialRoutingProviderError(
+        'PROVIDER_OUTAGE',
+        'Provider unavailable.',
+        true,
+        'test-only-provider',
+      );
+    });
+    const service = new CommercialRoutingService(
+      fixture,
+      license,
+      undefined,
+      { timeoutMs: 1_000, maximumAttempts: 3, initialRetryDelayMs: 0, maximumRetryDelayMs: 0 },
+      dependencies,
+    );
+    await expect(service.calculateCommercialRoute(routeRequest())).rejects.toMatchObject({
+      code: 'PROVIDER_OUTAGE',
+    });
+    expect(attempts).toBe(3);
+  });
 
-Nˆ›ÛZ\ÙO›ÚYˆOˆ[™Yš[™YˆÜ™X]PX›ÜÛÛ›Û\Žˆ
-
-HOˆ™]ÈX›ÜÛÛ›Û\Š
-KˆNÂˆÛÛœÝš^\™HH›ÝšY\Š\Þ[˜È
-
-HOˆÂˆ][\È
-ÏHNÂˆ›ÝÈ™]ÈÛÛ[Y\˜ÚX[›Ý][™Ô›ÝšY\‘\œ›ÜŠˆ	Ô“Õ’QT—ÓÕUQÑIËˆ	Ô›ÝšY\ˆ[˜]˜Z[X›K‰ËˆYKˆ	Ý\Ý[Û›K\›ÝšY\‰Ëˆ
-NÂˆJNÂˆÛÛœÝÙ\šXÙHH™]ÈÛÛ[Y\˜ÚX[›Ý][™ÔÙ\šXÙJˆš^\™KˆXÙ[œÙKˆ[™Yš[™YˆÂˆ[Y[Ý]\ÎˆWÌˆX^[][P][\ÎˆËˆ[š]X[™]žQ[^S\ÎˆˆX^[][T™]žQ[^S\ÎˆˆKˆ\[™[˜ÚY\Ëˆ
-NÂˆ]ØZ]^XÝ
-ˆÙ\šXÙK˜Ø[Ý[]PÛÛ[Y\˜ÚX[›Ý]J›Ý]T™\]Y\Ý
-
-JKˆ
-Kœ™Z™XÝËÓX]ÚØš™XÝ
-ÈÛÙNˆ	Ô“Õ’QT—ÓÕUQÑIÈJNÂˆ^XÝ
-][\ÊKÐ™JÊNÂˆJNÂ‚ˆ]
-	Ø›ØÚÜÈHÛÛ™šYÝ\™Y›ÝšY\ˆÚ[ˆÛÛ[Y\˜ÚX[›Ý][™ÈXÙ[œÚ[™È\ÈXœÙ[	Ë
-
-HOˆÂˆÛÛœÝš^\™HH›ÝšY\Š\Þ[˜È
-
-HOˆ›Ý]T^[ØY
-
-JNÂˆÛÛœÝ[[YHHÜ™X]PÛÛ[Y\˜ÚX[›Ý][™Ô[[YJÂˆ›ÝšY\Žˆš^\™KˆXÙ[œÙNˆÈ‹‹›XÙ[œÙKÛÛ[Y\˜ÚX[™ZXÛT›Ý][™ÓXÙ[œÙYˆ˜[ÙHKˆJNÂˆ^XÝ
-[[YKœÝ]\ÊKÐ™J	Ø›ØÚÙY	ÊNÂˆYˆ
-[[YKœÝ]\ÈOOH	Ø›ØÚÙY	ÊBˆ›ÝÈ™]È\œ›ÜŠ	Ñ^XÝY›ØÚÙY[[YK‰ÊNÂˆ^XÝ
-[[YK˜›ØÚÙ\‹˜ÛÙJKÐ™J	ÓPÑS”ÑWÐÓÓ‘’QÕTUSÓ—ÒS•SQ	ÊNÂˆJNÂŸJNÂ
+  it('blocks a configured provider when commercial routing licensing is absent', () => {
+    const fixture = provider(async () => routePayload());
+    const runtime = createCommercialRoutingRuntime({
+      provider: fixture,
+      license: { ...license, commercialVehicleRoutingLicensed: false },
+    });
+    expect(runtime.status).toBe('blocked');
+    if (runtime.status !== 'blocked') throw new Error('Expected blocked runtime.');
+    expect(runtime.blocker.code).toBe('LICENSE_CONFIGURATION_INVALID');
+  });
+});
