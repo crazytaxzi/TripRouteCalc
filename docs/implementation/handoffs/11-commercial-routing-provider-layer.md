@@ -3,6 +3,7 @@
 - Source: `docs/specification/11_COMMERCIAL_ROUTING_PROVIDER_LAYER.md`
 - Date: 2026-07-20
 - Implementation branch: `agent/stage-11-commercial-routing-provider`
+- Pull request: `#18 Implement Stage 11 commercial-routing provider layer`
 - Completion status: IMPLEMENTATION COMPLETE, LIVE PROVIDER VERIFICATION BLOCKED, REPOSITORY VERIFICATION PENDING
 
 ## Protected governance
