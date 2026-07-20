@@ -1,0 +1,43 @@
+name: Stage 06 diagnostics
+
+on:
+  push:
+    branches:
+      - agent/stage-06-hos-cycle-recaps-restart
+
+permissions:
+  contents: read
+
+jobs:
+  lint-diagnostics:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - name: Enable pnpm
+        run: |
+          corepack enable
+          corepack prepare pnpm@9.15.4 --activate
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+      - name: Capture lint output
+        shell: bash
+        run: |
+          set +e
+          pnpm lint > stage06-lint.log 2>&1
+          status=$?
+          printf '%s\n' "$status" > stage06-lint.exit
+          exit 0
+      - name: Upload lint diagnostics
+        uses: actions/upload-artifact@v4
+        with:
+          name: stage06-lint-diagnostics
+          path: |
+            stage06-lint.log
+            stage06-lint.exit
+          if-no-files-found: error
