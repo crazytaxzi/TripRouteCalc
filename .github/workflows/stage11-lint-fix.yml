@@ -44,8 +44,8 @@ jobs:
           )
           replace_once(
               foundation,
-              "): Readonly<Record<string, unknown>> {\n  return {",
-              "): ResolvedCommercialLocation {\n  return {",
+              "function location(\n  referenceId: string,\n  longitude: number,\n): Readonly<Record<string, unknown>> {",
+              "function location(\n  referenceId: string,\n  longitude: number,\n): ResolvedCommercialLocation {",
           )
           replace_once(
               foundation,
