@@ -4,9 +4,10 @@
 - Date: 2026-07-20
 - Implementation branch: `agent/stage-11-commercial-routing-provider`
 - Pull request: `#18 Implement Stage 11 commercial-routing provider layer`
-- Final verified head: `80e62513d5f2e4df59727d36c1f6df911d8d60a7`
-- Final verification run: `552` (`29779628324`)
-- Completion status: COMPLETE, LIVE PROVIDER VERIFICATION BLOCKED BY B-002
+- Final pull-request head: `e942191fc22634545e99a79666b45c1436440819`
+- Final verification run: `556` (`29779999719`)
+- Merge commit: `dd161f0d83317a6d4c0d7e6544287e737d2f2d73`
+- Completion status: COMPLETE, VERIFIED, AND MERGED; LIVE PROVIDER VERIFICATION BLOCKED BY B-002
 
 ## Protected governance
 
@@ -62,7 +63,7 @@ Until that setup exists, the runtime returns a blocked result and no route may b
 
 ## Verification evidence
 
-Permanent CI run `550` completed successfully against implementation head `138988858efc594f92953a394e3e646ca5cc5408`. The completed handoff then changed the branch head, so permanent CI run `552` repeated the entire gate against final documented head `80e62513d5f2e4df59727d36c1f6df911d8d60a7`:
+The complete repository gate passed repeatedly after final source corrections. Final CI run `556` completed successfully against pull-request head `e942191fc22634545e99a79666b45c1436440819`:
 
 - frozen-lockfile dependency installation: passed;
 - Prisma client generation: passed;
@@ -73,8 +74,24 @@ Permanent CI run `550` completed successfully against implementation head `13898
 - complete unit and PostgreSQL integration suite: 158 tests passed;
 - production build: passed.
 
-Recovery history remains documented in the branch commits. The final PR diff contains only the 16 permanent Stage 11 source, test, configuration, and documentation files.
+Pull request `#18` was squash-merged into `main` as `dd161f0d83317a6d4c0d7e6544287e737d2f2d73`.
 
-## Next source after completion
+## Recovery summary
+
+- Reconciled remote branch, workflow, and persisted-state divergence under ERP.
+- Generated the routing workspace lock importer without changing external dependency versions.
+- Repaired altered transfer content and one non-UTF-8 test byte from preserved source evidence.
+- Corrected strict lint and TypeScript findings without weakening validation.
+- Declared normalized-route collections readonly to match actual frozen behavior.
+- Corrected normalized evidence persistence and snapshot helpers so assessed results are not incorrectly reprocessed as strict raw provider payloads.
+- Removed every temporary workflow, trigger, script, traceback, and diagnostic file before final validation.
+
+## Remaining limitations
+
+- B-002 blocks live provider verification and production route calls.
+- No route is represented as legal without Stage 12 regulatory evaluation and required provider evidence.
+- API, UI, authentication, maps, exports, and production deployment remain future stages.
+
+## Next source
 
 `docs/specification/12_REGULATORY_RULES_AND_UPDATE_WORKFLOW.md`
