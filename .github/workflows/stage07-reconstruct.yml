@@ -17,6 +17,8 @@ jobs:
         with:
           ref: agent/stage-07-hos-sleeper-adverse-policy
       - name: Reconstruct verified Stage 07 files and patch contracts
+        id: reconstruct
+        continue-on-error: true
         shell: python
         run: |
           from pathlib import Path
@@ -24,87 +26,113 @@ jobs:
           import gzip
           import hashlib
           import json
+          import sys
+          import traceback
 
-          root = Path('.')
+          log = Path('stage07-reconstruct.log').open('w')
+          sys.stdout = log
+          sys.stderr = log
 
-          def decode_payload(payload_path: str, target_path: str, expected_sha256: str) -> None:
-              encoded = (root / payload_path).read_text().strip()
-              content = gzip.decompress(base64.b64decode(encoded))
-              actual = hashlib.sha256(content).hexdigest()
-              print(f'{payload_path}: {len(content)} bytes, SHA-256 {actual}')
-              if actual != expected_sha256:
-                  raise SystemExit(
-                      f'{payload_path} reconstructed SHA-256 {actual}, expected {expected_sha256}.'
+          try:
+              root = Path('.')
+
+              def decode_payload(payload_path: str, target_path: str, expected_sha256: str) -> None:
+                  encoded = (root / payload_path).read_text().strip()
+                  content = gzip.decompress(base64.b64decode(encoded))
+                  actual = hashlib.sha256(content).hexdigest()
+                  print(f'{payload_path}: {len(content)} bytes, SHA-256 {actual}')
+                  if actual != expected_sha256:
+                      raise RuntimeError(
+                          f'{payload_path} reconstructed SHA-256 {actual}, expected {expected_sha256}.'
+                      )
+                  target = root / target_path
+                  target.parent.mkdir(parents=True, exist_ok=True)
+                  target.write_bytes(content)
+
+              decode_payload(
+                  '.stage07-upload/hos-advanced.ts.gz.b64',
+                  'packages/foundation/src/hos-advanced.ts',
+                  'ce6e40518a7cba345cfed61b3db9f4b7830ce904d439c431da242cc7524c4aae',
+              )
+              decode_payload(
+                  '.stage07-upload/hos-advanced.test.ts.gz.b64',
+                  'packages/foundation/test/hos-advanced.test.ts',
+                  '29af799371b160cc3c3e1f9b4cd7a190ecf114a3bbc8ce0c052227f55c11e1a9',
+              )
+
+              hos_path = root / 'packages/foundation/src/hos.ts'
+              hos = hos_path.read_text()
+              old_guard = """  if (sleeperPair.participates && dutyStatus !== 'SLEEPER_BERTH') {
+                issues.push({ code: 'CONTRADICTORY_STATE', path: `${path}.sleeperPair`, message: 'Only sleeper-berth events may participate in a sleeper pairing.' });
+              }
+              """
+              print(f'legacy guard matches: {hos.count(old_guard)}')
+              if hos.count(old_guard) != 1:
+                  raise RuntimeError(
+                      f'Expected one legacy sleeper-only guard, found {hos.count(old_guard)}.'
                   )
-              target = root / target_path
-              target.parent.mkdir(parents=True, exist_ok=True)
-              target.write_bytes(content)
+              hos = hos.replace(old_guard, '')
 
-          decode_payload(
-              '.stage07-upload/hos-advanced.ts.gz.b64',
-              'packages/foundation/src/hos-advanced.ts',
-              'ce6e40518a7cba345cfed61b3db9f4b7830ce904d439c431da242cc7524c4aae',
-          )
-          decode_payload(
-              '.stage07-upload/hos-advanced.test.ts.gz.b64',
-              'packages/foundation/test/hos-advanced.test.ts',
-              '29af799371b160cc3c3e1f9b4cd7a190ecf114a3bbc8ce0c052227f55c11e1a9',
-          )
+              old_role_line = "    const candidateRole = sleeperPair.candidateRole ?? 'SHORT_PERIOD';\n"
+              new_role_block = """    const candidateRole = sleeperPair.candidateRole ?? 'SHORT_PERIOD';
+                const statusQualifies = candidateRole === 'LONG_PERIOD'
+                  ? dutyStatus === 'SLEEPER_BERTH'
+                  : dutyStatus === 'OFF_DUTY' || dutyStatus === 'SLEEPER_BERTH';
+                if (!statusQualifies) {
+                  issues.push({ code: 'CONTRADICTORY_STATE', path: `${path}.sleeperPair`, message: 'A long paired period must be sleeper-berth time; a short paired period may be off-duty or sleeper-berth time.' });
+                }
+              """
+              print(f'candidate-role matches: {hos.count(old_role_line)}')
+              if hos.count(old_role_line) != 1:
+                  raise RuntimeError(
+                      f'Expected one sleeper candidate-role line, found {hos.count(old_role_line)}.'
+                  )
+              hos_path.write_text(hos.replace(old_role_line, new_role_block))
 
-          hos_path = root / 'packages/foundation/src/hos.ts'
-          hos = hos_path.read_text()
-          old_guard = """  if (sleeperPair.participates && dutyStatus !== 'SLEEPER_BERTH') {
-            issues.push({ code: 'CONTRADICTORY_STATE', path: `${path}.sleeperPair`, message: 'Only sleeper-berth events may participate in a sleeper pairing.' });
-          }
-          """
-          if hos.count(old_guard) != 1:
-              raise SystemExit(
-                  f'Expected one legacy sleeper-only guard, found {hos.count(old_guard)}.'
-              )
-          hos = hos.replace(old_guard, '')
+              package_path = root / 'packages/foundation/package.json'
+              package = json.loads(package_path.read_text())
+              exports = package.get('exports')
+              if not isinstance(exports, dict):
+                  raise RuntimeError('Foundation package exports map was not found.')
+              exports['./hos-advanced'] = {
+                  'types': './dist/hos-advanced.d.ts',
+                  'import': './dist/hos-advanced.js',
+              }
+              package_path.write_text(json.dumps(package, indent=2) + '\n')
 
-          old_role_line = "    const candidateRole = sleeperPair.candidateRole ?? 'SHORT_PERIOD';\n"
-          new_role_block = """    const candidateRole = sleeperPair.candidateRole ?? 'SHORT_PERIOD';
-            const statusQualifies = candidateRole === 'LONG_PERIOD'
-              ? dutyStatus === 'SLEEPER_BERTH'
-              : dutyStatus === 'OFF_DUTY' || dutyStatus === 'SLEEPER_BERTH';
-            if (!statusQualifies) {
-              issues.push({ code: 'CONTRADICTORY_STATE', path: `${path}.sleeperPair`, message: 'A long paired period must be sleeper-berth time; a short paired period may be off-duty or sleeper-berth time.' });
-            }
-          """
-          if hos.count(old_role_line) != 1:
-              raise SystemExit(
-                  f'Expected one sleeper candidate-role line, found {hos.count(old_role_line)}.'
-              )
-          hos_path.write_text(hos.replace(old_role_line, new_role_block))
-
-          package_path = root / 'packages/foundation/package.json'
-          package = json.loads(package_path.read_text())
-          exports = package.get('exports')
-          if not isinstance(exports, dict):
-              raise SystemExit('Foundation package exports map was not found.')
-          exports['./hos-advanced'] = {
-              'types': './dist/hos-advanced.d.ts',
-              'import': './dist/hos-advanced.js',
-          }
-          package_path.write_text(json.dumps(package, indent=2) + '\n')
-
-          index_path = root / 'packages/foundation/src/index.ts'
-          index = index_path.read_text()
-          advanced_export = "export * from './hos-advanced.js';"
-          if advanced_export not in index:
-              cycle_export = "export * from './hos-cycle.js';"
-              if cycle_export in index:
-                  index = index.replace(cycle_export, cycle_export + '\n' + advanced_export)
-              else:
-                  index = index.rstrip() + '\n' + advanced_export + '\n'
-              index_path.write_text(index)
+              index_path = root / 'packages/foundation/src/index.ts'
+              index = index_path.read_text()
+              advanced_export = "export * from './hos-advanced.js';"
+              if advanced_export not in index:
+                  cycle_export = "export * from './hos-cycle.js';"
+                  if cycle_export in index:
+                      index = index.replace(cycle_export, cycle_export + '\n' + advanced_export)
+                  else:
+                      index = index.rstrip() + '\n' + advanced_export + '\n'
+                  index_path.write_text(index)
+              print('Stage 07 reconstruction completed successfully.')
+          except Exception:
+              traceback.print_exc()
+              raise
+          finally:
+              log.flush()
+              log.close()
+      - name: Upload reconstruction diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: stage07-reconstruction-diagnostics
+          path: stage07-reconstruct.log
+          if-no-files-found: error
       - name: Remove reconstruction scaffolding
+        if: steps.reconstruct.outcome == 'success'
         shell: bash
         run: |
           rm -rf .stage07-upload
           rm -f .github/workflows/stage07-reconstruct.yml
+          rm -f stage07-reconstruct.log
       - name: Commit clean Stage 07 implementation
+        if: steps.reconstruct.outcome == 'success'
         shell: bash
         run: |
           git config user.name github-actions[bot]
@@ -113,3 +141,6 @@ jobs:
           git diff --cached --check
           git commit -m "Implement Stage 07 advanced HOS rules"
           git push origin HEAD:agent/stage-07-hos-sleeper-adverse-policy
+      - name: Fail when reconstruction failed
+        if: steps.reconstruct.outcome != 'success'
+        run: exit 1
