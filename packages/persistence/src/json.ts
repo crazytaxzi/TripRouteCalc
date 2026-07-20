@@ -1,12 +1,14 @@
 import { createHash } from 'node:crypto';
 
 export type JsonPrimitive = boolean | number | string | null;
-export type JsonValue = JsonPrimitive | JsonValue[] | { [key: string]: JsonValue };
-export type JsonObject = { [key: string]: JsonValue };
+export type JsonObject = Record<string, JsonValue>;
+export type JsonValue = JsonPrimitive | JsonValue[] | JsonObject;
 
 function isPlainObject(value: object): value is Record<string, unknown> {
-  const prototype = Object.getPrototypeOf(value);
-  return prototype === Object.prototype || prototype === null;
+  return (
+    Object.getPrototypeOf(value) === Object.prototype ||
+    Object.getPrototypeOf(value) === null
+  );
 }
 
 export function toJsonValue(value: unknown, path = '$'): JsonValue {
@@ -22,7 +24,9 @@ export function toJsonValue(value: unknown, path = '$'): JsonValue {
   }
 
   if (Array.isArray(value)) {
-    return value.map((entry, index) => toJsonValue(entry, `${path}[${index}]`));
+    return value.map((entry, index) =>
+      toJsonValue(entry, `${path}[${String(index)}]`),
+    );
   }
 
   if (typeof value === 'object' && isPlainObject(value)) {
