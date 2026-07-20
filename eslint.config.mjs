@@ -17,7 +17,7 @@ export default tseslint.config(
     files: ['**/*.ts'],
     languageOptions: {
       parserOptions: {
-        projectService: true,
+        project: './tsconfig.typecheck.json',
         tsconfigRootDir: import.meta.dirname,
       },
     },
