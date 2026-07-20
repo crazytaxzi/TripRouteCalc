@@ -118,9 +118,10 @@ The local environment could not download pnpm packages and did not provide Docke
 - Frozen-lockfile installation: PASS in pull-request CI
 - Prisma client generation and schema validation: PASS in pull-request CI
 - Clean PostgreSQL 18 migration deployment: PASS after correcting foreign-key references to the existing Prisma camelCase columns
-- ESLint diagnostics: 21 strict template-expression and assertion findings identified, corrected, and rechecked with the isolated compiler and 11-test harness
-- Full normal ESLint rerun: PENDING CI
-- Full repository TypeScript check: PENDING CI
+- ESLint diagnostics: 21 strict template-expression and assertion findings identified and corrected
+- Full normal ESLint rerun: PASS in pull-request CI
+- Type-check diagnostics: the new uppercase HOS status type conflicted with the existing lowercase domain `DutyStatus`, and one integration-test boundary supplied an unbranded timestamp; both findings were corrected without changing behavior
+- Full repository TypeScript rerun: PENDING CI
 - Vitest unit and integration tests: PENDING CI
 - Production TypeScript build: PENDING CI
 
@@ -149,7 +150,7 @@ Hard-boundary audit:
 
 ## Remaining blockers and limitations
 
-- Pull-request CI must validate lint, the full type graph, Vitest suite, and production build before acceptance.
+- Pull-request CI must validate the full type graph, Vitest suite, and production build before acceptance.
 - Stage 04 records validated facts but does not implement the legal clock arithmetic reserved for Stages 05 through 08.
 - Sleeper pair participation is candidate evidence only.
 - Commercial-routing provider and credentials remain unselected.
