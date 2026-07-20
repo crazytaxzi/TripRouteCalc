@@ -1,132 +1,70 @@
-name: Stage 04 completion ledger update
+name: CI
 
 on:
+  push:
+    branches: [main, 'agent/**']
   pull_request:
     branches: [main]
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
-  update-ledger:
-    if: github.head_ref == 'stage-04-clean-hos-inputs'
+  verification:
     runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/trip_route_calc_test?schema=public
+
+    services:
+      postgres:
+        image: postgres:18-alpine
+        env:
+          POSTGRES_DB: trip_route_calc_test
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d trip_route_calc_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 12
+
     steps:
-      - name: Check out Stage 04 branch
+      - name: Check out repository
         uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
         with:
-          ref: ${{ github.event.pull_request.head.ref }}
-          fetch-depth: 0
+          node-version: 22
 
-      - name: Mark Stage 04 complete and restore permanent CI
-        shell: bash
+      - name: Enable pnpm
         run: |
-          node <<'NODE'
-          const { readFileSync, writeFileSync } = require('node:fs');
+          corepack enable
+          corepack prepare pnpm@9.15.4 --activate
 
-          function replaceRequired(source, search, replacement) {
-            if (!source.includes(search)) {
-              throw new Error(`Expected text was not found: ${search}`);
-            }
-            return source.replace(search, replacement);
-          }
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
 
-          const readmePath = 'README.md';
-          let readme = readFileSync(readmePath, 'utf8');
-          readme = replaceRequired(
-            readme,
-            'The canonical private repository is established on `main`. Stages 01 through 03 are complete, and Stage 04 is under verification.',
-            'The canonical private repository is established on `main`. Stages 01 through 04 are complete.',
-          );
-          readme = replaceRequired(
-            readme,
-            '- Stage 04: Driver HOS Inputs and Duty Events, VERIFICATION PENDING',
-            '- Stage 04: Driver HOS Inputs and Duty Events, COMPLETE',
-          );
-          readme = replaceRequired(
-            readme,
-            '- `docs/specification/04_DRIVER_HOS_INPUTS_AND_DUTY_EVENTS.md`',
-            '- `docs/specification/05_HOS_CORE_CLOCKS_AND_INTERRUPTION.md`',
-          );
-          readme = replaceRequired(
-            readme,
-            'Complete Stage 04 verification using `docs/specification/04_DRIVER_HOS_INPUTS_AND_DUTY_EVENTS.md`. Do not begin Stage 05 until the Stage 04 migration, lint, type-check, tests, build, handoff, and exit-gate audit all pass.',
-            'Begin Stage 05 using `docs/specification/05_HOS_CORE_CLOCKS_AND_INTERRUPTION.md`. Reinspect the accepted Stage 04 contracts and consume its recorded facts without replacing or inferring them.',
-          );
-          writeFileSync(readmePath, readme);
+      - name: Generate Prisma client
+        run: pnpm db:generate
 
-          const statusPath = 'docs/implementation/STATUS.md';
-          let status = readFileSync(statusPath, 'utf8');
-          status = replaceRequired(status, '- Active pull request: pending', '- Active pull request: `#4`');
-          status = replaceRequired(
-            status,
-            '- Product status: validated driver HOS departure-state and timestamped duty-event implementation assembled; authoritative CI verification pending',
-            '- Product status: validated driver HOS departure-state and timestamped duty-event implementation complete and verified',
-          );
-          status = replaceRequired(
-            status,
-            '- Completed sources: `01_REPOSITORY_AUDIT_AND_PLAN.md`, `02_PRODUCT_FOUNDATION_DOMAIN_UNITS_TIME.md`, `03_PERSISTENCE_REVISIONS_AUDITABILITY.md`',
-            '- Completed sources: `01_REPOSITORY_AUDIT_AND_PLAN.md`, `02_PRODUCT_FOUNDATION_DOMAIN_UNITS_TIME.md`, `03_PERSISTENCE_REVISIONS_AUDITABILITY.md`, `04_DRIVER_HOS_INPUTS_AND_DUTY_EVENTS.md`',
-          );
-          status = replaceRequired(
-            status,
-            '- Active source: `04_DRIVER_HOS_INPUTS_AND_DUTY_EVENTS.md`',
-            '- Next source: `05_HOS_CORE_CLOCKS_AND_INTERRUPTION.md`',
-          );
-          status = replaceRequired(status, '- Stage 04 status: VERIFICATION PENDING', '- Stage 04 status: COMPLETE');
-          status = replaceRequired(
-            status,
-            '- Database migrations: Stage 03 initial migration plus the pending Stage 04 append-only HOS evidence migration',
-            '- Database migrations: Stage 03 initial migration plus the verified Stage 04 append-only HOS evidence migration',
-          );
-          status = replaceRequired(status, '## Stage 04 implementation assembled', '## Stage 04 completed');
-          const verificationStart = status.indexOf('## Verification evidence so far');
-          const limitationsStart = status.indexOf('## Deferred decisions and limitations');
-          if (verificationStart < 0 || limitationsStart < 0 || limitationsStart <= verificationStart) {
-            throw new Error('Could not locate the Stage 04 verification section.');
-          }
-          const verificationSection = `## Verification evidence
+      - name: Validate Prisma schema
+        run: pnpm db:validate
 
-GitHub Actions CI run 128 passed against a clean PostgreSQL 18 service:
+      - name: Apply migrations to clean PostgreSQL database
+        run: pnpm db:migrate:deploy
 
-- \`pnpm install --frozen-lockfile\`
-- \`pnpm db:generate\`
-- \`pnpm db:validate\`
-- \`pnpm db:migrate:deploy\`
-- \`pnpm lint:source\`
-- \`pnpm typecheck:source\`
-- \`pnpm test:source\`
-- \`pnpm build:source\`
+      - name: Lint
+        run: pnpm lint:source
 
-The isolated pre-publication checks also passed with Node.js 22.16.0 and TypeScript 5.8.3, including strict compilation and 11 focused HOS and persistence harness tests. The pull-request workflow exposed and verified corrections for migration foreign-key naming, strict lint formatting, an exported type-name collision, and one unbranded test timestamp.
+      - name: Type-check
+        run: pnpm typecheck:source
 
-`;
-          status = status.slice(0, verificationStart) + verificationSection + status.slice(limitationsStart);
-          status = replaceRequired(
-            status,
-            'Do not begin the next source until Stage 04 CI and the exit-gate audit pass. The next source after acceptance is `05_HOS_CORE_CLOCKS_AND_INTERRUPTION.md`.',
-            'Stage 04 is complete. Begin the next dedicated implementation stage with `05_HOS_CORE_CLOCKS_AND_INTERRUPTION.md` after reinspecting the accepted Stage 04 contracts on `main`.',
-          );
-          writeFileSync(statusPath, status);
+      - name: Test
+        run: pnpm test:source
 
-          const blockersPath = 'docs/implementation/BLOCKERS.md';
-          let blockers = readFileSync(blockersPath, 'utf8');
-          if (!blockers.includes('## Stage 04 blocker review')) {
-            blockers += `
-
-## Stage 04 blocker review
-
-**Status:** No active Stage 04 blocker
-
-Stage 04 required no commercial-routing provider, production regulatory source, authentication system, or deployment target. The complete driver departure state, timestamped duty-event history, provenance, tenant-scoped append-only persistence, PostgreSQL migration, unit and integration tests, lint, type-check, and build are verified. B-002 through B-004 remain visible later-stage concerns and must not be disguised with inferred clocks, fake providers, placeholder legal rules, or unverified operational claims.
-`;
-          }
-          writeFileSync(blockersPath, blockers);
-          NODE
-
-          git show origin/main:.github/workflows/ci.yml > .github/workflows/ci.yml
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add README.md docs/implementation/STATUS.md docs/implementation/BLOCKERS.md .github/workflows/ci.yml
-          git commit -m "Complete Stage 04 implementation ledger"
-          git push origin "HEAD:${{ github.event.pull_request.head.ref }}"
+      - name: Build
+        run: pnpm build:source
