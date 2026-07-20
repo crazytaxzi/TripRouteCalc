@@ -164,3 +164,10 @@ The accepted HOS modules do not:
 Stage 07 behavior was checked on 2026-07-20 against current official FMCSA HOS guidance, the property-carrying HOS summary, and revised split-sleeper guidance issued July 1, 2026. The standard representation remains at least seven consecutive hours in the sleeper berth plus at least two consecutive hours off duty inside or outside the berth, totaling at least ten hours, with neither period counted against the 14-hour window. The adverse-driving-condition provision may extend the driving limit and driving window by up to two hours when fully qualified.
 
 Production regulatory records remain subject to the later versioned, effective-dated, source-attributed regulatory workflow.
+
+## Stage 08 acceptance suite
+
+Stage 08 adds stable `HOS-01` through `HOS-15` master acceptance scenarios, exact-boundary tables, malformed-sequence rejection, deterministic replay, UTC and display-zone equivalence, pure-engine dependency isolation, and PostgreSQL persistence mapping across a repeated local hour.
+
+Fixture facts and legal assumptions are documented in `docs/hos/test-fixtures.md`. These helpers are test-only evidence builders and are never production defaults, legal data, or route-provider fallbacks.
+

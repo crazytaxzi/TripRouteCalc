@@ -21,7 +21,8 @@ TripRouteCalc/
 │   ├── domain/
 │   │   └── product-foundation.md
 │   ├── hos/
-│   │   └── README.md
+│   │   ├── README.md
+│   │   └── test-fixtures.md
 │   ├── persistence/
 │   │   └── README.md
 │   ├── specification/
@@ -46,7 +47,8 @@ TripRouteCalc/
 │           ├── 04-driver-hos-inputs-duty-events.md
 │           ├── 05-hos-core-clocks-interruption.md
 │           ├── 06-hos-cycle-recaps-restart.md
-│           └── 07-hos-sleeper-adverse-and-carrier-policy.md
+│           ├── 07-hos-sleeper-adverse-and-carrier-policy.md
+│           └── 08-hos-automated-test-suite.md
 └── packages/
     ├── foundation/
     │   ├── package.json
@@ -64,7 +66,10 @@ TripRouteCalc/
     │   │   └── units.ts
     │   └── test/
     │       ├── domain.test.ts
-    │       ├── hos-advanced.test.ts
+    │       ├── hos-acceptance.test.ts
+│       ├── hos-advanced.test.ts
+│       ├── hos-engine-isolation.test.ts
+│       ├── hos-test-fixtures.ts
     │       ├── hos-core-boundaries.test.ts
     │       ├── hos-core.test.ts
     │       ├── hos-cycle.test.ts
@@ -98,6 +103,7 @@ TripRouteCalc/
         │   └── trip-revision-repository.ts
         └── test/
             ├── driver-hos.integration.test.ts
+│           ├── hos-domain-mapping.integration.test.ts
             └── persistence.integration.test.ts
 ```
 
@@ -112,6 +118,7 @@ The Prisma-generated client is created under `packages/persistence/src/generated
 - Integer-minute 10-hour reset, 11-hour driving, 14-hour window, cycle blocking, and 30-minute interruption behavior
 - Pure Stage 06 rolling cycle engine with regulatory-day history, reconciliation, recaps, cycle blocking, and explicitly selected 34-hour restart behavior
 - Pure Stage 07 advanced HOS composition with explicit sleeper-pair validation, adverse-driving-condition selection, carrier caps, preferred-rest conflicts, and unsupported-rule warnings
+- Stage 08 master-scenario, boundary, deterministic-replay, pure-engine-isolation, and PostgreSQL HOS mapping acceptance coverage
 - Explicit carrier-designated home-terminal boundaries with UTC, IANA time zones, and DST gap and repeated-time resolution
 - PostgreSQL 18 local and CI service configuration
 - Prisma 7 schema, generated client, and committed migrations
