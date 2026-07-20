@@ -1,0 +1,821 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum TenantRole {
+  OWNER
+  ADMIN
+  PLANNER
+  VIEWER
+}
+
+enum DutyStatus {
+  OFF_DUTY            @map("off-duty")
+  SLEEPER_BERTH       @map("sleeper-berth")
+  DRIVING             @map("driving")
+  ON_DUTY_NOT_DRIVING @map("on-duty-not-driving")
+}
+
+enum StopType {
+  START_LOCATION        @map("start-location")
+  TRACTOR_PICKUP        @map("tractor-pickup")
+  TRAILER_PICKUP        @map("trailer-pickup")
+  SHIPPER               @map("shipper")
+  INTERMEDIATE_PICKUP   @map("intermediate-pickup")
+  INTERMEDIATE_DELIVERY @map("intermediate-delivery")
+  FINAL_CONSIGNEE       @map("final-consignee")
+  FUEL                  @map("fuel")
+  SCALE                 @map("scale")
+  INSPECTION            @map("inspection")
+  MAINTENANCE           @map("maintenance")
+  FOOD                  @map("food")
+  DRIVER_BREAK          @map("driver-break")
+  SLEEPER_REST          @map("sleeper-rest")
+  TERMINAL              @map("terminal")
+  BORDER_CROSSING       @map("border-crossing")
+  OTHER                 @map("other")
+}
+
+enum RouteVerificationStatus {
+  UNVERIFIED                         @map("unverified")
+  COMMERCIAL_ROUTE_PROVIDER_VERIFIED @map("commercial-route-provider-verified")
+}
+
+enum WarningSeverity {
+  INFORMATION @map("information")
+  WARNING     @map("warning")
+  BLOCKING    @map("blocking")
+}
+
+enum CalculationConfidence {
+  HIGH    @map("high")
+  MEDIUM  @map("medium")
+  LOW     @map("low")
+  BLOCKED @map("blocked")
+}
+
+enum ProviderSnapshotStorageMode {
+  RAW_JSON            @map("raw-json")
+  NORMALIZED_SNAPSHOT @map("normalized-snapshot")
+  PROVIDER_REFERENCE  @map("provider-reference")
+}
+
+enum RegulatoryRuleSetStatus {
+  DRAFT    @map("draft")
+  ACTIVE   @map("active")
+  INACTIVE @map("inactive")
+}
+
+model User {
+  id               String                   @id @default(uuid()) @db.Uuid
+  email            String                   @unique
+  displayName      String
+  createdAt        DateTime                 @default(now()) @db.Timestamptz(3)
+  updatedAt        DateTime                 @updatedAt @db.Timestamptz(3)
+  memberships      CarrierMembership[]
+  createdRevisions TripRevision[]           @relation("RevisionCreator")
+  acknowledgements WarningAcknowledgement[]
+  overrides        UserOverride[]
+  exports          ExportHistory[]
+  auditEvents      AuditEvent[]
+  ruleChanges      RegulatoryRuleChange[]
+
+  @@map("users")
+}
+
+model Carrier {
+  id                      String                       @id @default(uuid()) @db.Uuid
+  legalName               String
+  homeTerminalTimeZone    String
+  createdAt               DateTime                     @default(now()) @db.Timestamptz(3)
+  updatedAt               DateTime                     @updatedAt @db.Timestamptz(3)
+  memberships             CarrierMembership[]
+  drivers                 Driver[]
+  driverHosStates         DriverHosState[]
+  driverDutyEvents        DriverDutyEvent[]
+  tractors                Tractor[]
+  trailers                Trailer[]
+  loads                   Load[]
+  facilities              Facility[]
+  facilityServiceProfiles FacilityServiceProfile[]
+  serviceObservations     FacilityServiceObservation[]
+  trips                   Trip[]
+  tripRevisions           TripRevision[]
+  tripStops               TripStop[]
+  appointmentWindows      AppointmentWindow[]
+  routes                  Route[]
+  routeLegs               RouteLeg[]
+  routeSegments           RouteSegment[]
+  routeRestrictions       RouteRestriction[]
+  permits                 Permit[]
+  plannedEvents           PlannedEvent[]
+  warnings                ComplianceWarning[]
+  warningAcknowledgements WarningAcknowledgement[]
+  assumptions             CalculationAssumption[]
+  overrides               UserOverride[]
+  calculationResults      CalculationResult[]
+  providerResponses       RouteProviderResponse[]
+  regulatoryRuleSets      RegulatoryRuleSet[]
+  jurisdictionRules       JurisdictionRule[]
+  tripRevisionRules       TripRevisionRule[]
+  regulatoryRuleChanges   RegulatoryRuleChange[]
+  exports                 ExportHistory[]
+  auditEvents             AuditEvent[]
+
+  @@map("carriers")
+}
+
+model CarrierMembership {
+  carrierId String     @db.Uuid
+  userId    String     @db.Uuid
+  role      TenantRole
+  createdAt DateTime   @default(now()) @db.Timestamptz(3)
+  carrier   Carrier    @relation(fields: [carrierId], references: [id], onDelete: Restrict)
+  user      User       @relation(fields: [userId], references: [id], onDelete: Restrict)
+
+  @@id([carrierId, userId])
+  @@index([userId])
+  @@map("carrier_memberships")
+}
+
+model Driver {
+  id          String            @id @default(uuid()) @db.Uuid
+  carrierId   String            @db.Uuid
+  displayName String
+  createdAt   DateTime          @default(now()) @db.Timestamptz(3)
+  updatedAt   DateTime          @updatedAt @db.Timestamptz(3)
+  carrier     Carrier           @relation(fields: [carrierId], references: [id], onDelete: Restrict)
+  hosStates   DriverHosState[]
+  dutyEvents  DriverDutyEvent[]
+  trips       Trip[]
+
+  @@unique([id, carrierId])
+  @@index([carrierId, displayName])
+  @@map("drivers")
+}
+
+model DriverHosState {
+  id                         String         @id @default(uuid()) @db.Uuid
+  carrierId                  String         @db.Uuid
+  driverId                   String         @db.Uuid
+  asOf                       DateTime       @db.Timestamptz(3)
+  currentDutyStatus          DutyStatus
+  drivingClockRemainingValue BigInt
+  drivingClockRemainingUnit  String         @default("minute")
+  shiftClockRemainingValue   BigInt
+  shiftClockRemainingUnit    String         @default("minute")
+  cycleClockRemainingValue   BigInt
+  cycleClockRemainingUnit    String         @default("minute")
+  createdAt                  DateTime       @default(now()) @db.Timestamptz(3)
+  carrier                    Carrier        @relation(fields: [carrierId], references: [id], onDelete: Restrict)
+  driver                     Driver         @relation(fields: [driverId], references: [id], onDelete: Restrict)
+  tripRevisions              TripRevision[]
+
+  @@unique([id, carrierId])
+  @@index([carrierId, driverId, asOf])
+  @@map("driver_hos_states")
+}
+
+model DriverDutyEvent {
+  id            String     @id @default(uuid()) @db.Uuid
+  carrierId     String     @db.Uuid
+  driverId      String     @db.Uuid
+  startAt       DateTime   @db.Timestamptz(3)
+  endAt         DateTime   @db.Timestamptz(3)
+  durationValue BigInt
+  durationUnit  String     @default("minute")
+  dutyStatus    DutyStatus
+  eventType     String
+  source        String
+  explanation   String
+  createdAt     DateTime   @default(now()) @db.Timestamptz(3)
+  carrier       Carrier    @relation(fields: [carrierId], references: [id], onDelete: Restrict)
+  driver        Driver     @relation(fields: [driverId], references: [id], onDelete: Restrict)
+
+  @@unique([id, carrierId])
+  @@index([carrierId, driverId, startAt])
+  @@map("driver_duty_events")
+}
+
+model Tractor {
+  id                            String         @id @default(uuid()) @db.Uuid
+  carrierId                     String         @db.Uuid
+  unitNumber                    String
+  grossVehicleWeightRatingValue Decimal?       @db.Decimal(18, 6)
+  grossVehicleWeightRatingUnit  String?        @default("pound")
+  heightValue                   Decimal?       @db.Decimal(18, 6)
+  heightUnit                    String?        @default("inch")
+  widthValue                    Decimal?       @db.Decimal(18, 6)
+  widthUnit                     String?        @default("inch")
+  lengthValue                   Decimal?       @db.Decimal(18, 6)
+  lengthUnit                    String?        @default("inch")
+  createdAt                     DateTime       @default(now()) @db.Timestamptz(3)
+  updatedAt                     DateTime       @updatedAt @db.Timestamptz(3)
+  carrier                       Carrier        @relation(fields: [carrierId], references: [id], onDelete: Restrict)
+  tripRevisions                 TripRevision[]
+
+  @@unique([carrierId, unitNumber])
+  @@unique([id, carrierId])
+  @@map("tractors")
+}
+
+model Trailer {
+  id                            String         @id @default(uuid()) @db.Uuid
+  carrierId                     String         @db.Uuid
+  unitNumber                    String
+  equipmentType                 String
+  grossVehicleWeightRatingValue Decimal?       @db.Decimal(18, 6)
+  grossVehicleWeightRatingUnit  String?        @default("pound")
+  heightValue                   Decimal?       @db.Decimal(18, 6)
+  heightUnit                    String?        @default("inch")
+  widthValue                    Decimal?       @db.Decimal(18, 6)
+  widthUnit                     String?        @default("inch")
+  lengthValue                   Decimal?       @db.Decimal(18, 6)
+  lengthUnit                    String?        @default("inch")
+  kpraValue                     Decimal?       @db.Decimal(18, 6)
+  kpraUnit                      String?        @default("inch")
+  kpraVerificationSource        String?
+  createdAt                     DateTime       @default(now()) @db.Timestamptz(3)
+  updatedAt                     DateTime       @updatedAt @db.Timestamptz(3)
+  carrier                       Carrier        @relation(fields: [carrierId], references: [id], onDelete: Restrict)
+  tripRevisions                 TripRevision[]
+
+  @@unique([carrierId, unitNumber])
+  @@unique([id, carrierId])
+  @@map("trailers")
+}
+
+model Load {
+  id               String         @id @default(uuid()) @db.Uuid
+  carrierId        String         @db.Uuid
+  referenceNumber  String
+  cargoWeightValue Decimal?       @db.Decimal(18, 6)
+  cargoWeightUnit  String?        @default("pound")
+  createdAt        DateTime       @default(now()) @db.Timestamptz(3)
+  updatedAt        DateTime       @updatedAt @db.Timestamptz(3)
+  carrier          Carrier        @relation(fields: [carrierId], references: [id], onDelete: Restrict)
+  tripRevisions    TripRevision[]
+
+  @@unique([carrierId, referenceNumber])
+  @@unique([id, carrierId])
+  @@map("loads")
+}
+
+model Facility {
+  id              String                       @id @default(uuid()) @db.Uuid
+  carrierId       String                       @db.Uuid
+  name            String
+  timeZone        String
+  addressText     String
+  createdAt       DateTime                     @default(now()) @db.Timestamptz(3)
+  updatedAt       DateTime                     @updatedAt @db.Timestamptz(3)
+  carrier         Carrier                      @relation(fields: [carrierId], references: [id], onDelete: Restrict)
+  serviceProfiles FacilityServiceProfile[]
+  observations    FacilityServiceObservation[]
+  tripStops       TripStop[]
+
+  @@unique([id, carrierId])
+  @@index([carrierId, name])
+  @@map("facilities")
+}
+
+model FacilityServiceProfile {
+  id                    String                       @id @default(uuid()) @db.Uuid
+  carrierId             String                       @db.Uuid
+  facilityId            String                       @db.Uuid
+  minimumDurationValue  BigInt
+  minimumDurationUnit   String                       @default("minute")
+  expectedDurationValue BigInt
+  expectedDurationUnit  String                       @default("minute")
+  maximumDurationValue  BigInt
+  maximumDurationUnit   String                       @default("minute")
+  expectedDutyStatus    DutyStatus
+  evidenceSource        String
+  effectiveFrom         DateTime                     @db.Timestamptz(3)
+  effectiveTo           DateTime?                    @db.Timestamptz(3)
+  createdAt             DateTime                     @default(now()) @db.Timestamptz(3)
+  carrier               Carrier                      @relation(fields: [carrierId], references: [id], onDelete: Restrict)
+  facility              Facility                     @relation(fields: [facilityId], references: [id], onDelete: Restrict)
+  observations          FacilityServiceObservation[]
+
+  @@unique([id, carrierId])
+  @@index([carrierId, facilityId, effectiveFrom])
+  @@map("facility_service_profiles")
+}
+
+model FacilityServiceObservation {
+  id                  String                  @id @default(uuid()) @db.Uuid
+  carrierId           String                  @db.Uuid
+  facilityId          String                  @db.Uuid
+  serviceProfileId    String?                 @db.Uuid
+  observedAt          DateTime                @db.Timestamptz(3)
+  actualDurationValue BigInt
+  actualDurationUnit  String                  @default("minute")
+  source              String
+  notes               String?
+  createdAt           DateTime                @default(now()) @db.Timestamptz(3)
+  carrier             Carrier                 @relation(fields: [carrierId], references: [id], onDelete: Restrict)
+  facility            Facility                @relation(fields: [facilityId], references: [id], onDelete: Restrict)
+  serviceProfile      FacilityServiceProfile? @relation(fields: [serviceProfileId], references: [id], onDelete: SetNull)
+
+  @@unique([id, carrierId])
+  @@index([carrierId, facilityId, observedAt])
+  @@map("facility_service_observations")
+}
+
+model Trip {
+  id                String         @id @default(uuid()) @db.Uuid
+  carrierId         String         @db.Uuid
+  driverId          String         @db.Uuid
+  currentRevisionId String?        @unique @db.Uuid
+  createdAt         DateTime       @default(now()) @db.Timestamptz(3)
+  updatedAt         DateTime       @updatedAt @db.Timestamptz(3)
+  carrier           Carrier        @relation(fields: [carrierId], references: [id], onDelete: Restrict)
+  driver            Driver         @relation(fields: [driverId], references: [id], onDelete: Restrict)
+  revisions         TripRevision[] @relation("TripRevisions")
+  currentRevision   TripRevision?  @relation("TripCurrentRevision", fields: [currentRevisionId], references: [id], onDelete: Restrict)
+
+  @@unique([id, carrierId])
+  @@index([carrierId, driverId, createdAt])
+  @@map("trips")
+}
+
+model TripRevision {
+  id                       String                   @id @default(uuid()) @db.Uuid
+  carrierId                String                   @db.Uuid
+  tripId                   String                   @db.Uuid
+  revisionNumber           Int
+  createdByUserId          String                   @db.Uuid
+  createdAt                DateTime                 @default(now()) @db.Timestamptz(3)
+  calculationTimestamp     DateTime                 @db.Timestamptz(3)
+  loadId                   String?                  @db.Uuid
+  tractorId                String?                  @db.Uuid
+  trailerId                String?                  @db.Uuid
+  driverHosStateId         String?                  @db.Uuid
+  ruleSetVersion           String
+  routingProviderName      String?
+  routingProviderVersion   String?
+  inputSnapshot            Json
+  resultSnapshot           Json?
+  warningsSnapshot         Json
+  acknowledgementsSnapshot Json
+  overridesSnapshot        Json
+  contentHash              String
+  carrier                  Carrier                  @relation(fields: [carrierId], references: [id], onDelete: Restrict)
+  trip                     Trip                     @relation("TripRevisions", fields: [tripId], references: [id], onDelete: Restrict)
+  currentForTrip           Trip?                    @relation("TripCurrentRevision")
+  createdBy                User                     @relation("RevisionCreator", fields: [createdByUserId], references: [id], onDelete: Restrict)
+  load                     Load?                    @relation(fields: [loadId], references: [id], onDelete: Restrict)
+  tractor                  Tractor?                 @relation(fields: [tractorId], references: [id], onDelete: Restrict)
+  trailer                  Trailer?                 @relation(fields: [trailerId], references: [id], onDelete: Restrict)
+  driverHosState           DriverHosState?          @relation(fields: [driverHosStateId], references: [id], onDelete: Restrict)
+  stops                    TripStop[]
+  route                    Route?
+  permits                  Permit[]
+  plannedEvents            PlannedEvent[]
+  warnings                 ComplianceWarning[]
+  assumptions              CalculationAssumption[]
+  overrides                UserOverride[]
+  calculationResult        CalculationResult?
+  providerResponses        RouteProviderResponse[]
+  ruleEvidence             TripRevisionRule[]
+  exports                  ExportHistory[]
+
+  @@unique([tripId, revisionNumber])
+  @@unique([id, carrierId])
+  @@index([carrierId, tripId, createdAt])
+  @@index([carrierId, contentHash])
+  @@map("trip_revisions")
+}
+
+model TripStop {
+  id                           String               @id @default(uuid()) @db.Uuid
+  carrierId                    String               @db.Uuid
+  tripRevisionId               String               @db.Uuid
+  sequence                     Int
+  type                         StopType
+  required                     Boolean
+  facilityId                   String?              @db.Uuid
+  timeZone                     String
+  expectedServiceDurationValue BigInt
+  expectedServiceDurationUnit  String               @default("minute")
+  createdAt                    DateTime             @default(now()) @db.Timestamptz(3)
+  carrier                      Carrier              @relation(fields: [carrierId], references: [id], onDelete: Restrict)
+  tripRevision                 TripRevision         @relation(fields: [tripRevisionId], references: [id], onDelete: Restrict)
+  facility                     Facility?            @relation(fields: [facilityId], references: [id], onDelete: Restrict)
+  appointmentWindow            AppointmentWindow?
+  originRouteLegs              RouteLeg[]           @relation("RouteLegOrigin")
+  destinationRouteLegs         RouteLeg[]           @relation("RouteLegDestination")
+  plannedEvents                PlannedEvent[]
+  warnings                     ComplianceWarning[]
+
+  @@unique([tripRevisionId, sequence])
+  @@unique([id, carrierId])
+  @@index([carrierId, tripRevisionId, sequence])
+  @@map("trip_stops")
+}
+
+model AppointmentWindow {
+  id                      String    @id @default(uuid()) @db.Uuid
+  carrierId               String    @db.Uuid
+  stopId                  String    @unique @db.Uuid
+  startLocalDateTime      String
+  startTimeZone           String
+  startRepeatedTimeChoice String?
+  startAt                 DateTime  @db.Timestamptz(3)
+  endLocalDateTime        String
+  endTimeZone             String
+  endRepeatedTimeChoice   String?
+  endAt                   DateTime  @db.Timestamptz(3)
+  createdAt               DateTime  @default(now()) @db.Timestamptz(3)
+  carrier                 Carrier   @relation(fields: [carrierId], references: [id], onDelete: Restrict)
+  stop                    TripStop  @relation(fields: [stopId], references: [id], onDelete: Restrict)
+
+  @@unique([id, carrierId])
+  @@index([carrierId, startAt, endAt])
+  @@map("appointment_windows")
+}
+
+model Route {
+  id                            String                   @id @default(uuid()) @db.Uuid
+  carrierId                     String                   @db.Uuid
+  tripRevisionId                String                   @unique @db.Uuid
+  totalDistanceValue            Decimal                  @db.Decimal(18, 6)
+  totalDistanceUnit             String                   @default("meter")
+  estimatedDrivingDurationValue BigInt
+  estimatedDrivingDurationUnit  String                   @default("minute")
+  verificationStatus            RouteVerificationStatus @default(UNVERIFIED)
+  verificationSource            String?
+  verifiedAt                    DateTime?                @db.Timestamptz(3)
+  createdAt                     DateTime                 @default(now()) @db.Timestamptz(3)
+  carrier                       Carrier                  @relation(fields: [carrierId], references: [id], onDelete: Restrict)
+  tripRevision                  TripRevision             @relation(fields: [tripRevisionId], references: [id], onDelete: Restrict)
+  legs                          RouteLeg[]
+  providerResponses             RouteProviderResponse[]
+  calculationResults            CalculationResult[]
+
+  @@unique([id, carrierId])
+  @@index([carrierId, tripRevisionId])
+  @@map("routes")
+}
+
+model RouteLeg {
+  id                            String         @id @default(uuid()) @db.Uuid
+  carrierId                     String         @db.Uuid
+  routeId                       String         @db.Uuid
+  sequence                      Int
+  originStopId                  String         @db.Uuid
+  destinationStopId             String         @db.Uuid
+  distanceValue                 Decimal        @db.Decimal(18, 6)
+  distanceUnit                  String         @default("meter")
+  estimatedDrivingDurationValue BigInt
+  estimatedDrivingDurationUnit  String         @default("minute")
+  createdAt                     DateTime       @default(now()) @db.Timestamptz(3)
+  carrier                       Carrier        @relation(fields: [carrierId], references: [id], onDelete: Restrict)
+  route                         Route          @relation(fields: [routeId], references: [id], onDelete: Restrict)
+  originStop                    TripStop       @relation("RouteLegOrigin", fields: [originStopId], references: [id], onDelete: Restrict)
+  destinationStop               TripStop       @relation("RouteLegDestination", fields: [destinationStopId], references: [id], onDelete: Restrict)
+  segments                      RouteSegment[]
+
+  @@unique([routeId, sequence])
+  @@unique([id, carrierId])
+  @@index([carrierId, routeId, sequence])
+  @@map("route_legs")
+}
+
+model RouteSegment {
+  id                 String             @id @default(uuid()) @db.Uuid
+  carrierId          String             @db.Uuid
+  routeLegId         String             @db.Uuid
+  sequence           Int
+  distanceValue      Decimal            @db.Decimal(18, 6)
+  distanceUnit       String             @default("meter")
+  expectedSpeedValue Decimal?           @db.Decimal(18, 6)
+  expectedSpeedUnit  String?            @default("meter-per-second")
+  jurisdictionCode   String?
+  createdAt          DateTime           @default(now()) @db.Timestamptz(3)
+  carrier            Carrier            @relation(fields: [carrierId], references: [id], onDelete: Restrict)
+  routeLeg           RouteLeg           @relation(fields: [routeLegId], references: [id], onDelete: Restrict)
+  restrictions       RouteRestriction[]
+  warnings           ComplianceWarning[]
+
+  @@unique([routeLegId, sequence])
+  @@unique([id, carrierId])
+  @@index([carrierId, routeLegId, sequence])
+  @@index([carrierId, jurisdictionCode])
+  @@map("route_segments")
+}
+
+model RouteRestriction {
+  id               String       @id @default(uuid()) @db.Uuid
+  carrierId        String       @db.Uuid
+  routeSegmentId   String       @db.Uuid
+  restrictionType  String
+  sourceTitle      String
+  sourceReference  String
+  effectiveFrom    DateTime     @db.Timestamptz(3)
+  effectiveTo      DateTime?    @db.Timestamptz(3)
+  verifiedAt       DateTime     @db.Timestamptz(3)
+  evidenceSnapshot Json?
+  createdAt        DateTime     @default(now()) @db.Timestamptz(3)
+  carrier          Carrier      @relation(fields: [carrierId], references: [id], onDelete: Restrict)
+  routeSegment     RouteSegment @relation(fields: [routeSegmentId], references: [id], onDelete: Restrict)
+
+  @@unique([id, carrierId])
+  @@index([carrierId, routeSegmentId])
+  @@map("route_restrictions")
+}
+
+model Permit {
+  id                 String       @id @default(uuid()) @db.Uuid
+  carrierId          String       @db.Uuid
+  tripRevisionId     String       @db.Uuid
+  jurisdictionCode   String
+  permitNumber       String
+  effectiveFrom      DateTime     @db.Timestamptz(3)
+  effectiveTo        DateTime     @db.Timestamptz(3)
+  verificationSource String
+  evidenceSnapshot   Json?
+  createdAt          DateTime     @default(now()) @db.Timestamptz(3)
+  carrier            Carrier      @relation(fields: [carrierId], references: [id], onDelete: Restrict)
+  tripRevision       TripRevision @relation(fields: [tripRevisionId], references: [id], onDelete: Restrict)
+
+  @@unique([carrierId, jurisdictionCode, permitNumber])
+  @@unique([id, carrierId])
+  @@index([carrierId, tripRevisionId])
+  @@map("permits")
+}
+
+model PlannedEvent {
+  id             String       @id @default(uuid()) @db.Uuid
+  carrierId      String       @db.Uuid
+  tripRevisionId String       @db.Uuid
+  stopId         String?      @db.Uuid
+  type           String
+  startAt        DateTime     @db.Timestamptz(3)
+  endAt          DateTime     @db.Timestamptz(3)
+  durationValue  BigInt
+  durationUnit   String       @default("minute")
+  dutyStatus     DutyStatus
+  explanation    String
+  createdAt      DateTime     @default(now()) @db.Timestamptz(3)
+  carrier        Carrier      @relation(fields: [carrierId], references: [id], onDelete: Restrict)
+  tripRevision   TripRevision @relation(fields: [tripRevisionId], references: [id], onDelete: Restrict)
+  stop           TripStop?    @relation(fields: [stopId], references: [id], onDelete: Restrict)
+
+  @@unique([id, carrierId])
+  @@index([carrierId, tripRevisionId, startAt])
+  @@map("planned_events")
+}
+
+model ComplianceWarning {
+  id               String                   @id @default(uuid()) @db.Uuid
+  carrierId        String                   @db.Uuid
+  tripRevisionId   String                   @db.Uuid
+  routeSegmentId   String?                  @db.Uuid
+  stopId           String?                  @db.Uuid
+  severity         WarningSeverity
+  code             String
+  explanation      String
+  sourceReference  String?
+  createdAt        DateTime                 @default(now()) @db.Timestamptz(3)
+  carrier          Carrier                  @relation(fields: [carrierId], references: [id], onDelete: Restrict)
+  tripRevision     TripRevision             @relation(fields: [tripRevisionId], references: [id], onDelete: Restrict)
+  routeSegment     RouteSegment?            @relation(fields: [routeSegmentId], references: [id], onDelete: Restrict)
+  stop             TripStop?                @relation(fields: [stopId], references: [id], onDelete: Restrict)
+  acknowledgements WarningAcknowledgement[]
+
+  @@unique([tripRevisionId, code])
+  @@unique([id, carrierId])
+  @@index([carrierId, tripRevisionId, severity])
+  @@map("compliance_warnings")
+}
+
+model WarningAcknowledgement {
+  id             String            @id @default(uuid()) @db.Uuid
+  carrierId      String            @db.Uuid
+  warningId      String            @db.Uuid
+  userId         String            @db.Uuid
+  acknowledgedAt DateTime          @default(now()) @db.Timestamptz(3)
+  note           String?
+  carrier        Carrier           @relation(fields: [carrierId], references: [id], onDelete: Restrict)
+  warning        ComplianceWarning @relation(fields: [warningId], references: [id], onDelete: Restrict)
+  user           User              @relation(fields: [userId], references: [id], onDelete: Restrict)
+
+  @@unique([warningId, userId])
+  @@unique([id, carrierId])
+  @@index([carrierId, warningId])
+  @@map("warning_acknowledgements")
+}
+
+model CalculationAssumption {
+  id             String       @id @default(uuid()) @db.Uuid
+  carrierId      String       @db.Uuid
+  tripRevisionId String       @db.Uuid
+  key            String
+  value          Json
+  explanation    String
+  source         String
+  createdAt      DateTime     @default(now()) @db.Timestamptz(3)
+  carrier        Carrier      @relation(fields: [carrierId], references: [id], onDelete: Restrict)
+  tripRevision   TripRevision @relation(fields: [tripRevisionId], references: [id], onDelete: Restrict)
+
+  @@unique([tripRevisionId, key])
+  @@unique([id, carrierId])
+  @@index([carrierId, tripRevisionId])
+  @@map("calculation_assumptions")
+}
+
+model UserOverride {
+  id             String       @id @default(uuid()) @db.Uuid
+  carrierId      String       @db.Uuid
+  tripRevisionId String       @db.Uuid
+  userId         String       @db.Uuid
+  key            String
+  value          Json
+  reason         String
+  createdAt      DateTime     @default(now()) @db.Timestamptz(3)
+  carrier        Carrier      @relation(fields: [carrierId], references: [id], onDelete: Restrict)
+  tripRevision   TripRevision @relation(fields: [tripRevisionId], references: [id], onDelete: Restrict)
+  user           User         @relation(fields: [userId], references: [id], onDelete: Restrict)
+
+  @@unique([tripRevisionId, key])
+  @@unique([id, carrierId])
+  @@index([carrierId, tripRevisionId])
+  @@map("user_overrides")
+}
+
+model CalculationResult {
+  id                String                @id @default(uuid()) @db.Uuid
+  carrierId         String                @db.Uuid
+  tripRevisionId    String                @unique @db.Uuid
+  calculatedAt      DateTime              @db.Timestamptz(3)
+  routeId           String?               @db.Uuid
+  confidence        CalculationConfidence
+  confidenceReasons Json
+  explanation       Json
+  resultSnapshot    Json
+  createdAt         DateTime              @default(now()) @db.Timestamptz(3)
+  carrier           Carrier               @relation(fields: [carrierId], references: [id], onDelete: Restrict)
+  tripRevision      TripRevision          @relation(fields: [tripRevisionId], references: [id], onDelete: Restrict)
+  route             Route?                @relation(fields: [routeId], references: [id], onDelete: Restrict)
+
+  @@unique([id, carrierId])
+  @@index([carrierId, calculatedAt])
+  @@map("calculation_results")
+}
+
+model RouteProviderResponse {
+  id                      String                       @id @default(uuid()) @db.Uuid
+  carrierId               String                       @db.Uuid
+  tripRevisionId          String                       @db.Uuid
+  routeId                 String?                      @db.Uuid
+  providerName            String
+  providerVersion         String?
+  providerRequestId       String?
+  receivedAt              DateTime                     @db.Timestamptz(3)
+  storageMode             ProviderSnapshotStorageMode
+  licenseAllowsRawStorage Boolean                      @default(false)
+  rawResponse             Json?
+  normalizedSnapshot      Json?
+  providerReference       String?
+  responseHash            String
+  createdAt               DateTime                     @default(now()) @db.Timestamptz(3)
+  carrier                 Carrier                      @relation(fields: [carrierId], references: [id], onDelete: Restrict)
+  tripRevision            TripRevision                 @relation(fields: [tripRevisionId], references: [id], onDelete: Restrict)
+  route                   Route?                       @relation(fields: [routeId], references: [id], onDelete: Restrict)
+
+  @@unique([carrierId, providerName, responseHash])
+  @@unique([id, carrierId])
+  @@index([carrierId, tripRevisionId, receivedAt])
+  @@map("route_provider_responses")
+}
+
+model RegulatoryRuleSet {
+  id              String                  @id @default(uuid()) @db.Uuid
+  carrierId       String                  @db.Uuid
+  name            String
+  version         String
+  status          RegulatoryRuleSetStatus @default(DRAFT)
+  effectiveFrom   DateTime                @db.Timestamptz(3)
+  effectiveTo     DateTime?               @db.Timestamptz(3)
+  sourceTitle     String
+  sourceReference String
+  sourceMetadata  Json
+  lastVerifiedAt  DateTime                @db.Timestamptz(3)
+  createdAt       DateTime                @default(now()) @db.Timestamptz(3)
+  updatedAt       DateTime                @updatedAt @db.Timestamptz(3)
+  carrier         Carrier                 @relation(fields: [carrierId], references: [id], onDelete: Restrict)
+  rules           JurisdictionRule[]
+  changes         RegulatoryRuleChange[]
+
+  @@unique([carrierId, name, version])
+  @@unique([id, carrierId])
+  @@index([carrierId, status, effectiveFrom])
+  @@map("regulatory_rule_sets")
+}
+
+model JurisdictionRule {
+  id               String             @id @default(uuid()) @db.Uuid
+  carrierId        String             @db.Uuid
+  ruleSetId        String             @db.Uuid
+  jurisdictionCode String
+  ruleType         String
+  version          String
+  effectiveFrom    DateTime           @db.Timestamptz(3)
+  effectiveTo      DateTime?          @db.Timestamptz(3)
+  sourceTitle      String
+  sourceReference  String
+  sourceMetadata   Json
+  lastVerifiedAt   DateTime           @db.Timestamptz(3)
+  active           Boolean            @default(true)
+  ruleDefinition   Json
+  createdAt        DateTime           @default(now()) @db.Timestamptz(3)
+  updatedAt        DateTime           @updatedAt @db.Timestamptz(3)
+  carrier          Carrier            @relation(fields: [carrierId], references: [id], onDelete: Restrict)
+  ruleSet          RegulatoryRuleSet  @relation(fields: [ruleSetId], references: [id], onDelete: Restrict)
+  revisionEvidence TripRevisionRule[]
+
+  @@unique([ruleSetId, jurisdictionCode, ruleType, version])
+  @@unique([id, carrierId])
+  @@index([carrierId, jurisdictionCode, ruleType, active])
+  @@map("jurisdiction_rules")
+}
+
+model TripRevisionRule {
+  id                     String           @id @default(uuid()) @db.Uuid
+  carrierId              String           @db.Uuid
+  tripRevisionId         String           @db.Uuid
+  jurisdictionRuleId     String           @db.Uuid
+  capturedVersion        String
+  capturedSourceMetadata Json
+  createdAt              DateTime         @default(now()) @db.Timestamptz(3)
+  carrier                Carrier          @relation(fields: [carrierId], references: [id], onDelete: Restrict)
+  tripRevision           TripRevision     @relation(fields: [tripRevisionId], references: [id], onDelete: Restrict)
+  jurisdictionRule       JurisdictionRule @relation(fields: [jurisdictionRuleId], references: [id], onDelete: Restrict)
+
+  @@unique([tripRevisionId, jurisdictionRuleId])
+  @@unique([id, carrierId])
+  @@index([carrierId, tripRevisionId])
+  @@map("trip_revision_rules")
+}
+
+model RegulatoryRuleChange {
+  id              String            @id @default(uuid()) @db.Uuid
+  carrierId       String            @db.Uuid
+  ruleSetId       String            @db.Uuid
+  changedByUserId String            @db.Uuid
+  changedAt       DateTime          @default(now()) @db.Timestamptz(3)
+  action          String
+  beforeSnapshot  Json?
+  afterSnapshot   Json
+  reason          String
+  carrier         Carrier           @relation(fields: [carrierId], references: [id], onDelete: Restrict)
+  ruleSet         RegulatoryRuleSet @relation(fields: [ruleSetId], references: [id], onDelete: Restrict)
+  changedBy       User              @relation(fields: [changedByUserId], references: [id], onDelete: Restrict)
+
+  @@unique([id, carrierId])
+  @@index([carrierId, ruleSetId, changedAt])
+  @@map("regulatory_rule_changes")
+}
+
+model ExportHistory {
+  id                String       @id @default(uuid()) @db.Uuid
+  carrierId         String       @db.Uuid
+  tripRevisionId    String       @db.Uuid
+  generatedByUserId String       @db.Uuid
+  generatedAt       DateTime     @default(now()) @db.Timestamptz(3)
+  format            String
+  contentHash       String
+  metadata          Json
+  carrier           Carrier      @relation(fields: [carrierId], references: [id], onDelete: Restrict)
+  tripRevision      TripRevision @relation(fields: [tripRevisionId], references: [id], onDelete: Restrict)
+  generatedBy       User         @relation(fields: [generatedByUserId], references: [id], onDelete: Restrict)
+
+  @@unique([carrierId, tripRevisionId, contentHash])
+  @@unique([id, carrierId])
+  @@index([carrierId, generatedAt])
+  @@map("export_history")
+}
+
+model AuditEvent {
+  id          String    @id @default(uuid()) @db.Uuid
+  carrierId   String    @db.Uuid
+  actorUserId String?   @db.Uuid
+  entityType  String
+  entityId    String
+  action      String
+  occurredAt  DateTime  @default(now()) @db.Timestamptz(3)
+  metadata    Json
+  carrier     Carrier   @relation(fields: [carrierId], references: [id], onDelete: Restrict)
+  actor       User?     @relation(fields: [actorUserId], references: [id], onDelete: Restrict)
+
+  @@unique([id, carrierId])
+  @@index([carrierId, entityType, entityId, occurredAt])
+  @@map("audit_events")
+}
