@@ -1,6 +1,7 @@
 export * from './domain.js';
 export * from './hos-core.js';
 export * from './hos-cycle.js';
+export * from './hos-advanced.js';
 export * from './hos.js';
 export * from './scope.js';
 export * from './terminology.js';

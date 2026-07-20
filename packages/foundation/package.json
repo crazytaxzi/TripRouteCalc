@@ -37,9 +37,15 @@
     "./units": {
       "types": "./dist/units.d.ts",
       "import": "./dist/units.js"
+    },
+    "./hos-advanced": {
+      "types": "./dist/hos-advanced.d.ts",
+      "import": "./dist/hos-advanced.js"
     }
   },
-  "files": ["dist"],
+  "files": [
+    "dist"
+  ],
   "dependencies": {
     "@js-temporal/polyfill": "^0.5.1",
     "zod": "^3.25.67"
