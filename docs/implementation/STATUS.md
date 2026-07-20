@@ -5,36 +5,38 @@
 - Canonical repository: `crazytaxzi/TripRouteCalc`
 - Repository visibility: private
 - Default branch: `main`
-- Active implementation branch: none
-- Active pull request: none
+- Active implementation branch: `agent/stage-05-hos-core-clocks`
+- Active pull request: `#6`
 - Last completed pull request: `#4`
-- Product status: validated driver HOS departure-state and timestamped duty-event implementation complete and verified
-- Completed sources: `01_REPOSITORY_AUDIT_AND_PLAN.md`, `02_PRODUCT_FOUNDATION_DOMAIN_UNITS_TIME.md`, `03_PERSISTENCE_REVISIONS_AUDITABILITY.md`, `04_DRIVER_HOS_INPUTS_AND_DUTY_EVENTS.md`
+- Product status: pure standard federal property-carrying HOS core clocks and 30-minute interruption implementation complete and verified
+- Completed sources: `01_REPOSITORY_AUDIT_AND_PLAN.md`, `02_PRODUCT_FOUNDATION_DOMAIN_UNITS_TIME.md`, `03_PERSISTENCE_REVISIONS_AUDITABILITY.md`, `04_DRIVER_HOS_INPUTS_AND_DUTY_EVENTS.md`, `05_HOS_CORE_CLOCKS_AND_INTERRUPTION.md`
 - Stage 01 status: COMPLETE
 - Stage 02 status: COMPLETE
 - Stage 03 status: COMPLETE
 - Stage 04 status: COMPLETE
-- Next source: `05_HOS_CORE_CLOCKS_AND_INTERRUPTION.md`
+- Stage 05 status: COMPLETE
+- Next source: `06_HOS_CYCLE_RECAPS_AND_RESTART.md`
 - Application code: `@trip-route-calc/foundation` and `@trip-route-calc/persistence`
-- Database migrations: Stage 03 initial migration plus the verified Stage 04 append-only HOS evidence migration
+- Database migrations: Stage 03 initial migration plus the verified Stage 04 append-only HOS evidence migration; Stage 05 added no migration
 - Production integrations: none
 
-## Stage 04 completed
+## Stage 05 completed
 
-- Added a pure HOS departure-state and duty-event contract to the existing foundation package.
-- Represented driving, shift, and cycle clocks as independent integer-minute constraints.
-- Added current duty status and status-start timestamp, cycle selection, interruption history, current-shift duty time, immediately preceding off-duty time, prior seven or eight local-day totals, recap returns, sleeper evidence, split and restart intent, carrier targets, and optional nightly-rest preferences.
-- Added explicit origin and verification provenance for user-entered, provider-derived, and calculated data.
-- Added supported duty statuses and timestamped event records with source, type, location, explanation, clock effects, interruption qualification, and sleeper-pair candidate participation.
-- Added strict validation for contradictory states, legal maxima, invalid zones, non-minute durations, prior-day continuity, recap ordering, sleeper evidence, event order, overlaps, gaps, and history boundaries.
-- Added API-shaped mappers and deterministic JSON serialization without adding an API framework.
-- Added tenant-scoped, actor-attributed, append-only HOS evidence revisions with canonical SHA-256 hashes.
-- Added PostgreSQL constraints and append-only triggers for the new HOS evidence tables.
-- Added focused pure-domain tests and PostgreSQL integration coverage.
+- Added a pure `calculateHosCore` service isolated from UI, persistence, routing, ETA, and provider concerns.
+- Consumed the validated Stage 04 departure state and complete ordered duty-event sequence without replacing the entered primary clocks.
+- Applied independent integer-minute driving, shift-window, cycle-availability, and interruption constraints.
+- Implemented the standard 11-hour driving allowance, 14-consecutive-hour window, eight-cumulative-driving-hour interruption threshold, qualifying 30-consecutive-minute non-driving interruption, and qualifying 10-consecutive-hour off-duty or sleeper-berth reset.
+- Kept an active 14-hour window advancing through ordinary off-duty, sleeper, waiting, loading, unloading, and facility time until a qualifying 10-hour reset completes.
+- Kept fuel and other work activity on-duty-not-driving, consuming shift and cycle time without consuming driving time.
+- Returned immutable initial and final snapshots, per-event transitions, exact first-prohibited timestamps, legal and prohibited driving minutes, structured violations, milestones, blocking reasons, next required legal action, and plain-language explanations.
+- Blocked driving when any applicable driving, shift, cycle, or interruption constraint reached zero.
+- Preserved hard boundaries around cycle recaps, 34-hour restarts, sleeper splits, adverse conditions, personal conveyance, and carrier-policy calculations for their assigned later stages.
+- Added focused scenario tests and one-minute-before, exact, and one-minute-after boundary tests for every Stage 05 limit.
+- Exported the engine through `@trip-route-calc/foundation` and `@trip-route-calc/foundation/hos-core`.
 
 ## Verification evidence
 
-GitHub Actions CI run 128 passed against a clean PostgreSQL 18 service:
+GitHub Actions CI run 145 passed against a clean PostgreSQL 18 service at commit `e145c74cd4801a691c5c0db2263afa2ca437c5f9`:
 
 - `pnpm install --frozen-lockfile`
 - `pnpm db:generate`
@@ -45,22 +47,21 @@ GitHub Actions CI run 128 passed against a clean PostgreSQL 18 service:
 - `pnpm test:source`
 - `pnpm build:source`
 
-The isolated pre-publication checks also passed with Node.js 22.16.0 and TypeScript 5.8.3, including strict compilation and 11 focused HOS and persistence harness tests. The pull-request workflow exposed and verified corrections for migration foreign-key naming, strict lint formatting, an exported type-name collision, and one unbranded test timestamp.
+A strict isolated TypeScript 5.8.3 harness also passed on Node.js 22.16.0. Runtime probes verified the exact 480/481-minute interruption boundary and a 10-hour reset followed by resumed driving. Current FMCSA guidance was checked on 2026-07-20 against the official property-carrying 11-hour, 14-hour, and 30-minute-break summary before implementation.
 
 ## Deferred decisions and limitations
 
-- Stage 04 records facts and validates state. It does not calculate the 11-hour, 14-hour, interruption, cycle, recap, restart, or split-sleeper legal results reserved for later HOS stages.
-- Carrier targets remain separate from entered legal clocks and may be stricter.
-- Sleeper periods and pair participation are candidate evidence only; no split is automatically declared valid.
-- A 34-hour restart, adverse-driving condition, personal conveyance, or other exception is never activated automatically.
-- Fuel, inspections, loading, unloading, paperwork, and facility time are not treated as off duty by default.
+- Stage 05 treats the validated departure clocks as authoritative independent inputs. Stage 06 must reconcile cycle availability against timestamped historical duty evidence and report discrepancies without silently replacing entered values.
+- Cycle recaps, regulatory-day boundaries, and 34-hour restart selection are not implemented in Stage 05.
+- Carrier targets remain separate recorded planning constraints. Stage 07 owns carrier-policy enforcement.
+- Sleeper evidence remains candidate data only. Stage 07 owns split-sleeper validation.
+- Adverse conditions, personal conveyance, exceptions, exemptions, pilot programs, and emergency declarations are never activated automatically.
 - Commercial-routing provider and credentials remain unselected.
 - Production regulatory and licensed data sources remain unselected.
 - No route may be called legal or provider-verified yet.
 - Production hosting, secrets management, backup schedules, recovery objectives, retention periods, and database operations remain undecided.
-- Request authentication and API-level authorization are later-stage concerns; current application access must use tenant-scoped persistence functions.
 - No API, UI, map, export renderer, or production deployment exists yet.
 
 ## Next source
 
-Stage 04 is complete. Begin the next dedicated implementation stage with `05_HOS_CORE_CLOCKS_AND_INTERRUPTION.md` after reinspecting the accepted Stage 04 contracts on `main`.
+Stage 05 is complete and verified. Begin the next dedicated implementation stage with `06_HOS_CYCLE_RECAPS_AND_RESTART.md` after reinspecting the accepted Stage 04 evidence contracts and Stage 05 pure core engine on `main`.

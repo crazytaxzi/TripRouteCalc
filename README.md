@@ -6,12 +6,12 @@ The product is intended to produce transparent, defensible planning estimates fo
 
 ## Current state
 
-The canonical private repository is established on `main`. Stages 01 through 04 are complete.
+The canonical private repository is established on `main`. Stages 01 through 05 are complete.
 
-- `@trip-route-calc/foundation` provides product terminology, first-release scope boundaries, explicit measurement primitives, UTC and IANA time-zone handling, DST-safe local appointment resolution, provider-neutral domain contracts, and validated driver HOS departure-state and duty-event contracts.
+- `@trip-route-calc/foundation` provides product terminology, first-release scope boundaries, explicit measurement primitives, UTC and IANA time-zone handling, DST-safe local appointment resolution, provider-neutral domain contracts, validated driver HOS departure-state and duty-event contracts, and the pure Stage 05 core clock engine for the standard 10-hour reset, 11-hour driving allowance, 14-hour window, cycle-availability blocking, and 30-minute interruption.
 - `@trip-route-calc/persistence` provides PostgreSQL and Prisma persistence, tenant-scoped repositories, ordered stops, immutable trip revisions, evidence retention, regulatory history, export history, audit records, and immutable HOS input revisions.
 
-The complete HOS clock engine, commercial routing, compliance evaluation, ETA simulation, API behavior, and UI behavior have not started.
+Cycle-history reconciliation, daily recaps, 34-hour restart logic, advanced HOS rules, commercial routing, compliance evaluation, ETA simulation, API behavior, and UI behavior have not started.
 
 ## Workspace checks
 
@@ -54,6 +54,7 @@ PostgreSQL 18 uses the named volume mounted at `/var/lib/postgresql`.
 - Stage 02: Product Foundation, Domain, Units, and Time, COMPLETE
 - Stage 03: Persistence, Revisions, and Auditability, COMPLETE
 - Stage 04: Driver HOS Inputs and Duty Events, COMPLETE
+- Stage 05: HOS Core Clocks and 30-Minute Interruption, COMPLETE
 
 See:
 
@@ -64,10 +65,11 @@ See:
 - `docs/implementation/handoffs/02-product-foundation-domain-units-time.md`
 - `docs/implementation/handoffs/03-persistence-revisions-auditability.md`
 - `docs/implementation/handoffs/04-driver-hos-inputs-duty-events.md`
+- `docs/implementation/handoffs/05-hos-core-clocks-interruption.md`
 - `docs/domain/product-foundation.md`
 - `docs/hos/README.md`
 - `docs/persistence/README.md`
-- `docs/specification/05_HOS_CORE_CLOCKS_AND_INTERRUPTION.md`
+- `docs/specification/06_HOS_CYCLE_RECAPS_AND_RESTART.md`
 
 ## First-release scope
 
@@ -94,4 +96,4 @@ No exception, exemption, emergency declaration, pilot program, adverse-driving r
 
 ## Next action
 
-Begin Stage 05 using `docs/specification/05_HOS_CORE_CLOCKS_AND_INTERRUPTION.md`. Reinspect the accepted Stage 04 contracts and consume its recorded facts without replacing or inferring them.
+Begin Stage 06 using `docs/specification/06_HOS_CYCLE_RECAPS_AND_RESTART.md`. Reinspect the accepted Stage 04 evidence contracts and Stage 05 pure core engine, then add rolling cycle history, correctly timed recap returns, and explicitly selected 34-hour restart behavior without silently replacing entered cycle facts.

@@ -1,13 +1,18 @@
-# Driver HOS Input and Duty-Event Contracts
+# Driver HOS Contracts and Core Clock Engine
 
-Stage 04 establishes the validated facts consumed by later pure HOS engines. It does not calculate legal drive windows, insert breaks, validate a sleeper split, apply a restart, or claim that a trip is legal.
+Stages 04 and 05 establish the validated HOS facts and the first pure legal-clock calculation service. The implementation is a planning engine, not an ELD, and it does not claim that a complete trip or route is legal.
 
-## Stable boundary
+## Stable boundaries
 
-The HOS contracts are exported from:
+The HOS input contracts are exported from:
 
 - `@trip-route-calc/foundation`
 - `@trip-route-calc/foundation/hos`
+
+The Stage 05 core engine is exported from:
+
+- `@trip-route-calc/foundation`
+- `@trip-route-calc/foundation/hos-core`
 
 The persistence functions are exported from `@trip-route-calc/persistence`.
 
@@ -49,6 +54,35 @@ Every `DutyEvent` records:
 
 History validation rejects caller-supplied events that are out of order, overlap, or contain an unexplained gap. It never silently sorts, truncates, joins, or changes events.
 
+## Stage 05 core calculation
+
+`calculateHosCore` consumes one validated departure state and a complete ordered event sequence beginning at the departure boundary. It returns immutable snapshots and transitions containing:
+
+- driving, shift, and cycle minutes remaining
+- cumulative driving since the last qualifying interruption
+- current-shift on-duty time
+- consecutive non-driving and reset-qualifying streaks
+- whether the 14-hour window is active
+- whether driving may legally continue under the Stage 05 core constraints
+- structured blocking reasons and violations
+- exact timestamps when a violation first begins
+- legal and prohibited driving minutes for every driving event
+- qualifying interruption and 10-hour-reset milestones
+- the next required legal action and plain-language reasons
+
+The standard Stage 05 rule set applies:
+
+- no more than 11 driving hours after a qualifying 10-consecutive-hour off-duty period
+- no driving after the end of the 14-consecutive-hour window
+- no additional driving after eight cumulative driving hours without at least 30 consecutive non-driving minutes
+- any combination of off-duty, sleeper-berth, and on-duty-not-driving time may satisfy the standard 30-minute interruption
+- only consecutive off-duty and sleeper-berth time contributes to the 10-hour reset
+- a 10-hour reset restores the 11-hour driving allowance and 14-hour window but does not restore cycle availability
+- ordinary stops do not pause an active 14-hour window
+- on-duty-not-driving work consumes shift and cycle time but not driving time
+
+All authoritative arithmetic uses non-negative integer minutes and UTC instants.
+
 ## Provenance
 
 Inputs identify their origin as:
@@ -65,15 +99,23 @@ Each origin also carries `UNVERIFIED` or `VERIFIED`, plus an optional source nam
 
 `getDriverHosRevision` reloads the evidence, validates it again through the pure domain contracts, and verifies both hashes before returning it.
 
+Stage 05 adds no database table or migration. Calculation outputs remain pure derived results until a later stage defines their revision boundary.
+
 ## Deliberate boundaries
 
-Stage 04 does not:
+Stage 05 does not:
 
-- infer any primary clock from another
-- decide how long the driver may legally continue driving
-- insert a 30-minute interruption or 10-hour rest
-- validate both sides of a sleeper split
-- activate a restart, adverse-driving condition, or personal conveyance
-- treat fuel, inspection, loading, unloading, or facility time as off duty by default
+- infer one entered primary clock from another
+- calculate rolling 60-hour/7-day or 70-hour/8-day history
+- award recap hours or choose a regulatory-day boundary
+- activate or select a 34-hour restart
+- validate a sleeper split
+- apply adverse conditions, personal conveyance, an exception, exemption, pilot program, or emergency declaration
+- enforce carrier-policy targets
+- call a route or complete trip legal
 
-Those behaviors belong to later HOS stages and must consume these recorded facts rather than replacing them.
+Those behaviors belong to later numbered stages and must consume the recorded facts and Stage 05 transitions rather than duplicating the clock arithmetic.
+
+## Regulatory verification
+
+The Stage 05 standard rule behavior was checked on 2026-07-20 against current official FMCSA property-carrying HOS guidance and the federal 30-minute-break explanation. Production regulatory records remain subject to the later versioned, effective-dated, source-attributed regulatory workflow.
