@@ -1,0 +1,50 @@
+name: Stage 07 diagnostics
+
+on:
+  push:
+    branches:
+      - agent/stage-07-hos-sleeper-adverse-policy
+
+permissions:
+  contents: read
+
+jobs:
+  lint-diagnostics:
+    runs-on: ubuntu-24.04
+    env:
+      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/trip_route_calc_test
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Enable pnpm
+        run: |
+          corepack enable
+          corepack prepare pnpm@9.15.4 --activate
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+      - name: Generate Prisma client
+        run: pnpm db:generate
+      - name: Capture targeted lint output
+        shell: bash
+        run: |
+          set +e
+          pnpm exec eslint \
+            packages/foundation/src/hos-advanced.ts \
+            packages/foundation/src/hos.ts \
+            packages/foundation/test/hos-advanced.test.ts \
+            --max-warnings=0 > stage07-lint.log 2>&1
+          status=$?
+          printf '%s\n' "$status" > stage07-lint.exit
+          exit 0
+      - name: Upload Stage 07 lint diagnostics
+        uses: actions/upload-artifact@v4
+        with:
+          name: stage07-lint-diagnostics
+          path: |
+            stage07-lint.log
+            stage07-lint.exit
+          if-no-files-found: error
