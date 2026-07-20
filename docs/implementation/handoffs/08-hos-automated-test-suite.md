@@ -4,38 +4,40 @@
 
 - Source file: `08_HOS_AUTOMATED_TEST_SUITE.md`
 - Date: 2026-07-20
-- Branch: `agent/stage-08-hos-automated-tests`
+- Implementation branch: `agent/stage-08-hos-automated-tests`
 - Pull request: `#12 Implement Stage 08 HOS automated acceptance suite`
-- Completion status: COMPLETE, VERIFIED, PENDING MERGE
+- Completion status: COMPLETE, VERIFIED, AND MERGED
+- Final documented pull-request head: `65d5e60f42843e5472477c1819405866b3e16a4a`
+- Merge commit: `16e10af983e344d2b3a87d88667bcf92854166b5`
 
 ## Repository state inspected before coding
 
 - Canonical private repository `crazytaxzi/TripRouteCalc`
 - Stage 07 ledger-close checkpoint `5459216b8c8d13b23a1c93a667f6c3066cc91a1f`
-- Protected Prime Directive and required Error Recovery Protocol
-- Shared guardrails, master specification, canonical manifest, implementation ledger, architecture, decisions, blockers, and Stage 04 through Stage 07 handoffs
-- Stage 04 validated departure-state, duty-event, sleeper evidence, provenance, and persistence contracts
-- Stage 05 core clock, interruption, reset, snapshot, transition, and exact-boundary tests
-- Stage 06 rolling cycle, regulatory boundary, recap, restart, reconciliation, and DST tests
-- Stage 07 sleeper, adverse, carrier-policy, rest-preference, unsupported-rule, and current-guidance tests
-- Existing PostgreSQL 18, Prisma 7, strict TypeScript, ESLint, Vitest, and GitHub Actions gates
+- Protected Prime Directive and Error Recovery Protocol
+- Shared guardrails, master specification, manifest, implementation ledger, architecture, decisions, blockers, and Stage 04 through Stage 07 handoffs
+- Stage 04 validated HOS evidence and persistence contracts
+- Stage 05 core clock, interruption, reset, transition, and boundary behavior
+- Stage 06 rolling cycle, recap, restart, reconciliation, and DST behavior
+- Stage 07 sleeper, adverse, carrier-policy, rest-preference, unsupported-rule, and current-guidance behavior
+- PostgreSQL 18, Prisma 7, strict TypeScript, ESLint, Vitest, and GitHub Actions gates
 
-Stage 08 began from accepted production behavior. It was treated as a proof and hardening stage, not permission to add another HOS engine or mutate verified law to satisfy a test.
+Stage 08 began from accepted production behavior. It was a proof and hardening stage, not permission to create another HOS engine or alter verified law for a passing test.
 
 ## Work implemented
 
-- Added reusable `hos-test-fixtures.ts` evidence builders for validated departure states, timestamped events, complete cycle history, regulatory boundaries, provenance, and sleeper-pair metadata.
+- Added reusable deterministic HOS evidence builders.
 - Added stable `HOS-01` through `HOS-15` master acceptance scenarios.
-- Added table-driven exact boundaries for the 11-hour allowance, 30-minute interruption, ten-hour reset, sleeper-pair total, and adverse extension.
-- Kept all existing one-minute shift, cycle, recap, restart, split-sleeper, and DST boundaries in the complete repository run.
-- Added event ordering, overlap, unexplained-gap, and duration-mismatch rejection coverage.
-- Added deterministic replay proof using identical validated evidence.
-- Added UTC arithmetic equivalence across different location and display time zones.
-- Added production dependency and source-import isolation tests for `hos-core.ts`, `hos-cycle.ts`, and `hos-advanced.ts`.
-- Added a PostgreSQL persistence-to-domain mapping test spanning the November 1, 2026 Los Angeles repeated local hour.
-- Verified exact UTC instants, IANA zone, sleeper-pair identity, event duration, state hash, and history hash after persistence round trip.
-- Added `docs/hos/test-fixtures.md` documenting fixture facts and legal assumptions.
-- No production calculation defect was exposed, so no production HOS source was changed.
+- Added table-driven exact boundaries for driving, interruption duration, ten-hour reset, sleeper-pair total, and adverse extension.
+- Retained all accepted shift, cycle, recap, restart, sleeper, adverse, and DST boundary suites in the complete repository gate.
+- Added event ordering, overlap, unexplained-gap, and duration-mismatch rejection.
+- Added deterministic replay proof.
+- Added UTC arithmetic equivalence across location and display time zones.
+- Added source and dependency isolation tests for all pure HOS engines.
+- Added PostgreSQL persistence-to-domain mapping across the November 1, 2026 Los Angeles repeated local hour.
+- Verified UTC instants, IANA zone, sleeper-pair identity, event duration, state hash, and history hash after round trip.
+- Documented fixture facts and legal assumptions in `docs/hos/test-fixtures.md`.
+- The expanded suite exposed no verified production HOS defect, so no production calculation source changed.
 
 ## Master scenario traceability
 
@@ -75,11 +77,9 @@ Stage 08 began from accepted production behavior. It was treated as a proof and 
 - `docs/implementation/DECISIONS.md`
 - `docs/implementation/STATUS.md`
 
-## Files moved or deleted
+## Temporary files
 
-None in the intended Stage 08 diff.
-
-Temporary payload, reconstruction workflow, lint diagnostic, ledger-patch workflow, and trigger files were used only on the isolated branch during protected recovery and removed before final review.
+Temporary payloads, reconstruction workflows, lint diagnostics, ledger-patch workflows, and trigger files were used only on the isolated branch during protected recovery and removed before final review. None remained in the merged diff.
 
 ## Database and data changes
 
@@ -90,44 +90,38 @@ Temporary payload, reconstruction workflow, lint diagnostic, ledger-patch workfl
 - Production data change: none
 - Destructive operation: none
 
-The new persistence test creates isolated test records and relies on the existing clean PostgreSQL CI service.
+The persistence test created isolated CI test records against the existing clean PostgreSQL service.
 
 ## Recovery evidence
 
-The local container still lacked normal GitHub and package-registry DNS, pnpm, Docker, and GitHub CLI. Recovery preserved the Stage 07 main checkpoint, compiled the new foundation tests through a strict isolated TypeScript harness, moved hash-verified payloads through a one-use branch workflow, removed all staging artifacts, and used GitHub Actions for authoritative repository verification.
+The local container lacked normal GitHub and package-registry DNS, pnpm, Docker, and GitHub CLI. Recovery preserved the Stage 07 checkpoint, compiled the new foundation tests through a strict isolated TypeScript harness, reconstructed hash-verified payloads on an isolated branch, removed all staging files, corrected five mechanical lint findings, recovered successful documentation edits from a brittle commit precheck, and used GitHub Actions for authoritative repository verification.
 
-The first CI pass found five test-fixture dot-notation lint findings. They were corrected without changing behavior. A later documentation patch repeatedly completed its edits but failed a brittle commit precheck; the valid edits were recovered, the precheck was removed, and all temporary workflow and trigger files were deleted. No product-source defect was found by the expanded suite.
+No product-source defect was found by the expanded suite, and no unavailable local check was reported as successful.
 
 ## Verification results
 
-GitHub Actions CI run 293 passed against implementation head `106c9842023e8a41a38d29b72e75b5f447ec9894`.
+The full repository gate passed three times:
 
-GitHub Actions CI run 313 passed against the clean documented head `2721c749a496da804b5f953141bd048a7bc2d1fd`.
+- CI run 293 on `106c9842023e8a41a38d29b72e75b5f447ec9894`
+- CI run 313 on `2721c749a496da804b5f953141bd048a7bc2d1fd`
+- final CI run 317 on `65d5e60f42843e5472477c1819405866b3e16a4a`
 
-Both successful runs included:
+Each run passed:
 
-- frozen-lockfile installation: PASS
-- Prisma client generation: PASS
-- Prisma schema validation: PASS
-- clean PostgreSQL 18 migration deployment: PASS
-- ESLint: PASS
-- full TypeScript type-check: PASS
-- complete Vitest unit and integration suite: PASS
-- production TypeScript build: PASS
+- frozen-lockfile installation
+- Prisma client generation
+- Prisma schema validation
+- clean PostgreSQL 18 migration deployment
+- ESLint
+- full TypeScript type-check
+- complete Vitest unit and integration suite
+- production TypeScript build
 
-The final handoff and repeated-verification record remain behind the same full gate. Pull request `#12` must not leave draft or merge unless that final documented head is successful.
+Pull request `#12` was squash-merged into `main` as `16e10af983e344d2b3a87d88667bcf92854166b5`.
 
 ## Boundary and adversarial audit
 
-- Driving allowance one minute before, at, and after: COVERED.
-- Shift window one minute before, at, and after: COVERED by the accepted Stage 05 boundary suite.
-- Interruption threshold and duration boundaries: COVERED.
-- Ten-hour reset one minute before, at, and after: COVERED.
-- Cycle availability final minute and first prohibited minute: COVERED.
-- Recap boundary timing: COVERED.
-- 34-hour restart at 2,039, 2,040, and 2,041 minutes: COVERED by the accepted Stage 06 suite.
-- Sleeper combined total one minute before, at, and after: COVERED.
-- Adverse extension at 119, 120, and 121 minutes: COVERED.
+- Driving, shift, interruption, reset, cycle, recap, restart, sleeper, adverse, and DST boundaries: COVERED.
 - Ordering, overlap, gap, and invalid duration: REJECTED.
 - Deterministic replay: COVERED.
 - UTC and display-zone equivalence: COVERED.
@@ -135,22 +129,14 @@ The final handoff and repeated-verification record remain behind the same full g
 - Pure-engine dependency isolation: COVERED.
 - Unsupported exception and pilot selection: BLOCKING AND CLOCK-NEUTRAL.
 
-## Remaining blockers and limitations
+## Remaining limitations
 
-- Stage 09 must implement equipment and load dimensions and weight using explicit measurements and evidence.
+- Stage 09 must implement equipment and load dimensions and weight.
 - Commercial-routing provider and production regulatory data remain unselected.
 - No route may yet be called legal or provider-verified.
 - API, UI, authentication, map, export, and deployment remain later-stage work.
 
 No remaining item blocks the Stage 08 exit gate.
-
-## Repository status and last known-good checkpoint
-
-- Stage branch: `agent/stage-08-hos-automated-tests`
-- Pull request: `#12`
-- Last fully verified clean checkpoint: `2721c749a496da804b5f953141bd048a7bc2d1fd`
-- Required merge condition: successful full CI on the final documented pull-request head
-- Stage 08 remains isolated from `main` until merge
 
 ## Next source
 
