@@ -60,7 +60,7 @@ Until that setup exists, the runtime returns a blocked result and no route may b
 
 ## Verification pending
 
-CI run `463` accepted the frozen workspace lock, generated and validated Prisma, and deployed every migration to clean PostgreSQL 18. It stopped at ESLint, so a bounded diagnostic captures only the remaining lint findings before behavior or strictness is changed.
+CI run `463` accepted the frozen workspace lock, generated and validated Prisma, and deployed every migration to clean PostgreSQL 18. It stopped at ESLint. Diagnostic run `465` identified nine mechanical findings: exact fixture typing, one missing persistence helper return type, three binding-safe provider callbacks, one optional-chain preference, and one malformed test expression. The repair changes no routing behavior or strictness.
 
 The complete repository gate must pass before the stage is marked complete:
 
