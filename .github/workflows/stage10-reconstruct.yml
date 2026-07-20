@@ -23,25 +23,86 @@ jobs:
           fetch-depth: 0
           ref: ${{ github.head_ref }}
 
-      - name: Reconstruct verified payload
+      - name: Reconstruct payload with bounded diagnostics
         shell: bash
         run: |
-          set -euo pipefail
-          cat .stage10-payload/chunk-* | base64 --decode > /tmp/stage10-payload.tar.gz
-          echo "23c19037f7961b7f1cd994e14b486fb19e03fc4c2cc3e41bbb440771718139e4  /tmp/stage10-payload.tar.gz" | sha256sum --check
-          tar -xzf /tmp/stage10-payload.tar.gz -C .
-          python3 stage10_apply.py
-          rm -f stage10_apply.py
-          rm -rf .stage10-payload
-          rm -f .github/workflows/stage10-reconstruct.yml
+          set -uo pipefail
+          log=.stage10-recovery.log
+          archive=/tmp/stage10-payload.tar.gz
+          : > "$log"
+          failed=0
 
-      - name: Commit reconstructed Stage 10 implementation
+          echo "stage10 reconstruction diagnostic" >> "$log"
+          echo "head=$(git rev-parse HEAD)" >> "$log"
+          echo "chunks=$(find .stage10-payload -maxdepth 1 -type f -name 'chunk-*' | sort | wc -l)" >> "$log"
+
+          if ! cat .stage10-payload/chunk-* | base64 --decode > "$archive" 2>> "$log"; then
+            echo "FAILED: base64 decode" >> "$log"
+            failed=1
+          else
+            echo "PASS: base64 decode" >> "$log"
+          fi
+
+          if [[ "$failed" -eq 0 ]]; then
+            actual_sha=$(sha256sum "$archive" | awk '{print $1}')
+            echo "archive_sha256=$actual_sha" >> "$log"
+            if [[ "$actual_sha" != "23c19037f7961b7f1cd994e14b486fb19e03fc4c2cc3e41bbb440771718139e4" ]]; then
+              echo "FAILED: archive checksum" >> "$log"
+              failed=1
+            else
+              echo "PASS: archive checksum" >> "$log"
+            fi
+          fi
+
+          if [[ "$failed" -eq 0 ]]; then
+            if tar -tzf "$archive" >> "$log" 2>&1; then
+              echo "PASS: archive listing" >> "$log"
+            else
+              echo "FAILED: archive listing" >> "$log"
+              failed=1
+            fi
+          fi
+
+          if [[ "$failed" -eq 0 ]]; then
+            if tar -xzf "$archive" -C . >> "$log" 2>&1; then
+              echo "PASS: archive extraction" >> "$log"
+            else
+              echo "FAILED: archive extraction" >> "$log"
+              failed=1
+            fi
+          fi
+
+          if [[ "$failed" -eq 0 ]]; then
+            if python3 stage10_apply.py >> "$log" 2>&1; then
+              echo "PASS: stage10_apply.py" >> "$log"
+            else
+              echo "FAILED: stage10_apply.py" >> "$log"
+              failed=1
+            fi
+          fi
+
+          if [[ "$failed" -eq 0 ]]; then
+            rm -f stage10_apply.py "$log"
+            rm -rf .stage10-payload
+            rm -f .github/workflows/stage10-reconstruct.yml
+            touch .stage10-reconstruction-succeeded
+          else
+            echo "RESULT: reconstruction failed; inspect this file" >> "$log"
+          fi
+
+      - name: Commit result
         shell: bash
         run: |
           set -euo pipefail
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add -A
-          git diff --cached --check
-          git commit -m "Implement Stage 10 stops appointments and service"
+          if [[ -f .stage10-reconstruction-succeeded ]]; then
+            rm -f .stage10-reconstruction-succeeded
+            git add -A
+            git diff --cached --check
+            git commit -m "Implement Stage 10 stops appointments and service"
+          else
+            git add .stage10-recovery.log
+            git commit -m "Capture Stage 10 reconstruction diagnostics"
+          fi
           git push origin HEAD:agent/stage-10-stops-appointments-service
