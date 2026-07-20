@@ -76,4 +76,6 @@ The local container's outbound DNS and package access remained unavailable, but 
 Stage 08 required accepted HOS contracts and engines, a clean PostgreSQL integration target, and the existing strict repository gates. Those inputs were sufficient to add and verify the complete master-scenario, boundary, replay, isolation, timezone, and persistence-mapping suite. No provider credential, regulatory feed, production deployment, schema migration, or new legal interpretation was required.
 
 The expanded suite exposed no verified production HOS defect. Commercial routing, production regulatory data, and deployment remain visible future blockers and were not replaced with mocks or approximations.
+## Stage 09 boundary notes
 
+No Stage 09 implementation blocker is open. Commercial route-provider selection and authoritative jurisdiction rule data remain intentionally deferred. Until those later stages are complete, equipment profiles and route physical input must not be presented as proof of route legality.

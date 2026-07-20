@@ -10,3 +10,4 @@ export * from './trip-revision-repository.js';
 export function snapshotObject(value: unknown): JsonObject {
   return toJsonObject(value);
 }
+export * from './equipment-profile-repository.js';

@@ -145,3 +145,11 @@ There is no frontend, backend application, REST API, authentication system, comm
 Unsupported personal conveyance, yard move, exceptions, exemptions, emergency rules, team-driver behavior, and pilot programs remain manual/blocking boundaries rather than automatic fallbacks.
 
 Future packages and applications must import `@trip-route-calc/foundation` and `@trip-route-calc/persistence` rather than duplicating unit, time, domain, HOS input, HOS core, HOS cycle, advanced HOS, tenant, revision, or audit contracts.
+## Stage 09 equipment boundary
+
+- `packages/foundation/src/equipment.ts`: provider-neutral tractor, trailer, load, provenance, validation, and physical route-input contracts.
+- `packages/foundation/test/equipment.test.ts`: physical invariants, missing-data behavior, and no-legality-claim acceptance tests.
+- `packages/persistence/prisma/equipment.prisma`: additive Stage 09 profile detail models.
+- `packages/persistence/src/equipment-profile-repository.ts`: tenant-scoped audited profile CRUD.
+- `packages/persistence/test/equipment-profile.integration.test.ts`: PostgreSQL CRUD, isolation, rollback, and constraint evidence.
+- `docs/equipment/README.md`: units, provenance, validation categories, persistence, and legality boundary.

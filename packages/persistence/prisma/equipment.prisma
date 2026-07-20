@@ -1,0 +1,140 @@
+model TractorProfileDetails {
+  id                                  String   @id @default(uuid()) @db.Uuid
+  carrierId                           String   @db.Uuid
+  tractorId                           String   @unique @db.Uuid
+  vin                                 String?
+  tractorType                         String
+  axleCount                           Int
+  wheelbaseValue                      Decimal? @db.Decimal(18, 6)
+  wheelbaseUnit                       String?  @default("inch")
+  emptyWeightValue                    Decimal? @db.Decimal(18, 6)
+  emptyWeightUnit                     String?  @default("pound")
+  registeredGrossWeightValue          Decimal? @db.Decimal(18, 6)
+  registeredGrossWeightUnit           String?  @default("pound")
+  fuelCapacityValue                   Decimal? @db.Decimal(18, 6)
+  fuelCapacityUnit                    String?  @default("us-gallon")
+  estimatedFuelRangeValue             Decimal? @db.Decimal(18, 6)
+  estimatedFuelRangeUnit              String?  @default("meter")
+  governedSpeedValue                  Decimal? @db.Decimal(18, 6)
+  governedSpeedUnit                   String?  @default("meter-per-second")
+  planningCruiseSpeedValue            Decimal? @db.Decimal(18, 6)
+  planningCruiseSpeedUnit             String?  @default("meter-per-second")
+  hazmatEquipped                      Boolean
+  californiaComplianceStatus          String
+  californiaComplianceSource          String?
+  californiaComplianceVerifiedAt      DateTime? @db.Timestamptz(3)
+  californiaComplianceExplanation     String?
+  idleAllowed                         Boolean
+  auxiliaryPowerUnitAvailable         Boolean
+  estimatedIdleFuelRateValue          Decimal? @db.Decimal(18, 6)
+  estimatedIdleFuelRateUnit           String?  @default("us-gallon-per-hour")
+  estimatedAuxiliaryPowerFuelRateValue Decimal? @db.Decimal(18, 6)
+  estimatedAuxiliaryPowerFuelRateUnit String?  @default("us-gallon-per-hour")
+  idleAuxiliaryPowerExplanation       String?
+  notes                               String?
+  fieldEvidence                       Json
+  extensionMetadata                   Json
+  createdAt                           DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt                           DateTime @updatedAt @db.Timestamptz(3)
+
+  @@unique([tractorId, carrierId])
+  @@index([carrierId, tractorType])
+  @@map("tractor_profile_details")
+}
+
+model TrailerProfileDetails {
+  id                         String   @id @default(uuid()) @db.Uuid
+  carrierId                  String   @db.Uuid
+  trailerId                  String   @unique @db.Uuid
+  axleCount                  Int
+  slidingTandemCapability    Boolean
+  axleConfiguration          String
+  minimumKpraValue           Decimal? @db.Decimal(18, 6)
+  minimumKpraUnit            String?  @default("inch")
+  maximumKpraValue           Decimal? @db.Decimal(18, 6)
+  maximumKpraUnit            String?  @default("inch")
+  currentRailPosition        String?
+  emptyWeightValue           Decimal? @db.Decimal(18, 6)
+  emptyWeightUnit            String?  @default("pound")
+  maximumPayloadValue        Decimal? @db.Decimal(18, 6)
+  maximumPayloadUnit         String?  @default("pound")
+  reefer                     Boolean
+  liftgate                   Boolean
+  specialEquipment           Json
+  notes                      String?
+  fieldEvidence              Json
+  extensionMetadata          Json
+  createdAt                  DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt                  DateTime @updatedAt @db.Timestamptz(3)
+
+  @@unique([trailerId, carrierId])
+  @@index([carrierId, axleConfiguration])
+  @@map("trailer_profile_details")
+}
+
+model TrailerRailPositionMapping {
+  id                 String   @id @default(uuid()) @db.Uuid
+  carrierId          String   @db.Uuid
+  trailerId          String   @db.Uuid
+  railPosition       String
+  kpraValue          Decimal  @db.Decimal(18, 6)
+  kpraUnit           String   @default("inch")
+  verificationSource String
+  verifiedAt         DateTime @db.Timestamptz(3)
+  explanation        String?
+  createdAt          DateTime @default(now()) @db.Timestamptz(3)
+
+  @@unique([trailerId, railPosition])
+  @@unique([id, carrierId])
+  @@index([carrierId, trailerId])
+  @@map("trailer_rail_position_mappings")
+}
+
+model LoadProfileDetails {
+  id                               String   @id @default(uuid()) @db.Uuid
+  carrierId                        String   @db.Uuid
+  loadId                           String   @unique @db.Uuid
+  commodity                        String
+  hazmat                           Boolean
+  hazmatClass                      String?
+  steerAxleWeightValue             Decimal? @db.Decimal(18, 6)
+  steerAxleWeightUnit              String?  @default("pound")
+  driveAxleWeightValue             Decimal? @db.Decimal(18, 6)
+  driveAxleWeightUnit              String?  @default("pound")
+  trailerAxleWeightValue           Decimal? @db.Decimal(18, 6)
+  trailerAxleWeightUnit            String?  @default("pound")
+  totalGrossCombinationWeightValue Decimal? @db.Decimal(18, 6)
+  totalGrossCombinationWeightUnit  String?  @default("pound")
+  lengthValue                      Decimal? @db.Decimal(18, 6)
+  lengthUnit                       String?  @default("inch")
+  widthValue                       Decimal? @db.Decimal(18, 6)
+  widthUnit                        String?  @default("inch")
+  heightValue                      Decimal? @db.Decimal(18, 6)
+  heightUnit                       String?  @default("inch")
+  frontOverhangValue               Decimal? @db.Decimal(18, 6)
+  frontOverhangUnit                String?  @default("inch")
+  rearOverhangValue                Decimal? @db.Decimal(18, 6)
+  rearOverhangUnit                 String?  @default("inch")
+  reeferRequired                   Boolean?
+  minimumTemperatureValue          Decimal? @db.Decimal(18, 6)
+  minimumTemperatureUnit           String?  @default("celsius")
+  maximumTemperatureValue          Decimal? @db.Decimal(18, 6)
+  maximumTemperatureUnit           String?  @default("celsius")
+  temperatureSetPointValue         Decimal? @db.Decimal(18, 6)
+  temperatureSetPointUnit          String?  @default("celsius")
+  temperatureExplanation           String?
+  permitRequirement                String
+  permits                          Json
+  escortRequirements               Json
+  routeRestrictions                Json
+  secureParkingRequirement         String
+  notes                            String?
+  fieldEvidence                    Json
+  extensionMetadata                Json
+  createdAt                        DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt                        DateTime @updatedAt @db.Timestamptz(3)
+
+  @@unique([loadId, carrierId])
+  @@index([carrierId, hazmat, permitRequirement])
+  @@map("load_profile_details")
+}

@@ -227,4 +227,8 @@ Carrier driving and duty caps are stricter planning constraints and are reported
 **Status:** Accepted
 
 The Stage 08 master scenarios, exact-boundary tables, deterministic replay, pure-engine isolation checks, and persistence mapping tests exercise the accepted Stage 04 through Stage 07 contracts. Tests may expose a production defect, but they may not redefine verified legal behavior merely to obtain a passing result. Reusable fixtures remain test-only evidence builders and cannot become production defaults or provider fallbacks.
+## D-023: Equipment profiles separate physical evidence from legal evaluation
 
+Stage 09 stores reusable, provider-neutral tractor, trailer, and load profiles in the shared foundation package. Every numeric value carries an explicit canonical unit, and safety-relevant fields may carry measured, manufacturer-rated, carrier-configured, or user-estimated provenance. Validation distinguishes impossible data, required human action, and missing-data confidence reasons. A verified KPRA rail mapping requires a physical measurement source and timestamp; a printed rail marker is never treated as a measurement. Equipment route input always reports legality as not evaluated.
+
+The Prisma schema now uses supported multi-file organization. Existing identity tables remain the trip-revision reference boundary, while additive detail tables extend them without rewriting prior migrations. Tenant-scoped CRUD writes identity and details transactionally and records audit events.
