@@ -4,8 +4,8 @@
 - Date: 2026-07-20
 - Implementation branch: `agent/stage-11-commercial-routing-provider`
 - Pull request: `#18 Implement Stage 11 commercial-routing provider layer`
-- Verified implementation head: `138988858efc594f92953a394e3e646ca5cc5408`
-- Verification run: `550` (`29779449895`)
+- Final verified head: `80e62513d5f2e4df59727d36c1f6df911d8d60a7`
+- Final verification run: `552` (`29779628324`)
 - Completion status: COMPLETE, LIVE PROVIDER VERIFICATION BLOCKED BY B-002
 
 ## Protected governance
@@ -62,7 +62,7 @@ Until that setup exists, the runtime returns a blocked result and no route may b
 
 ## Verification evidence
 
-Permanent CI run `550` completed successfully against implementation head `138988858efc594f92953a394e3e646ca5cc5408`:
+Permanent CI run `550` completed successfully against implementation head `138988858efc594f92953a394e3e646ca5cc5408`. The completed handoff then changed the branch head, so permanent CI run `552` repeated the entire gate against final documented head `80e62513d5f2e4df59727d36c1f6df911d8d60a7`:
 
 - frozen-lockfile dependency installation: passed;
 - Prisma client generation: passed;
