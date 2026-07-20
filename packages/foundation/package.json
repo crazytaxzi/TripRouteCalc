@@ -18,6 +18,10 @@
       "types": "./dist/hos-core.d.ts",
       "import": "./dist/hos-core.js"
     },
+    "./hos-cycle": {
+      "types": "./dist/hos-cycle.d.ts",
+      "import": "./dist/hos-cycle.js"
+    },
     "./hos": {
       "types": "./dist/hos.d.ts",
       "import": "./dist/hos.js"

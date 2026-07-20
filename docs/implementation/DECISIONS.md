@@ -171,3 +171,27 @@ For the standard federal property-carrying rule, any consecutive combination of 
 **Status:** Accepted
 
 Ten consecutive hours composed of off-duty and sleeper-berth time restore the standard 11-hour driving allowance and create a fresh 14-hour window when work resumes. The reset does not restore cycle availability. Cycle recaps and explicitly selected 34-hour restarts remain the responsibility of Stage 06.
+
+## D-026: Keep rolling cycle arithmetic in a separate pure module
+
+**Status:** Accepted
+
+`calculateHosCycle` owns rolling 60-hour/7-day and 70-hour/8-day arithmetic, recap timing, and explicitly selected 34-hour restart effects. It does not duplicate Stage 05 driving, shift-window, interruption, or 10-hour-reset arithmetic. Callers must compose the Stage 05 and Stage 06 results and obey the most restrictive applicable constraint.
+
+## D-027: Derive cycle availability from timestamped evidence while preserving entered facts
+
+**Status:** Accepted
+
+Timestamped driving and on-duty-not-driving events are the calculation basis for rolling cycle consumption and recap returns. Entered cycle time remaining, prior-day totals, and entered recap predictions remain immutable evidence. The engine reports reconciliation status and discrepancies instead of silently rewriting the input record.
+
+## D-028: Require an explicit carrier-designated regulatory-day boundary
+
+**Status:** Accepted
+
+Cycle days use a caller-supplied home-terminal IANA time zone and carrier-designated local 24-hour boundary. Repeated local times require an explicit earlier-or-later choice, and nonexistent local times require an explicit previous-valid or next-valid resolution. Event-location time zones do not redefine the carrier cycle boundary.
+
+## D-029: Never assume a 34-hour restart
+
+**Status:** Accepted
+
+A historical restart affects cycle history only when the caller explicitly selects a fully evidenced interval containing at least 2,040 consecutive off-duty or sleeper-berth minutes. A future restart affects the timeline only when restart intent is recorded and the supplied duty-event sequence actually completes the qualifying period. Consecutive qualifying rest already underway before departure may continue across the departure boundary.

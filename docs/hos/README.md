@@ -1,6 +1,6 @@
-# Driver HOS Contracts and Core Clock Engine
+# Driver HOS Contracts and Calculation Engines
 
-Stages 04 and 05 establish the validated HOS facts and the first pure legal-clock calculation service. The implementation is a planning engine, not an ELD, and it does not claim that a complete trip or route is legal.
+Stages 04 through 06 establish the validated HOS facts and the first pure federal property-carrying calculation services. The implementation is a planning engine, not an ELD, and it does not claim that a complete trip or route is legal.
 
 ## Stable boundaries
 
@@ -13,6 +13,11 @@ The Stage 05 core engine is exported from:
 
 - `@trip-route-calc/foundation`
 - `@trip-route-calc/foundation/hos-core`
+
+The Stage 06 rolling cycle engine is exported from:
+
+- `@trip-route-calc/foundation`
+- `@trip-route-calc/foundation/hos-cycle`
 
 The persistence functions are exported from `@trip-route-calc/persistence`.
 
@@ -81,7 +86,51 @@ The standard Stage 05 rule set applies:
 - ordinary stops do not pause an active 14-hour window
 - on-duty-not-driving work consumes shift and cycle time but not driving time
 
+## Stage 06 rolling cycle calculation
+
+`calculateHosCycle` consumes:
+
+- one validated departure state
+- a complete contiguous historical duty-event sequence ending exactly at departure
+- an optional complete planned duty-event sequence beginning exactly at departure
+- an explicit carrier-designated home-terminal regulatory-day boundary
+- an optional explicitly selected historical 34-hour restart supported by timestamped evidence
+
+The regulatory boundary includes a validated IANA time zone, local `HH:mm` start time, repeated-time choice, and nonexistent-time resolution. Event-location time zones do not redefine this home-terminal cycle boundary.
+
+The service returns immutable results containing:
+
+- the seven-day or eight-day regulatory window
+- exact UTC start and end timestamps for every regulatory day
+- DST boundary-resolution evidence
+- derived on-duty minutes for every regulatory day
+- entered-versus-derived cycle-clock reconciliation
+- entered-versus-derived recap reconciliation
+- timestamped recap and restart availability events
+- initial and final cycle snapshots
+- per-event legal and prohibited on-duty minutes
+- exact cycle-violation timestamps
+- structured blocking reasons and violations
+- next-cycle-availability guidance and plain-language reasons
+
+The standard Stage 06 behavior is:
+
+- driving and on-duty-not-driving consume rolling cycle availability
+- off-duty and sleeper-berth time do not consume cycle availability
+- the 60-hour/7-day or 70-hour/8-day limit is derived from timestamped history
+- entered cycle clocks and recap predictions are preserved and reconciled rather than silently overwritten
+- hours from the oldest regulatory day return at the configured home-terminal boundary
+- driving and on-duty work are blocked when derived cycle availability reaches zero
+- a historical 34-hour restart is applied only when explicitly selected and fully evidenced
+- a future 34-hour restart is applied only when explicitly planned and actually completed in the supplied timeline
+- qualifying rest already in progress before departure may continue across the departure boundary
+- an earlier sufficient recap is preferred over an unnecessary restart
+
 All authoritative arithmetic uses non-negative integer minutes and UTC instants.
+
+## Composition boundary
+
+Stage 05 and Stage 06 intentionally return separate result objects. A caller must obey the most restrictive applicable constraint from both engines. Stage 06 does not reimplement the 11-hour, 14-hour, interruption, or 10-hour-reset calculations, and Stage 05 does not derive rolling cycle history, recaps, or restart restoration.
 
 ## Provenance
 
@@ -99,23 +148,24 @@ Each origin also carries `UNVERIFIED` or `VERIFIED`, plus an optional source nam
 
 `getDriverHosRevision` reloads the evidence, validates it again through the pure domain contracts, and verifies both hashes before returning it.
 
-Stage 05 adds no database table or migration. Calculation outputs remain pure derived results until a later stage defines their revision boundary.
+Stages 05 and 06 add no database table or migration. Calculation outputs remain pure derived results until a later stage defines their revision boundary.
 
 ## Deliberate boundaries
 
-Stage 05 does not:
+Stages 05 and 06 do not:
 
 - infer one entered primary clock from another
-- calculate rolling 60-hour/7-day or 70-hour/8-day history
-- award recap hours or choose a regulatory-day boundary
-- activate or select a 34-hour restart
 - validate a sleeper split
-- apply adverse conditions, personal conveyance, an exception, exemption, pilot program, or emergency declaration
-- enforce carrier-policy targets
+- apply adverse conditions or carrier-policy limits
+- apply personal conveyance, an exception, exemption, pilot program, or emergency declaration
+- persist calculation outputs
+- merge HOS results into routing or ETA
 - call a route or complete trip legal
 
-Those behaviors belong to later numbered stages and must consume the recorded facts and Stage 05 transitions rather than duplicating the clock arithmetic.
+Those behaviors belong to later numbered stages and must consume the recorded facts and accepted calculation transitions rather than duplicating the arithmetic.
 
 ## Regulatory verification
 
-The Stage 05 standard rule behavior was checked on 2026-07-20 against current official FMCSA property-carrying HOS guidance and the federal 30-minute-break explanation. Production regulatory records remain subject to the later versioned, effective-dated, source-attributed regulatory workflow.
+The Stage 05 standard rule behavior was checked on 2026-07-20 against current official FMCSA property-carrying HOS guidance and the federal 30-minute-break explanation.
+
+The Stage 06 cycle and restart behavior was checked on 2026-07-20 against current official FMCSA guidance and 49 CFR 395.2, 395.3, and 395.8. The implementation uses the carrier-designated home-terminal 24-hour period and does not apply obsolete 1 a.m. to 5 a.m. or once-per-168-hour restart restrictions. Production regulatory records remain subject to the later versioned, effective-dated, source-attributed regulatory workflow.
