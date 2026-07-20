@@ -6,14 +6,15 @@ The product is intended to produce transparent, defensible planning estimates fo
 
 ## Current state
 
-The canonical private repository is established on `main`. Stages 01 through 06 are complete, verified, and merged.
+The canonical private repository is established on `main`. Stages 01 through 06 are complete, verified, and merged. Stage 07 is under active implementation and verification in pull request `#10`.
 
 - `@trip-route-calc/foundation` provides product terminology, first-release scope boundaries, explicit measurement primitives, UTC and IANA time-zone handling, DST-safe local appointment and regulatory-boundary resolution, provider-neutral domain contracts, validated driver HOS departure-state and duty-event contracts, the pure Stage 05 core clock engine, and the pure Stage 06 rolling cycle engine.
 - Stage 05 covers the standard 10-hour reset, 11-hour driving allowance, 14-hour window, cycle-availability blocking, and 30-minute interruption.
 - Stage 06 derives 60-hour/7-day and 70-hour/8-day availability from timestamped history, reconciles entered facts, returns correctly timed recaps, blocks on-duty work at zero cycle, and applies only explicitly selected and fully evidenced 34-hour restarts.
+- Stage 07 is adding explicit split-sleeper evaluation, adverse-driving-condition selection, stricter carrier planning limits, and unsupported-rule warnings without automatically activating exceptions.
 - `@trip-route-calc/persistence` provides PostgreSQL and Prisma persistence, tenant-scoped repositories, ordered stops, immutable trip revisions, evidence retention, regulatory history, export history, audit records, and immutable HOS input revisions.
 
-Advanced HOS rules, carrier policy, commercial routing, compliance evaluation, ETA simulation, API behavior, and UI behavior have not started.
+Commercial routing, compliance evaluation, ETA simulation, API behavior, and UI behavior have not started.
 
 ## Workspace checks
 
@@ -58,6 +59,7 @@ PostgreSQL 18 uses the named volume mounted at `/var/lib/postgresql`.
 - Stage 04: Driver HOS Inputs and Duty Events, COMPLETE
 - Stage 05: HOS Core Clocks and 30-Minute Interruption, COMPLETE
 - Stage 06: HOS Cycle, Recaps, and 34-Hour Restart, COMPLETE
+- Stage 07: Sleeper Split, Adverse Conditions, and Carrier Policy, IN PROGRESS
 
 See:
 
@@ -73,7 +75,7 @@ See:
 - `docs/domain/product-foundation.md`
 - `docs/hos/README.md`
 - `docs/persistence/README.md`
-- `docs/specification/07_HOS_ADVANCED_RULES_AND_CARRIER_POLICY.md`
+- `docs/specification/07_HOS_SLEEPER_ADVERSE_AND_CARRIER_POLICY.md`
 
 ## First-release scope
 
@@ -100,4 +102,4 @@ No exception, exemption, emergency declaration, pilot program, adverse-driving r
 
 ## Next action
 
-Begin Stage 07 using `docs/specification/07_HOS_ADVANCED_RULES_AND_CARRIER_POLICY.md`. Reinspect the accepted Stage 04 evidence contracts plus the Stage 05 and Stage 06 pure engines before adding split-sleeper, adverse-condition, and carrier-policy behavior.
+Complete and verify Stage 07 using `docs/specification/07_HOS_SLEEPER_ADVERSE_AND_CARRIER_POLICY.md`. After acceptance, proceed to `docs/specification/08_HOS_AUTOMATED_TEST_SUITE.md`.
