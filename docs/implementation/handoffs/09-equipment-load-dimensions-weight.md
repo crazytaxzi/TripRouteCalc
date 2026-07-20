@@ -34,7 +34,7 @@ Stage 09 was executed under `PRIME_DIRECTIVE.md`. The missing local GitHub CLI a
 ## Verification corrections applied
 
 - Added the explicit return type required by the repository lint policy.
-- Corrected readonly test fixtures and branded UTC test evidence without weakening the domain contracts.
+- Corrected readonly test fixtures and branded UTC domain and integration test evidence without weakening the domain contracts.
 - Mapped optional rail-mapping explanations to Prisma nullable fields under exact optional property semantics.
 - Imported equipment domain types from the foundation package rather than leaking them through persistence.
 - Removed every temporary diagnostic and recovery workflow after use.
