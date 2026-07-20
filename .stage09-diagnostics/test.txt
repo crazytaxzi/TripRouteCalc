@@ -1,0 +1,34 @@
+
+> trip-route-calc@0.0.0 test:source /home/runner/work/TripRouteCalc/TripRouteCalc
+> vitest run
+
+
+[1m[46m RUN [49m[22m [36mv3.2.7 [39m[90m/home/runner/work/TripRouteCalc/TripRouteCalc[39m
+
+ [32m✓[39m packages/foundation/test/hos-acceptance.test.ts [2m([22m[2m34 tests[22m[2m)[22m[32m 115[2mms[22m[39m
+ [32m✓[39m packages/foundation/test/hos-cycle.test.ts [2m([22m[2m13 tests[22m[2m)[22m[32m 179[2mms[22m[39m
+ [32m✓[39m packages/foundation/test/hos-advanced.test.ts [2m([22m[2m12 tests[22m[2m)[22m[32m 65[2mms[22m[39m
+ [32m✓[39m packages/foundation/test/hos-core.test.ts [2m([22m[2m20 tests[22m[2m)[22m[32m 58[2mms[22m[39m
+ [32m✓[39m packages/persistence/test/persistence.integration.test.ts [2m([22m[2m6 tests[22m[2m)[22m[33m 1674[2mms[22m[39m
+   [33m[2m✓[22m[39m tenant-scoped persistence[2m > [22mdoes not expose another carrier trip [33m 338[2mms[22m[39m
+   [33m[2m✓[22m[39m trip revisions[2m > [22mrolls back the entire revision when a child constraint fails [33m 398[2mms[22m[39m
+   [33m[2m✓[22m[39m provider and regulatory evidence[2m > [22mrecords rule-set versions and status change history [33m 385[2mms[22m[39m
+ [32m✓[39m packages/foundation/test/hos.test.ts [2m([22m[2m9 tests[22m[2m)[22m[32m 26[2mms[22m[39m
+ [32m✓[39m packages/persistence/test/equipment-profile.integration.test.ts [2m([22m[2m4 tests[22m[2m)[22m[33m 782[2mms[22m[39m
+   [33m[2m✓[22m[39m equipment profile persistence[2m > [22msupports carrier-scoped CRUD for tractor, trailer, and load profiles [33m 452[2mms[22m[39m
+ [32m✓[39m packages/foundation/test/equipment.test.ts [2m([22m[2m6 tests[22m[2m)[22m[32m 12[2mms[22m[39m
+ [32m✓[39m packages/foundation/test/hos-core-boundaries.test.ts [2m([22m[2m7 tests[22m[2m)[22m[32m 35[2mms[22m[39m
+ [32m✓[39m packages/persistence/test/hos-domain-mapping.integration.test.ts [2m([22m[2m1 test[22m[2m)[22m[33m 341[2mms[22m[39m
+   [33m[2m✓[22m[39m Stage 08 persistence-to-domain HOS mapping[2m > [22mround-trips UTC instants, IANA zones, sleeper identity, and hashes across a repeated local hour [33m 316[2mms[22m[39m
+ [32m✓[39m packages/persistence/test/driver-hos.integration.test.ts [2m([22m[2m1 test[22m[2m)[22m[33m 647[2mms[22m[39m
+   [33m[2m✓[22m[39m driver HOS revisions[2m > [22mpersists, reloads, tenant-scopes, hashes, and protects complete HOS evidence [33m 626[2mms[22m[39m
+ [32m✓[39m packages/foundation/test/time.test.ts [2m([22m[2m7 tests[22m[2m)[22m[32m 21[2mms[22m[39m
+ [32m✓[39m packages/foundation/test/domain.test.ts [2m([22m[2m4 tests[22m[2m)[22m[32m 4[2mms[22m[39m
+ [32m✓[39m packages/foundation/test/units.test.ts [2m([22m[2m5 tests[22m[2m)[22m[32m 8[2mms[22m[39m
+ [32m✓[39m packages/foundation/test/hos-engine-isolation.test.ts [2m([22m[2m4 tests[22m[2m)[22m[32m 3[2mms[22m[39m
+
+[2m Test Files [22m [1m[32m15 passed[39m[22m[90m (15)[39m
+[2m      Tests [22m [1m[32m133 passed[39m[22m[90m (133)[39m
+[2m   Start at [22m 17:15:00
+[2m   Duration [22m 8.04s[2m (transform 481ms, setup 0ms, collect 1.55s, tests 3.97s, environment 4ms, prepare 1.10s)[22m
+

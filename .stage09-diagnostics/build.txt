@@ -1,0 +1,4 @@
+
+> trip-route-calc@0.0.0 build:source /home/runner/work/TripRouteCalc/TripRouteCalc
+> tsc -b
+
