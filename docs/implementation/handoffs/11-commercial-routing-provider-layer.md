@@ -4,11 +4,13 @@
 - Date: 2026-07-20
 - Implementation branch: `agent/stage-11-commercial-routing-provider`
 - Pull request: `#18 Implement Stage 11 commercial-routing provider layer`
-- Completion status: IMPLEMENTATION COMPLETE, LIVE PROVIDER VERIFICATION BLOCKED, REPOSITORY VERIFICATION PENDING
+- Verified implementation head: `138988858efc594f92953a394e3e646ca5cc5408`
+- Verification run: `550` (`29779449895`)
+- Completion status: COMPLETE, LIVE PROVIDER VERIFICATION BLOCKED BY B-002
 
 ## Protected governance
 
-Stage 11 is executed under `PRIME_DIRECTIVE.md` and `ERROR_RECOVERY_PROTOCOL.md`. The Stage 11 source explicitly permits completion of contracts, configuration, adapter wiring, and non-fabricated tests when credentials are unavailable, provided live verification is reported as blocked. No production provider or consumer fallback has been invented.
+Stage 11 was executed under `PRIME_DIRECTIVE.md` and `ERROR_RECOVERY_PROTOCOL.md`. The Stage 11 source explicitly permits completion of contracts, configuration, adapter wiring, and non-fabricated tests when credentials are unavailable, provided live verification is reported as blocked. No production provider or consumer fallback was invented.
 
 ## Requirement traceability
 
@@ -43,7 +45,7 @@ Stage 11 is executed under `PRIME_DIRECTIVE.md` and `ERROR_RECOVERY_PROTOCOL.md`
 
 ## Database and data changes
 
-No Prisma schema change or migration is required. Stage 03 already created route, leg, segment, restriction, and provider-response evidence tables. Stage 11 adds a typed repository method over the existing provider-response retention modes. The workspace lockfile was regenerated with pnpm 9.15.4 to include the new routing package importer without changing external dependency versions.
+No Prisma schema change or migration was required. Stage 03 already created route, leg, segment, restriction, and provider-response evidence tables. Stage 11 adds a typed repository method over the existing provider-response retention modes. The workspace lockfile was regenerated with pnpm 9.15.4 to include the routing package importer without changing external dependency versions.
 
 ## Live provider blocker
 
@@ -58,19 +60,20 @@ B-002 remains open. The exact missing setup is:
 
 Until that setup exists, the runtime returns a blocked result and no route may be represented as commercial-provider verified or legal.
 
-## Verification pending
+## Verification evidence
 
-The full gate passes frozen install, Prisma generation and validation, clean PostgreSQL migration deployment, ESLint, and strict TypeScript. The PostgreSQL test diagnostic reduced the remaining failure to `commercialRouteResultSnapshot` re-assessing an already normalized result. The helper contract is now narrowed to `NormalizedCommercialRouteResult` and snapshots the validated result directly. A one-use trusted recovery workflow is applying that fix and restoring permanent CI.
+Permanent CI run `550` completed successfully against implementation head `138988858efc594f92953a394e3e646ca5cc5408`:
 
-The complete repository gate must pass before the stage is marked complete:
+- frozen-lockfile dependency installation: passed;
+- Prisma client generation: passed;
+- Prisma schema validation: passed;
+- all migrations deployed to clean PostgreSQL 18: passed;
+- ESLint: passed;
+- strict TypeScript: passed;
+- complete unit and PostgreSQL integration suite: 158 tests passed;
+- production build: passed.
 
-- frozen-lockfile install;
-- Prisma generation and validation;
-- clean PostgreSQL 18 migration deployment;
-- ESLint;
-- strict TypeScript type-check;
-- complete unit and integration tests; and
-- production build.
+Recovery history remains documented in the branch commits. The final PR diff contains only the 16 permanent Stage 11 source, test, configuration, and documentation files.
 
 ## Next source after completion
 
