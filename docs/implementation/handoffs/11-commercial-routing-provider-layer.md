@@ -60,9 +60,7 @@ Until that setup exists, the runtime returns a blocked result and no route may b
 
 ## Verification pending
 
-CI run `463` accepted the frozen workspace lock, generated and validated Prisma, and deployed every migration to clean PostgreSQL 18. It stopped at ESLint. Diagnostic run `465` identified nine mechanical findings: exact fixture typing, one missing persistence helper return type, three binding-safe provider callbacks, one optional-chain preference, and one malformed test expression.
-
-ERP recovery isolated a non-UTF-8 byte in the routing-service test, restored the preserved UTF-8 source, applied the intended credential JSON correction, and removed all recovery artifacts. CI run `500` again passed frozen install, Prisma generation and validation, and clean PostgreSQL migration deployment, then reported residual lint findings. A bounded final lint artifact now captures only the current post-repair findings.
+CI runs `500`, `504`, `508`, and `512` passed frozen install, Prisma generation and validation, and clean PostgreSQL migration deployment before exposing the remaining lint defects. ERP recovery isolated and repaired a non-UTF-8 test byte, restored the preserved Stage 11 source, and captured an environment-aligned lint artifact. The final authoritative lint set contained two runtime nullability expressions and ten test-only unnecessary `async` callbacks. Those twelve mechanical findings are now corrected without changing routing behavior.
 
 The complete repository gate must pass before the stage is marked complete:
 
