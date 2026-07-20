@@ -341,7 +341,9 @@ export class CommercialRoutingService {
       throw this.capabilityError('consumer route comparison');
     }
     const request = validateCommercialRouteRequest(requestInput);
-    const calculateComparison = this.provider.calculateConsumerComparison;
+    const calculateComparison = this.provider.calculateConsumerComparison.bind(
+      this.provider,
+    );
     const response = await this.execute(
       'consumer-comparison',
       request.requestId,
@@ -384,7 +386,9 @@ export class CommercialRoutingService {
     ) {
       throw this.capabilityError('traffic estimate');
     }
-    const getTrafficEstimate = this.provider.getTrafficEstimate;
+    const getTrafficEstimate = this.provider.getTrafficEstimate.bind(
+      this.provider,
+    );
     return this.execute('traffic-estimate', operationRequestId, (context) =>
       getTrafficEstimate(request, context),
     );
@@ -400,7 +404,7 @@ export class CommercialRoutingService {
     ) {
       throw this.capabilityError('road closures');
     }
-    const getRoadClosures = this.provider.getRoadClosures;
+    const getRoadClosures = this.provider.getRoadClosures.bind(this.provider);
     const closures = await this.execute(
       'road-closures',
       operationRequestId,
@@ -525,7 +529,7 @@ export function createCommercialRoutingRuntime(
   }
 
   if (
-    config.provider.metadata.credentialRequirement === 'required' &&
+    config.provider?.metadata.credentialRequirement === 'required' &&
     config.credential === undefined
   ) {
     return freeze({

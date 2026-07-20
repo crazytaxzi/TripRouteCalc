@@ -7,6 +7,7 @@ import {
   ianaTimeZone,
   utcInstant,
 } from '@trip-route-calc/foundation';
+import type { NormalizedCommercialRouteResult } from '@trip-route-calc/foundation';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 
 import {
@@ -80,7 +81,7 @@ async function createRevision(tenant: SeededTenant): Promise<string> {
   return revision.id;
 }
 
-function routeResult() {
+function routeResult(): NormalizedCommercialRouteResult {
   const geometry = {
     format: 'geojson-line-string' as const,
     coordinates: [

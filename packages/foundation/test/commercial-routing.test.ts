@@ -13,11 +13,16 @@ import {
   volumeInUsGallons,
   weightInPounds,
 } from '../src/index.js';
+import type {
+  CommercialRoutePayload,
+  CommercialRouteRequest,
+  ResolvedCommercialLocation,
+} from '../src/index.js';
 
 function location(
   referenceId: string,
   longitude: number,
-): Readonly<Record<string, unknown>> {
+): ResolvedCommercialLocation {
   return {
     referenceId,
     description: referenceId,
@@ -30,7 +35,7 @@ function location(
   };
 }
 
-function request(): Readonly<Record<string, unknown>> {
+function request(): CommercialRouteRequest {
   return {
     requestId: 'route-request-1',
     requestedAt: utcInstant('2026-07-20T19:00:00Z'),
@@ -93,8 +98,8 @@ function request(): Readonly<Record<string, unknown>> {
 }
 
 function payload(
-  overrides: Record<string, unknown> = {},
-): Readonly<Record<string, unknown>> {
+  overrides: Partial<CommercialRoutePayload> = {},
+): CommercialRoutePayload {
   const geometry = {
     format: 'geojson-line-string' as const,
     coordinates: [[-117.0, 46.4], [-116.9, 46.4]] as [number, number][],

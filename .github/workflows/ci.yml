@@ -1,48 +1,70 @@
-name: Stage 11 Recovery Diagnostic
+name: CI
 
 on:
   push:
-    branches:
-      - agent/stage-11-commercial-routing-provider
+    branches: [main, 'agent/**']
   pull_request:
-    branches:
-      - main
-    types:
-      - synchronize
+    branches: [main]
 
 permissions:
   contents: read
 
 jobs:
-  diagnose:
-    if: github.actor != 'github-actions[bot]'
+  verification:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 15
+    env:
+      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/trip_route_calc_test?schema=public
+
+    services:
+      postgres:
+        image: postgres:18-alpine
+        env:
+          POSTGRES_DB: trip_route_calc_test
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d trip_route_calc_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 12
+
     steps:
-      - name: Check out implementation branch
+      - name: Check out repository
         uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-          ref: agent/stage-11-commercial-routing-provider
 
-      - name: Capture standalone repair result
-        shell: bash
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Enable pnpm
         run: |
-          set +e
-          python3 .stage11_fix.py > stage11-recovery.log 2>&1
-          code=$?
-          printf '%s\n' "$code" > stage11-recovery.exit
-          git status --short > stage11-recovery.status
-          find .github/workflows -maxdepth 1 -type f -printf '%f\n' | sort > stage11-recovery.workflows
-          exit 0
+          corepack enable
+          corepack prepare pnpm@9.15.4 --activate
 
-      - name: Upload recovery diagnostics
-        uses: actions/upload-artifact@v4
-        with:
-          name: stage11-recovery-diagnostic
-          path: |
-            stage11-recovery.log
-            stage11-recovery.exit
-            stage11-recovery.status
-            stage11-recovery.workflows
-          if-no-files-found: error
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Generate Prisma client
+        run: pnpm db:generate
+
+      - name: Validate Prisma schema
+        run: pnpm db:validate
+
+      - name: Apply migrations to clean PostgreSQL database
+        run: pnpm db:migrate:deploy
+
+      - name: Lint
+        run: pnpm lint:source
+
+      - name: Type-check
+        run: pnpm typecheck:source
+
+      - name: Test
+        run: pnpm test:source
+
+      - name: Build
+        run: pnpm build:source
