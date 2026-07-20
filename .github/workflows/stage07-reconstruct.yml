@@ -31,6 +31,7 @@ jobs:
               encoded = (root / payload_path).read_text().strip()
               content = gzip.decompress(base64.b64decode(encoded))
               actual = hashlib.sha256(content).hexdigest()
+              print(f'{payload_path}: {len(content)} bytes, SHA-256 {actual}')
               if actual != expected_sha256:
                   raise SystemExit(
                       f'{payload_path} reconstructed SHA-256 {actual}, expected {expected_sha256}.'
@@ -52,33 +53,40 @@ jobs:
 
           hos_path = root / 'packages/foundation/src/hos.ts'
           hos = hos_path.read_text()
-          old = """  if (sleeperPair.participates && dutyStatus !== 'SLEEPER_BERTH') {
+          old_guard = """  if (sleeperPair.participates && dutyStatus !== 'SLEEPER_BERTH') {
             issues.push({ code: 'CONTRADICTORY_STATE', path: `${path}.sleeperPair`, message: 'Only sleeper-berth events may participate in a sleeper pairing.' });
           }
-          if (sleeperPair.participates) {
-            const candidateRole = sleeperPair.candidateRole ?? 'SHORT_PERIOD';
-            const minimum = candidateRole === 'LONG_PERIOD' ? 7 * 60 : 2 * 60;
           """
-          new = """  if (sleeperPair.participates) {
-            const candidateRole = sleeperPair.candidateRole ?? 'SHORT_PERIOD';
+          if hos.count(old_guard) != 1:
+              raise SystemExit(
+                  f'Expected one legacy sleeper-only guard, found {hos.count(old_guard)}.'
+              )
+          hos = hos.replace(old_guard, '')
+
+          old_role_line = "    const candidateRole = sleeperPair.candidateRole ?? 'SHORT_PERIOD';\n"
+          new_role_block = """    const candidateRole = sleeperPair.candidateRole ?? 'SHORT_PERIOD';
             const statusQualifies = candidateRole === 'LONG_PERIOD'
               ? dutyStatus === 'SLEEPER_BERTH'
               : dutyStatus === 'OFF_DUTY' || dutyStatus === 'SLEEPER_BERTH';
             if (!statusQualifies) {
               issues.push({ code: 'CONTRADICTORY_STATE', path: `${path}.sleeperPair`, message: 'A long paired period must be sleeper-berth time; a short paired period may be off-duty or sleeper-berth time.' });
             }
-            const minimum = candidateRole === 'LONG_PERIOD' ? 7 * 60 : 2 * 60;
           """
-          if old not in hos:
-              raise SystemExit('Expected Stage 04 sleeper-pair validation block was not found.')
-          hos_path.write_text(hos.replace(old, new))
+          if hos.count(old_role_line) != 1:
+              raise SystemExit(
+                  f'Expected one sleeper candidate-role line, found {hos.count(old_role_line)}.'
+              )
+          hos_path.write_text(hos.replace(old_role_line, new_role_block))
 
           package_path = root / 'packages/foundation/package.json'
           package = json.loads(package_path.read_text())
           exports = package.get('exports')
           if not isinstance(exports, dict):
               raise SystemExit('Foundation package exports map was not found.')
-          exports['./hos-advanced'] = './src/hos-advanced.ts'
+          exports['./hos-advanced'] = {
+              'types': './dist/hos-advanced.d.ts',
+              'import': './dist/hos-advanced.js',
+          }
           package_path.write_text(json.dumps(package, indent=2) + '\n')
 
           index_path = root / 'packages/foundation/src/index.ts'
