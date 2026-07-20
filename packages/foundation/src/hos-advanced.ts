@@ -127,7 +127,6 @@ export type HosSleeperPairIssueCode =
   | 'PAIR_PERIODS_OVERLAP'
   | 'PERIOD_NOT_FOUND_IN_DUTY_HISTORY'
   | 'INCOMPLETE_PRE_PAIR_DUTY_HISTORY'
-  | 'STANDARD_RESET_SUPERSEDES_PAIR'
   | 'DRIVING_LIMIT_AROUND_FIRST_PERIOD_EXCEEDED'
   | 'SHIFT_WINDOW_AROUND_FIRST_PERIOD_EXCEEDED'
   | 'DRIVING_LIMIT_AFTER_FIRST_PERIOD_EXCEEDED'
@@ -487,31 +486,6 @@ function sumOnDuty(
   }, 0);
 }
 
-function hasTenHourReset(
-  events: readonly DutyEvent[],
-  startAt: UtcInstant,
-  endAt: UtcInstant,
-): boolean {
-  let streak = 0;
-  let cursor = startAt;
-  for (const event of events) {
-    if (compareInstants(event.endAt, startAt) <= 0) continue;
-    if (compareInstants(event.startAt, endAt) >= 0) break;
-    const segmentStart = compareInstants(event.startAt, cursor) < 0 ? cursor : event.startAt;
-    const segmentEnd = compareInstants(event.endAt, endAt) > 0 ? endAt : event.endAt;
-    if (compareInstants(segmentStart, segmentEnd) >= 0) continue;
-    if (compareInstants(segmentStart, cursor) !== 0 || !isRest(event.dutyStatus)) {
-      streak = 0;
-    }
-    if (isRest(event.dutyStatus)) {
-      streak += exactMinutes(segmentStart, segmentEnd);
-      if (streak >= 600) return true;
-    }
-    cursor = segmentEnd;
-  }
-  return false;
-}
-
 function findDutyWindowStart(
   events: readonly DutyEvent[],
   firstPeriodStartAt: UtcInstant,
@@ -632,16 +606,6 @@ function evaluatePair(
       issues.push(pairIssue(
         'PAIR_PERIODS_OVERLAP',
         'Paired rest periods may not overlap.',
-      ));
-    }
-    if (
-      first.duration.value >= 600
-      || second.duration.value >= 600
-      || hasTenHourReset(allEvents, first.endAt, second.startAt)
-    ) {
-      issues.push(pairIssue(
-        'STANDARD_RESET_SUPERSEDES_PAIR',
-        'A qualifying ten-consecutive-hour reset exists, so this split pair is not used to alter clocks.',
       ));
     }
   }

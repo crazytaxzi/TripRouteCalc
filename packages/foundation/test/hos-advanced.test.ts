@@ -382,6 +382,47 @@ describe('Stage 07 sleeper-pair evaluation', () => {
       candidateRole: 'LONG_PERIOD',
     })).toThrow(HosValidationError);
   });
+  it('honors an explicitly selected pair even when the long period also qualifies as a 10-hour reset', () => {
+  const departure = departureState();
+  const dutyEvents = [
+    event({
+      id: 'long-ten-sleeper-choice',
+      startAt: departure.departureAt,
+      minutes: 600,
+      dutyStatus: 'SLEEPER_BERTH',
+      pairId: 'pair-reset-or-split-choice',
+      candidateRole: 'LONG_PERIOD',
+    }),
+    event({
+      id: 'drive-after-ten-choice',
+      startAt: '2026-07-20T10:00:00.000Z',
+      minutes: 180,
+      dutyStatus: 'DRIVING',
+    }),
+    event({
+      id: 'short-two-off-duty-choice',
+      startAt: '2026-07-20T13:00:00.000Z',
+      minutes: 120,
+      dutyStatus: 'OFF_DUTY',
+      pairId: 'pair-reset-or-split-choice',
+      candidateRole: 'SHORT_PERIOD',
+    }),
+  ];
+  const result = evaluate(departure, dutyEvents, {
+    selectedSleeperPairId: 'pair-reset-or-split-choice',
+  });
+
+  expect(result.sleeper.appliedPair?.status).toBe(
+    'VALID_SELECTED_AND_APPLIED',
+  );
+  expect(
+    result.sleeper.appliedPair?.recalculation?.drivingTimeRemaining.value,
+  ).toBe(480);
+  expect(
+    result.sleeper.appliedPair?.recalculation?.shiftTimeRemaining.value,
+  ).toBe(660);
+});
+
 });
 
 describe('Stage 07 adverse-driving-condition selection', () => {
