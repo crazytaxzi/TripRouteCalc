@@ -503,7 +503,7 @@ export function assessCommercialRoute(
   const allSegmentsVerified = segments.every(
     (segment) => segment.verificationStatus === 'verified',
   );
-  const providerVerificationStatus =
+  const providerVerificationStatus: CommercialRouteAssessment['providerVerificationStatus'] =
     payload.routeKind === 'consumer-comparison'
       ? 'consumer-comparison-only'
       : allSegmentsVerified && blockingReasons.length === 0
