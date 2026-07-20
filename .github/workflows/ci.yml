@@ -1,70 +1,212 @@
-name: CI
+name: Stage 11 Transparent Finalization
 
 on:
   push:
-    branches: [main, 'agent/**']
-  pull_request:
-    branches: [main]
+    branches:
+      - agent/stage-11-commercial-routing-provider
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
-  verification:
+  finalize:
+    if: github.actor != 'github-actions[bot]'
     runs-on: ubuntu-latest
-    timeout-minutes: 15
-    env:
-      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/trip_route_calc_test?schema=public
-
-    services:
-      postgres:
-        image: postgres:18-alpine
-        env:
-          POSTGRES_DB: trip_route_calc_test
-          POSTGRES_USER: postgres
-          POSTGRES_PASSWORD: postgres
-        ports:
-          - 5432:5432
-        options: >-
-          --health-cmd "pg_isready -U postgres -d trip_route_calc_test"
-          --health-interval 5s
-          --health-timeout 5s
-          --health-retries 12
-
+    timeout-minutes: 10
     steps:
-      - name: Check out repository
+      - name: Check out implementation branch
         uses: actions/checkout@v4
-
-      - name: Set up Node.js
-        uses: actions/setup-node@v4
         with:
-          node-version: 22
+          fetch-depth: 0
+          ref: agent/stage-11-commercial-routing-provider
 
-      - name: Enable pnpm
+      - name: Apply exact test and governance edits
+        shell: bash
         run: |
-          corepack enable
-          corepack prepare pnpm@9.15.4 --activate
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
 
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile
+          def replace_once(path: str, before: str, after: str) -> None:
+              target = Path(path)
+              text = target.read_text()
+              count = text.count(before)
+              if count != 1:
+                  raise SystemExit(f'{path}: expected one exact match, found {count}: {before!r}')
+              target.write_text(text.replace(before, after))
 
-      - name: Generate Prisma client
-        run: pnpm db:generate
+          def append_once(path: str, marker: str, addition: str) -> None:
+              target = Path(path)
+              text = target.read_text()
+              if marker not in text:
+                  target.write_text(text.rstrip() + '\n\n' + addition.strip() + '\n')
 
-      - name: Validate Prisma schema
-        run: pnpm db:validate
+          replace_once(
+              'packages/foundation/test/commercial-routing.test.ts',
+              'function location(referenceId: string, longitude: number) {',
+              'function location(\n  referenceId: string,\n  longitude: number,\n): Readonly<Record<string, unknown>> {',
+          )
+          replace_once(
+              'packages/foundation/test/commercial-routing.test.ts',
+              'function request() {',
+              'function request(): Readonly<Record<string, unknown>> {',
+          )
+          replace_once(
+              'packages/foundation/test/commercial-routing.test.ts',
+              'function payload(overrides: Record<string, unknown> = {}) {',
+              'function payload(\n  overrides: Record<string, unknown> = {},\n): Readonly<Record<string, unknown>> {',
+          )
+          replace_once(
+              'packages/routing/test/commercial-routing-service.test.ts',
+              'function location(referenceId: string) {',
+              'function location(\n  referenceId: string,\n): Readonly<Record<string, unknown>> {',
+          )
+          replace_once(
+              'packages/routing/test/commercial-routing-service.test.ts',
+              'function routeRequest() {',
+              'function routeRequest(): Readonly<Record<string, unknown>> {',
+          )
+          replace_once(
+              'packages/routing/test/commercial-routing-service.test.ts',
+              "function routePayload(\n  routeKind: 'commercial-vehicle' | 'consumer-comparison' = 'commercial-vehicle',\n) {",
+              "function routePayload(\n  routeKind: 'commercial-vehicle' | 'consumer-comparison' = 'commercial-vehicle',\n): Readonly<Record<string, unknown>> {",
+          )
+          replace_once(
+              'packages/persistence/test/route-provider-contract.integration.test.ts',
+              "import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';",
+              "import type { NormalizedCommercialRouteResult } from '@trip-route-calc/foundation';\nimport { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';",
+          )
+          replace_once(
+              'packages/persistence/test/route-provider-contract.integration.test.ts',
+              'function routeResult() {',
+              'function routeResult(): NormalizedCommercialRouteResult {',
+          )
 
-      - name: Apply migrations to clean PostgreSQL database
-        run: pnpm db:migrate:deploy
+          replace_once(
+              'README.md',
+              'The canonical private repository is established on `main`. Stages 01 through 10 are complete, verified, and merged.',
+              'The canonical private repository is established on `main`. Stages 01 through 10 are complete, verified, and merged. Stage 11 commercial-routing provider contracts and blocked-live-verification wiring are implemented on an isolated branch; repository verification is pending.',
+          )
+          replace_once(
+              'README.md',
+              '- Stage 10 adds unlimited ordered stop configuration, appointments, facility hours, independent waiting/check-in/service behavior, parking-dependent HOS overlap, legal-departure processing, deterministic multi-stop progression, and additive immutable stop-detail persistence.',
+              '- Stage 10 adds unlimited ordered stop configuration, appointments, facility hours, independent waiting/check-in/service behavior, parking-dependent HOS overlap, legal-departure processing, deterministic multi-stop progression, and additive immutable stop-detail persistence.\n- Stage 11 adds provider-neutral commercial-route contracts, isolated adapter execution, bounded retry and timeout handling, secret-safe credentials, no-consumer-fallback enforcement, normalized evidence retention, and an explicit live-provider setup blocker.',
+          )
+          replace_once(
+              'README.md',
+              'Commercial routing, regulatory compliance evaluation, complete ETA simulation, API behavior, and UI behavior have not started.',
+              'Commercial-routing contracts and runtime wiring are implemented, but live provider verification is blocked by provider selection, licensing, coverage, and credentials. Regulatory compliance evaluation, complete ETA simulation, API behavior, and UI behavior have not started.',
+          )
+          replace_once(
+              'README.md',
+              '- Stage 10: Stops, Appointments, Waiting, and Service Simulation, COMPLETE',
+              '- Stage 10: Stops, Appointments, Waiting, and Service Simulation, COMPLETE\n- Stage 11: Commercial-Routing Provider Layer, IMPLEMENTATION COMPLETE, LIVE VERIFICATION BLOCKED, REPOSITORY VERIFICATION PENDING',
+          )
+          replace_once(
+              'README.md',
+              '- `docs/persistence/README.md`\n- `docs/specification/11_COMMERCIAL_ROUTING_PROVIDER_LAYER.md`',
+              '- `docs/persistence/README.md`\n- `docs/routing/README.md`\n- `docs/specification/11_COMMERCIAL_ROUTING_PROVIDER_LAYER.md`',
+          )
+          replace_once(
+              'README.md',
+              'Begin `docs/specification/11_COMMERCIAL_ROUTING_PROVIDER_LAYER.md` under the Prime Directive, preserving the accepted equipment, stop-order, HOS, time-zone, persistence, and audit boundaries.',
+              'Verify the Stage 11 contracts, runtime, persistence evidence, and explicit live-provider blocker. Do not select or fabricate a provider without documented licensing and credentials.',
+          )
 
-      - name: Lint
-        run: pnpm lint:source
+          replace_once(
+              'docs/implementation/STATUS.md',
+              '- Active implementation branch: none\n- Active pull request: none\n- Last completed pull request: `#16`\n- Product status: Stage 10 stops, appointments, waiting, and service simulation complete, verified, and merged\n- Completed sources: `01_REPOSITORY_AUDIT_AND_PLAN.md` through `10_STOPS_APPOINTMENTS_AND_SERVICE.md`',
+              '- Active implementation branch: `agent/stage-11-commercial-routing-provider`\n- Active pull request: `#18`\n- Last completed pull request: `#17`\n- Product status: Stage 11 provider-neutral commercial-routing contracts and blocked-live-verification wiring implemented; repository verification pending\n- Completed sources on `main`: `01_REPOSITORY_AUDIT_AND_PLAN.md` through `10_STOPS_APPOINTMENTS_AND_SERVICE.md`',
+          )
+          replace_once(
+              'docs/implementation/STATUS.md',
+              '- Stage 10 status: COMPLETE\n- Next source: `11_COMMERCIAL_ROUTING_PROVIDER_LAYER.md`\n- Application code: `@trip-route-calc/foundation` and `@trip-route-calc/persistence`',
+              '- Stage 10 status: COMPLETE\n- Stage 11 status: IMPLEMENTATION COMPLETE, LIVE PROVIDER VERIFICATION BLOCKED, REPOSITORY VERIFICATION PENDING\n- Active source: `11_COMMERCIAL_ROUTING_PROVIDER_LAYER.md`\n- Application code: `@trip-route-calc/foundation`, `@trip-route-calc/routing`, and `@trip-route-calc/persistence`',
+          )
+          replace_once(
+              'docs/implementation/STATUS.md',
+              '## Deferred decisions and limitations',
+              '''## Stage 11 implementation
 
-      - name: Type-check
-        run: pnpm typecheck:source
+- Added provider-neutral geocoding, CMV request, route, leg, segment, geometry, restriction, traffic, and closure contracts.
+- Added complete equipment, weight, axle, KPRA, hazmat, permit, avoidance, ordered-stop, departure, and route-policy inputs.
+- Added isolated provider execution with server-only credentials, capability checks, bounded retries, hard timeouts, and typed failures.
+- Added separate consumer-comparison handling and prohibited silent fallback.
+- Added route assessment that blocks prohibited, unverified, or missing-critical-data routes and leaves legal finalization pending Stage 12 regulatory evaluation.
+- Added typed normalized provider-evidence retention through the existing tenant-scoped persistence boundary.
+- Added test-only provider fixtures and explicit setup blocking because no licensed production provider is selected.
 
-      - name: Test
-        run: pnpm test:source
+## Stage 11 verification state
 
-      - name: Build
-        run: pnpm build:source
+A local TypeScript syntax transpilation passed for the new TypeScript files. The complete GitHub Actions repository gate remains authoritative and pending. Live provider verification is blocked by B-002 and is not represented as passed.
+
+## Deferred decisions and limitations''',
+          )
+          replace_once(
+              'docs/implementation/STATUS.md',
+              'Reopen the protected Prime Directive and Error Recovery Protocol, then begin `docs/specification/11_COMMERCIAL_ROUTING_PROVIDER_LAYER.md` from the accepted equipment, ordered-stop, HOS, time-zone, tenant, immutable-revision, and audit boundaries.',
+              'Run the complete Stage 11 repository gate. Correct verified defects without weakening commercial-route input completeness, secret handling, evidence retention, or the no-consumer-fallback boundary. Live provider verification remains blocked until B-002 is resolved.',
+          )
+
+          replace_once(
+              'docs/implementation/BLOCKERS.md',
+              '## B-002: Commercial routing provider not selected\n\n**Severity:** Expected future blocker  \n**Status:** Open for later routing stages\n\nA legal CMV route cannot be verified until a commercial-routing provider and credentials are selected. No provider may be replaced by a consumer-route fallback.',
+              '## B-002: Commercial routing provider not selected\n\n**Severity:** High for Stage 11 live verification  \n**Status:** Open; provider-neutral contracts and blocked runtime implemented\n\nA live commercial CMV route cannot be requested or verified until a licensed provider, entitlement, coverage statement, retention terms, and server-only credentials are selected. Stage 11 implements the provider-neutral contracts, isolated runtime, evidence retention, and exact setup blocker permitted by its specification. No provider is replaced by a consumer-route fallback.',
+          )
+          append_once(
+              'docs/implementation/BLOCKERS.md',
+              '## Stage 11 blocker review',
+              '''## Stage 11 blocker review
+
+**Status:** Contract and configuration path implemented; live verification blocked by B-002
+
+The repository can validate complete commercial-route requests, normalize provider-neutral responses, enforce bounded timeout and retry behavior, protect server-only credentials, reject consumer fallback, assess prohibited or unverified segments, and retain provider evidence according to licensing mode. No licensed production provider, provider-specific adapter, commercial-routing entitlement, coverage evidence, retention agreement, or credential is available. The runtime therefore returns an explicit blocker and does not produce a route.
+
+B-002 is a permitted external setup blocker under Stage 11 requirement 12. Stage 11 may complete only with live verification clearly marked blocked; later work may not claim commercial-provider verification or legality until the blocker is resolved with a real adapter and live contract evidence.''',
+          )
+          append_once(
+              'docs/implementation/DECISIONS.md',
+              '## D-035: Isolate commercial-routing contracts and block unconfigured live routing',
+              '''## D-035: Isolate commercial-routing contracts and block unconfigured live routing
+
+**Status:** Accepted
+
+Provider-neutral geocoding, CMV request, normalized route, segment, restriction, confidence, unavailable-field, and route-assessment contracts belong in `@trip-route-calc/foundation`. Adapter execution, secret-safe credential handling, capability checks, timeout, retry, rate-limit, and outage behavior belong in the separate `@trip-route-calc/routing` package. Provider evidence remains in the existing tenant-scoped persistence package under license-aware retention modes.
+
+No production adapter is created until a licensed provider, entitlement, coverage, retention rights, current official documentation, and server-only credentials are available. The unconfigured runtime returns a typed blocker. Consumer routes are available only through a separate comparison operation and can never satisfy commercial planning or legal finalization. Even a fully provider-verified commercial route remains blocked from legal finalization until the Stage 12 regulatory engine evaluates the exact route geometry.''',
+          )
+          replace_once(
+              'docs/implementation/ARCHITECTURE_MAP.md',
+              'There is no frontend, backend application, REST API, authentication system, commercial-routing adapter, regulatory evaluation engine, ETA simulator, map UI, export renderer, or production deployment configuration.',
+              'There is no frontend, backend application, REST API, authentication system, live licensed commercial-routing adapter, regulatory evaluation engine, ETA simulator, map UI, export renderer, or production deployment configuration. Stage 11 provides the provider-neutral contract and runtime boundary only.',
+          )
+          append_once(
+              'docs/implementation/ARCHITECTURE_MAP.md',
+              '## Stage 11 commercial-routing boundary',
+              '''## Stage 11 commercial-routing boundary
+
+- `packages/foundation/src/commercial-routing.ts`: provider-neutral CMV request, geocoding, geometry, route, leg, segment, restriction, confidence, unavailable-field, normalization, and planning-assessment contracts.
+- `packages/routing/src/commercial-routing-service.ts`: isolated adapter interface, secret-safe credentials, explicit setup blockers, capability enforcement, timeout, retry, rate-limit, outage, and no-fallback behavior.
+- `packages/routing/test/commercial-routing-service.test.ts`: test-only provider fixtures and execution-boundary tests.
+- `packages/persistence/src/route-provider-response-repository.ts`: license-aware raw, normalized, or reference evidence retention plus typed normalized-route evidence saving.
+- `docs/routing/README.md`: provider setup, licensing, coverage, retention, secret, failure, comparison, and legal-finalization boundaries.
+
+There is deliberately no production routing adapter. B-002 must be resolved before a provider-specific package or live route verification is permitted.''',
+          )
+          PY
+
+      - name: Restore permanent CI
+        run: |
+          git fetch origin main
+          git checkout origin/main -- .github/workflows/ci.yml
+
+      - name: Commit Stage 11 finalization
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git diff --cached --check
+          git commit -m "Complete Stage 11 test and governance wiring"
+          git push origin HEAD:agent/stage-11-commercial-routing-provider
