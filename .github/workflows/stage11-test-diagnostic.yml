@@ -1,0 +1,65 @@
+name: Stage 11 Test Diagnostic
+
+on:
+  pull_request:
+    branches:
+      - main
+    types:
+      - synchronize
+
+permissions:
+  contents: read
+
+jobs:
+  diagnose:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    env:
+      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/trip_route_calc_test?schema=public
+    services:
+      postgres:
+        image: postgres:18-alpine
+        env:
+          POSTGRES_DB: trip_route_calc_test
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d trip_route_calc_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 12
+    steps:
+      - name: Check out implementation branch
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.head_ref }}
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Enable pnpm
+        run: |
+          corepack enable
+          corepack prepare pnpm@9.15.4 --activate
+
+      - name: Capture test findings
+        shell: bash
+        run: |
+          set +e
+          pnpm install --frozen-lockfile > stage11-tests.txt 2>&1
+          pnpm db:generate >> stage11-tests.txt 2>&1
+          pnpm db:migrate:deploy >> stage11-tests.txt 2>&1
+          pnpm test:source >> stage11-tests.txt 2>&1
+          exit 0
+
+      - name: Upload test findings
+        uses: actions/upload-artifact@v4
+        with:
+          name: stage11-tests
+          path: stage11-tests.txt
+          if-no-files-found: error
