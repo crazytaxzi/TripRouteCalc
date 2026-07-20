@@ -20,17 +20,23 @@ A legal CMV route cannot be verified until a commercial-routing provider and cre
 **Severity:** Expected future blocker  
 **Status:** Open for later compliance stages
 
-State and local rules must be versioned, effective-dated, source-attributed, and reviewable. Provider or licensed data decisions remain open.
+State and local rules must be versioned, effective-dated, source-attributed, and reviewable. Stage 03 provides the storage and change-history structure, but provider or licensed production-data decisions remain open.
 
 ## B-004: Deployment target not selected
 
-**Severity:** Low during foundation work  
+**Severity:** Low during foundation and persistence work  
 **Status:** Deferred
 
-Docker Compose remains the greenfield direction, but hosting, secrets management, backups, and production database infrastructure remain undecided. This did not block Stage 02 foundation work.
+Docker Compose now provides a reproducible local PostgreSQL service, but hosting, secrets management, backup automation, recovery objectives, retention periods, and production database infrastructure remain undecided.
 
 ## Stage 02 blocker review
 
 **Status:** No active Stage 02 blocker
 
-Stage 02 required no production provider credentials, regulatory data, database service, migration target, or deployment target. The shared foundation package, lockfile, tests, and CI are complete. B-002 through B-004 remain visible future-stage concerns and must not be disguised with placeholder production behavior.
+Stage 02 required no production provider credentials, regulatory data, database service, migration target, or deployment target. The shared foundation package, lockfile, tests, and CI are complete.
+
+## Stage 03 blocker review
+
+**Status:** No active Stage 03 blocker
+
+Stage 03 required a reproducible PostgreSQL migration target but did not require production hosting, routing credentials, or production regulatory data. PostgreSQL 18, Prisma 7, the committed migration, tenant-scoped repositories, append-only evidence, integration tests, and CI verification are complete. B-002 through B-004 remain visible later-stage concerns and must not be disguised with fake providers, placeholder legal rules, or unverified operational claims.
