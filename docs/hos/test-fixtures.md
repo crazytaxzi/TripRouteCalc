@@ -2,6 +2,8 @@
 
 Stage 08 fixtures are deterministic evidence builders for the accepted Stage 04 through Stage 07 HOS boundaries. They are test-only and are not production defaults, route-provider fallbacks, or legal data.
 
+The master acceptance scenarios use stable identifiers `HOS-01` through `HOS-15` so a failure names the controlling scenario before reporting the event, clock, or transition that failed.
+
 ## Authoritative representation
 
 - All authoritative timestamps are explicit UTC ISO 8601 instants.
