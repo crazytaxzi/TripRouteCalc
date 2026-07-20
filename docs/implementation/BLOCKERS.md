@@ -6,7 +6,7 @@
 **Status:** Resolved  
 **Resolved:** 2026-07-19
 
-The private canonical repository now exists at `crazytaxzi/TripRouteCalc`, uses `main` as its default branch, and contains the complete specification pack and Stage 01 implementation ledger. The temporary import workflow and staging artifacts were removed after successful verification.
+The private canonical repository now exists at `crazytaxzi/TripRouteCalc`, uses `main` as its default branch, and contains the complete specification pack and implementation ledger. The temporary import workflow and staging artifacts were removed after successful verification.
 
 ## B-002: Commercial routing provider not selected
 
@@ -27,4 +27,10 @@ State and local rules must be versioned, effective-dated, source-attributed, and
 **Severity:** Low during foundation work  
 **Status:** Deferred
 
-Docker Compose is the greenfield default, but hosting, secrets management, backups, and production database infrastructure remain undecided. This does not block Stage 02 domain, units, and time foundations.
+Docker Compose remains the greenfield direction, but hosting, secrets management, backups, and production database infrastructure remain undecided. This did not block Stage 02 foundation work.
+
+## Stage 02 blocker review
+
+**Status:** No active Stage 02 blocker
+
+Stage 02 required no production provider credentials, regulatory data, database service, migration target, or deployment target. The shared foundation package, lockfile, tests, and CI are complete. B-002 through B-004 remain visible future-stage concerns and must not be disguised with placeholder production behavior.
