@@ -17,7 +17,11 @@ import {
   createPersistenceClient,
   databaseUrlFromEnvironment,
 } from '../src/index.js';
-import type { PersistenceClient, TenantContext } from '../src/index.js';
+import type {
+  CreateTripRevisionInput,
+  PersistenceClient,
+  TenantContext,
+} from '../src/index.js';
 
 const TABLES_IN_DELETE_ORDER = [
   'audit_events',
@@ -110,7 +114,10 @@ async function seedTenant(label: string): Promise<SeededTenant> {
   };
 }
 
-function revisionInput(tripId: string, marker: string) {
+function revisionInput(
+  tripId: string,
+  marker: string,
+): CreateTripRevisionInput {
   return {
     tripId,
     calculationTimestamp: utcInstant('2026-07-19T20:00:00Z'),
@@ -119,14 +126,14 @@ function revisionInput(tripId: string, marker: string) {
     stops: [
       {
         sequence: 20,
-        type: 'final-consignee' as const,
+        type: 'final-consignee',
         required: true,
         timeZone: ianaTimeZone('America/Chicago'),
         expectedServiceDuration: durationInMinutes(90),
       },
       {
         sequence: 10,
-        type: 'shipper' as const,
+        type: 'shipper',
         required: true,
         timeZone: ianaTimeZone('America/Los_Angeles'),
         expectedServiceDuration: durationInMinutes(60),
@@ -147,12 +154,12 @@ function revisionInput(tripId: string, marker: string) {
         key: 'average-speed-policy',
         value: { milesPerHour: 50 },
         explanation: 'Carrier planning policy supplied for the test.',
-        source: 'carrier-policy' as const,
+        source: 'carrier-policy',
       },
     ],
     warnings: [
       {
-        severity: 'information' as const,
+        severity: 'information',
         code: `TEST-${marker}`,
         explanation: 'Test warning preserved with the revision.',
       },
@@ -165,7 +172,7 @@ function revisionInput(tripId: string, marker: string) {
       },
     ],
     result: {
-      confidence: 'low' as const,
+      confidence: 'low',
       confidenceReasons: ['No commercial route provider is configured.'],
       explanation: ['This is persistence evidence, not a legal route result.'],
       snapshot: { marker, legalRouteVerified: false },
@@ -206,9 +213,10 @@ describe('trip revisions', () => {
     const first = await repository.createRevision(
       revisionInput(tenant.tripId, 'one'),
     );
+    const secondInput = revisionInput(tenant.tripId, 'two');
     const second = await repository.createRevision({
-      ...revisionInput(tenant.tripId, 'two'),
-      stops: [revisionInput(tenant.tripId, 'two').stops[0]],
+      ...secondInput,
+      stops: secondInput.stops.slice(0, 1),
     });
 
     expect(first.revisionNumber).toBe(1);
@@ -336,7 +344,7 @@ describe('provider and regulatory evidence', () => {
       'Administrative review completed for the fixture.',
     );
 
-    expect(active.status).toBe('active');
+    expect(active.status).toBe('ACTIVE');
     await expect(
       client.regulatoryRuleChange.count({ where: { ruleSetId: ruleSet.id } }),
     ).resolves.toBe(2);
