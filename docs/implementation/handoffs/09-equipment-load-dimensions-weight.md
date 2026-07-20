@@ -3,6 +3,7 @@
 - Source: `docs/specification/09_EQUIPMENT_LOAD_DIMENSIONS_WEIGHT.md`
 - Date: 2026-07-20
 - Implementation branch: `agent/stage-09-equipment-load-validation`
+- Pull request: `#14`
 - Completion status: IMPLEMENTATION COMPLETE, VERIFICATION PENDING
 
 ## Protected governance
@@ -29,6 +30,14 @@ Stage 09 was executed under `PRIME_DIRECTIVE.md`. The missing local GitHub CLI a
 - No routing provider, regulatory threshold, permit threshold, axle distribution, combined clearance, or legal route status is invented.
 - Existing migrations are not rewritten.
 - Production provider-specific fields remain outside the foundation domain.
+
+## Verification corrections applied
+
+- Added the explicit return type required by the repository lint policy.
+- Corrected readonly test fixtures and branded UTC test evidence without weakening the domain contracts.
+- Mapped optional rail-mapping explanations to Prisma nullable fields under exact optional property semantics.
+- Imported equipment domain types from the foundation package rather than leaking them through persistence.
+- Removed every temporary diagnostic and recovery workflow after use.
 
 ## Verification pending
 
