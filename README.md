@@ -6,7 +6,7 @@ The product is intended to produce transparent, defensible planning estimates fo
 
 ## Current state
 
-The canonical private repository is established on `main`. Stages 01 through 05 are merged. Stage 06 is complete and verified in pull request `#8`, pending merge.
+The canonical private repository is established on `main`. Stages 01 through 06 are complete, verified, and merged.
 
 - `@trip-route-calc/foundation` provides product terminology, first-release scope boundaries, explicit measurement primitives, UTC and IANA time-zone handling, DST-safe local appointment and regulatory-boundary resolution, provider-neutral domain contracts, validated driver HOS departure-state and duty-event contracts, the pure Stage 05 core clock engine, and the pure Stage 06 rolling cycle engine.
 - Stage 05 covers the standard 10-hour reset, 11-hour driving allowance, 14-hour window, cycle-availability blocking, and 30-minute interruption.
@@ -57,7 +57,7 @@ PostgreSQL 18 uses the named volume mounted at `/var/lib/postgresql`.
 - Stage 03: Persistence, Revisions, and Auditability, COMPLETE
 - Stage 04: Driver HOS Inputs and Duty Events, COMPLETE
 - Stage 05: HOS Core Clocks and 30-Minute Interruption, COMPLETE
-- Stage 06: HOS Cycle, Recaps, and 34-Hour Restart, COMPLETE AND VERIFIED, PENDING MERGE
+- Stage 06: HOS Cycle, Recaps, and 34-Hour Restart, COMPLETE
 
 See:
 
@@ -100,4 +100,4 @@ No exception, exemption, emergency declaration, pilot program, adverse-driving r
 
 ## Next action
 
-Merge verified pull request `#8`, close the Stage 06 ledger on `main`, then begin Stage 07 using `docs/specification/07_HOS_ADVANCED_RULES_AND_CARRIER_POLICY.md`. Reinspect the accepted Stage 04 evidence contracts plus the Stage 05 and Stage 06 pure engines before adding split-sleeper, adverse-condition, and carrier-policy behavior.
+Begin Stage 07 using `docs/specification/07_HOS_ADVANCED_RULES_AND_CARRIER_POLICY.md`. Reinspect the accepted Stage 04 evidence contracts plus the Stage 05 and Stage 06 pure engines before adding split-sleeper, adverse-condition, and carrier-policy behavior.
