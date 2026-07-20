@@ -58,7 +58,9 @@ async function seedTenant(label: string): Promise<SeededTenant> {
   return { context: { carrierId: carrier.id, actorUserId: user.id } };
 }
 
-const evidence = (fieldPath: string) => ({
+const evidence = (
+  fieldPath: string,
+): Readonly<{ fieldPath: string; sourceType: 'measured' }> => ({
   fieldPath,
   sourceType: 'measured' as const,
 });
