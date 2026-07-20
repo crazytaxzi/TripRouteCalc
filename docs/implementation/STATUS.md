@@ -40,7 +40,11 @@
 
 ## Verification evidence
 
-GitHub Actions CI run 293 passed on implementation head `106c9842023e8a41a38d29b72e75b5f447ec9894`:
+GitHub Actions CI run 293 passed on implementation head `106c9842023e8a41a38d29b72e75b5f447ec9894`.
+
+GitHub Actions CI run 313 passed on the clean documented head `2721c749a496da804b5f953141bd048a7bc2d1fd`.
+
+Both successful runs executed the complete gate:
 
 - `pnpm install --frozen-lockfile`
 - `pnpm db:generate`
@@ -51,7 +55,7 @@ GitHub Actions CI run 293 passed on implementation head `106c9842023e8a41a38d29b
 - `pnpm test:source`
 - `pnpm build:source`
 
-The complete repository suite passed against PostgreSQL 18. Stage 08 changed no Prisma schema and required no migration.
+The complete repository suite passed repeatedly against PostgreSQL 18. Stage 08 changed no Prisma schema and required no migration.
 
 A strict isolated TypeScript harness also passed for the new foundation fixtures, master acceptance suite, and pure-engine isolation suite before repository upload. The local container still lacked normal GitHub and package-registry DNS, so GitHub Actions remained the authoritative frozen-lockfile, PostgreSQL, lint, type, runtime, and build environment. No unavailable local check was reported as successful.
 
