@@ -6,18 +6,20 @@ The product is intended to produce transparent, defensible planning estimates fo
 
 ## Current state
 
-The canonical private repository is established on `main`. Stages 01 through 10 are complete, verified, and merged.
+The canonical private repository is established on `main`. Stages 01 through 11 are complete, verified, and merged.
 
-- `@trip-route-calc/foundation` provides product terminology, first-release scope boundaries, explicit measurement primitives, UTC and IANA time-zone handling, DST-safe local appointment and regulatory-boundary resolution, provider-neutral domain contracts, validated driver HOS departure-state and duty-event contracts, the pure Stage 05 core clock engine, the pure Stage 06 rolling cycle engine, the pure Stage 07 advanced-rule evaluator, the Stage 09 equipment/load physical-validation domain, and the Stage 10 ordered stop-processing domain.
+- `@trip-route-calc/foundation` provides product terminology, first-release scope boundaries, explicit measurement primitives, UTC and IANA time-zone handling, DST-safe local appointment and regulatory-boundary resolution, provider-neutral domain contracts, validated driver HOS departure-state and duty-event contracts, the pure Stage 05 core clock engine, the pure Stage 06 rolling cycle engine, the pure Stage 07 advanced-rule evaluator, the Stage 09 equipment/load physical-validation domain, the Stage 10 ordered stop-processing domain, and Stage 11 commercial-routing request and normalized-result contracts.
 - Stage 05 covers the standard 10-hour reset, 11-hour driving allowance, 14-hour window, cycle-availability blocking, and 30-minute interruption.
 - Stage 06 derives 60-hour/7-day and 70-hour/8-day availability from timestamped history, reconciles entered facts, returns correctly timed recaps, blocks on-duty work at zero cycle, and applies only explicitly selected and fully evidenced 34-hour restarts.
 - Stage 07 validates explicitly selected 7/3 and 8/2 sleeper pairs, evidence-backed adverse-driving-condition extensions, stricter carrier planning limits, rest-preference conflicts, and unsupported special-rule selections without automatically activating exceptions.
 - Stage 08 adds the comprehensive HOS acceptance, boundary, replay, isolation, and persistence-mapping suite without changing verified production HOS arithmetic.
 - Stage 09 adds explicit tractor, trailer, and load profiles; provenance; KPRA and physical consistency checks; structured issues; route physical input; additive profile persistence; and audited tenant-scoped CRUD without inventing legal thresholds or axle distribution.
 - Stage 10 adds unlimited ordered stop configuration, appointments, facility hours, independent waiting/check-in/service behavior, parking-dependent HOS overlap, legal-departure processing, deterministic multi-stop progression, and additive immutable stop-detail persistence.
-- `@trip-route-calc/persistence` provides PostgreSQL and Prisma persistence, tenant-scoped repositories, immutable trip revisions, ordered stops, evidence retention, regulatory history, export history, audit records, immutable HOS input revisions, additive equipment-profile details, and additive stop-processing details.
+- Stage 11 adds complete CMV routing requests, provider-neutral normalized routes, legs, segments, geometry, restrictions, confidence and unavailable-field evidence, hard timeouts, bounded retries, server-only credential redaction, explicit provider failures, and separately labeled consumer comparisons that cannot become the commercial plan.
+- `@trip-route-calc/routing` isolates commercial provider capabilities, licensing configuration, credentials, execution policy, provider errors, and the no-fallback runtime boundary.
+- `@trip-route-calc/persistence` provides PostgreSQL and Prisma persistence, tenant-scoped repositories, immutable trip revisions, ordered stops, evidence retention, regulatory history, export history, audit records, immutable HOS input revisions, additive equipment-profile details, additive stop-processing details, and typed normalized commercial-route evidence storage.
 
-Commercial routing, regulatory compliance evaluation, complete ETA simulation, API behavior, and UI behavior have not started.
+Regulatory compliance evaluation, complete ETA simulation, API behavior, and UI behavior have not started. Live commercial-provider verification remains blocked until B-002 is resolved with a licensed provider, documented entitlement and retention terms, server-only credentials, and a real adapter.
 
 ## Workspace checks
 
@@ -66,6 +68,7 @@ PostgreSQL 18 uses the named volume mounted at `/var/lib/postgresql`.
 - Stage 08: HOS Automated Acceptance Suite, COMPLETE
 - Stage 09: Equipment, Load, Dimensions, and Weight, COMPLETE
 - Stage 10: Stops, Appointments, Waiting, and Service Simulation, COMPLETE
+- Stage 11: Commercial-Routing Provider Layer, COMPLETE; live verification blocked by B-002
 
 See:
 
@@ -82,13 +85,15 @@ See:
 - `docs/implementation/handoffs/08-hos-automated-test-suite.md`
 - `docs/implementation/handoffs/09-equipment-load-dimensions-weight.md`
 - `docs/implementation/handoffs/10-stops-appointments-service.md`
+- `docs/implementation/handoffs/11-commercial-routing-provider-layer.md`
 - `docs/domain/product-foundation.md`
 - `docs/stops/README.md`
 - `docs/equipment/README.md`
+- `docs/routing/README.md`
 - `docs/hos/README.md`
 - `docs/hos/test-fixtures.md`
 - `docs/persistence/README.md`
-- `docs/specification/11_COMMERCIAL_ROUTING_PROVIDER_LAYER.md`
+- `docs/specification/12_REGULATORY_RULES_AND_UPDATE_WORKFLOW.md`
 
 ## First-release scope
 
@@ -115,4 +120,4 @@ No exception, exemption, emergency declaration, pilot program, adverse-driving r
 
 ## Next action
 
-Begin `docs/specification/11_COMMERCIAL_ROUTING_PROVIDER_LAYER.md` under the Prime Directive, preserving the accepted equipment, stop-order, HOS, time-zone, persistence, and audit boundaries.
+Begin `docs/specification/12_REGULATORY_RULES_AND_UPDATE_WORKFLOW.md` under the Prime Directive, preserving the accepted commercial-routing, evidence, equipment, stop-order, HOS, time-zone, persistence, and audit boundaries.
