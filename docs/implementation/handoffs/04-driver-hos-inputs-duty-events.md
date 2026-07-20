@@ -5,7 +5,7 @@
 - Source file: `04_DRIVER_HOS_INPUTS_AND_DUTY_EVENTS.md`
 - Date: 2026-07-19
 - Branch: `stage-04-clean-hos-inputs`
-- Pull request: pending
+- Pull request: `#4 Implement Stage 04 driver HOS inputs and duty events`
 - Completion status: VERIFICATION PENDING
 
 ## Repository state inspected before coding
@@ -97,9 +97,9 @@ Observed tool versions:
 - Node.js: 22.16.0
 - TypeScript: 5.8.3
 
-The local environment could not download pnpm packages and did not provide Docker, Podman, or PostgreSQL. No claim is made that local pnpm, Prisma, migration-deployment, ESLint, Vitest, full repository type-check, or production-build checks ran.
+The local environment could not download pnpm packages and did not provide Docker, Podman, or PostgreSQL. No claim is made that local pnpm, Prisma, migration-deployment, ESLint, Vitest, full repository type-check, or production-build checks ran locally.
 
-## Verification results before pull-request CI
+## Verification results before final pull-request CI
 
 - Isolated HOS source strict TypeScript compile: PASS
 - Isolated persistence repository strict TypeScript compile: PASS
@@ -115,10 +115,11 @@ The local environment could not download pnpm packages and did not provide Docke
 - Sleeper candidate evidence without automatic split validation: PASS
 - Tenant ownership, canonical hashing, and round-trip loading contract: PASS
 - Migration static assertions: PASS
-- Frozen-lockfile installation: PENDING CI
-- Prisma client generation and schema validation: PENDING CI
-- Clean PostgreSQL 18 migration deployment: PENDING CI
-- ESLint: PENDING CI
+- Frozen-lockfile installation: PASS in pull-request CI
+- Prisma client generation and schema validation: PASS in pull-request CI
+- Clean PostgreSQL 18 migration deployment: PASS after correcting foreign-key references to the existing Prisma camelCase columns
+- ESLint diagnostics: 21 strict template-expression and assertion findings identified, corrected, and rechecked with the isolated compiler and 11-test harness
+- Full normal ESLint rerun: PENDING CI
 - Full repository TypeScript check: PENDING CI
 - Vitest unit and integration tests: PENDING CI
 - Production TypeScript build: PENDING CI
@@ -148,7 +149,7 @@ Hard-boundary audit:
 
 ## Remaining blockers and limitations
 
-- Pull-request CI must validate the migration, lint, full type graph, Vitest suite, and production build before acceptance.
+- Pull-request CI must validate lint, the full type graph, Vitest suite, and production build before acceptance.
 - Stage 04 records validated facts but does not implement the legal clock arithmetic reserved for Stages 05 through 08.
 - Sleeper pair participation is candidate evidence only.
 - Commercial-routing provider and credentials remain unselected.
