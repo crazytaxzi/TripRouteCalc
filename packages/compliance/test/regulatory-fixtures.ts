@@ -17,7 +17,6 @@ import type {
   RegulatoryRuleSet,
 } from '@trip-route-calc/foundation';
 
-import { evaluateRegulatoryCompliance } from '../src/index.js';
 
 const source = {
   authorityType: 'state-dot' as const,
@@ -29,7 +28,7 @@ const source = {
   lastVerifiedAt: utcInstant('2026-07-20T00:00:00Z'),
 };
 
-export function equipment(kpraFeet = 40) {
+export function equipment(kpraFeet = 40): RegulatoryEvaluationInput['equipment'] {
   return {
     tractor: {
       axleCount: 3,

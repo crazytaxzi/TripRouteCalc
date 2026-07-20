@@ -4,6 +4,7 @@ import {
   validateRegulatoryRuleSet,
   utcInstant,
 } from '../src/index.js';
+import type { JurisdictionRule } from '../src/index.js';
 import { describe, expect, it } from 'vitest';
 
 const source = {
@@ -16,7 +17,7 @@ const source = {
   lastVerifiedAt: utcInstant('2026-07-20T00:00:00Z'),
 };
 
-function rule(ruleId = 'TEST-KPRA') {
+function rule(ruleId = 'TEST-KPRA'): JurisdictionRule {
   return {
     ruleId,
     jurisdictionCode: 'US-CA',

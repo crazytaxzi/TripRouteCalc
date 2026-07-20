@@ -6,7 +6,6 @@ import {
 } from './commercial-routing.js';
 import type {
   CommercialRouteEquipment,
-  CommercialRouteSegment,
 } from './commercial-routing.js';
 import { UtcInstantSchema } from './time.js';
 import type { UtcInstant } from './time.js';
@@ -229,9 +228,21 @@ export const RegulatoryRoadScopeSchema = z.discriminatedUnion('kind', [
         'Regulatory geometry bounds must be ordered west-to-east and south-to-north.',
     }),
 ]);
-export type RegulatoryRoadScope = Readonly<
-  z.infer<typeof RegulatoryRoadScopeSchema>
->;
+export type RegulatoryRoadScope =
+  | Readonly<{ kind: 'jurisdiction-wide'; jurisdictionCodes: readonly string[] }>
+  | Readonly<{
+      kind: 'road-identity';
+      roadIdentities: readonly string[];
+      directions: readonly RegulatoryDirection[];
+    }>
+  | Readonly<{ kind: 'segment'; segmentIds: readonly string[] }>
+  | Readonly<{
+      kind: 'geometry-bounds';
+      west: number;
+      east: number;
+      south: number;
+      north: number;
+    }>;
 
 export interface RegulatoryAllCondition {
   readonly kind: 'all';
@@ -458,7 +469,24 @@ export const JurisdictionRuleSchema = z
       });
     }
   });
-export type JurisdictionRule = Readonly<z.infer<typeof JurisdictionRuleSchema>>;
+export interface JurisdictionRule {
+  readonly ruleId: string;
+  readonly jurisdictionCode: string;
+  readonly category: RegulatoryRuleCategory;
+  readonly affectedVehicleTypes: readonly RegulatoryVehicleType[];
+  readonly roadScope: RegulatoryRoadScope;
+  readonly effectiveFrom: UtcInstant;
+  readonly effectiveTo?: UtcInstant;
+  readonly source: RegulatorySource;
+  readonly explanation: string;
+  readonly condition: RegulatoryCondition;
+  readonly requiredAction: RegulatoryRequiredAction;
+  readonly severity: RegulatoryRuleSeverity;
+  readonly blocksRouteFinalization: boolean;
+  readonly requiresManualVerification: boolean;
+  readonly active: boolean;
+  readonly version: string;
+}
 
 export const RegulatoryCoverageSchema = z
   .object({
@@ -504,7 +532,17 @@ export const RegulatoryRuleSetSchema = z
       });
     }
   });
-export type RegulatoryRuleSet = Readonly<z.infer<typeof RegulatoryRuleSetSchema>>;
+export interface RegulatoryRuleSet {
+  readonly ruleSetId: string;
+  readonly name: string;
+  readonly version: string;
+  readonly status: RegulatoryRuleSetStatus;
+  readonly effectiveFrom: UtcInstant;
+  readonly effectiveTo?: UtcInstant;
+  readonly source: RegulatorySource;
+  readonly coverage: RegulatoryCoverage;
+  readonly rules: readonly JurisdictionRule[];
+}
 
 export const RegulatoryActionLocationSchema = z
   .object({

@@ -9,6 +9,7 @@ import {
   validateRegulatoryComplianceResult,
   validateRegulatoryRuleSet,
 } from '@trip-route-calc/foundation';
+import type { JurisdictionRule, RegulatoryRuleSet } from '@trip-route-calc/foundation';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 
 import {
@@ -92,7 +93,7 @@ async function seedTenant(label: string): Promise<TenantFixture> {
   };
 }
 
-function rule(ruleId: string, maximumFeet: number) {
+function rule(ruleId: string, maximumFeet: number): JurisdictionRule {
   return validateJurisdictionRule({
     ruleId,
     jurisdictionCode: 'US-CA',
@@ -126,7 +127,7 @@ function rule(ruleId: string, maximumFeet: number) {
   });
 }
 
-function ruleSet(version: string, maximumFeet = 40) {
+function ruleSet(version: string, maximumFeet = 40): RegulatoryRuleSet {
   return validateRegulatoryRuleSet({
     ruleSetId: `test-rule-set-${version}`,
     name: 'test-only-commercial-compliance',
