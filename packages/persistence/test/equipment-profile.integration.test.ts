@@ -10,6 +10,11 @@ import {
   volumeInUsGallons,
   weightInPounds,
 } from '@trip-route-calc/foundation';
+import type {
+  LoadProfile,
+  TractorProfile,
+  TrailerProfile,
+} from '@trip-route-calc/foundation';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 
 import {
@@ -18,13 +23,7 @@ import {
   createPersistenceClient,
   databaseUrlFromEnvironment,
 } from '../src/index.js';
-import type {
-  LoadProfile,
-  PersistenceClient,
-  TenantContext,
-  TractorProfile,
-  TrailerProfile,
-} from '../src/index.js';
+import type { PersistenceClient, TenantContext } from '../src/index.js';
 
 interface SeededTenant {
   readonly context: TenantContext;

@@ -12,6 +12,7 @@ import {
   validateLoadProfile,
   validateTrailerProfile,
   validateTractorProfile,
+  utcInstant,
   volumeInUsGallons,
   weightInPounds,
 } from '../src/index.js';
@@ -22,7 +23,7 @@ import type {
   TrailerProfile,
 } from '../src/index.js';
 
-function evidence(...fieldPaths: string[]): readonly EquipmentFieldEvidence[] {
+function evidence(...fieldPaths: string[]): EquipmentFieldEvidence[] {
   return fieldPaths.map((fieldPath) => ({
     fieldPath,
     sourceType: 'measured',
