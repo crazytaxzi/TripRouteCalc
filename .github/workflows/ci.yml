@@ -61,7 +61,15 @@ jobs:
         run: pnpm lint:source
 
       - name: Type-check
-        run: pnpm typecheck:source
+        run: pnpm typecheck:source > typecheck-results.txt 2>&1
+
+      - name: Upload type-check diagnostics
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: typecheck-diagnostics
+          path: typecheck-results.txt
+          if-no-files-found: ignore
 
       - name: Test
         run: pnpm test:source
