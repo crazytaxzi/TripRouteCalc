@@ -8,8 +8,10 @@ const INCHES_PER_METER = 39.370_078_740_157_48;
 const INCHES_PER_CENTIMETER = 0.393_700_787_401_574_8;
 const METERS_PER_SECOND_PER_MILE_PER_HOUR = 0.447_04;
 const METERS_PER_SECOND_PER_KILOMETER_PER_HOUR = 1 / 3.6;
+const LITERS_PER_US_GALLON = 3.785_411_784;
 
 const finiteNonNegativeNumber = z.number().finite().nonnegative();
+const finiteNumber = z.number().finite();
 const nonNegativeSafeInteger = z
   .number()
   .int()
@@ -233,4 +235,99 @@ export function toKilometersPerHour(value: Speed): number {
     SpeedSchema.parse(value).value /
     METERS_PER_SECOND_PER_KILOMETER_PER_HOUR
   );
+}
+
+export const VolumeSchema = z
+  .object({
+    value: finiteNonNegativeNumber,
+    unit: z.literal('us-gallon'),
+  })
+  .strict();
+
+export type Volume = Readonly<z.infer<typeof VolumeSchema>>;
+
+const VolumeInputSchema = z.discriminatedUnion('unit', [
+  VolumeSchema,
+  z.object({ value: finiteNonNegativeNumber, unit: z.literal('liter') }).strict(),
+]);
+
+export function volume(input: unknown): Volume {
+  const parsed = VolumeInputSchema.parse(input);
+  const value =
+    parsed.unit === 'us-gallon'
+      ? parsed.value
+      : parsed.value / LITERS_PER_US_GALLON;
+  return freeze(VolumeSchema.parse({ value, unit: 'us-gallon' }));
+}
+
+export function volumeInUsGallons(value: number): Volume {
+  return volume({ value, unit: 'us-gallon' });
+}
+
+export function toLiters(value: Volume): number {
+  return VolumeSchema.parse(value).value * LITERS_PER_US_GALLON;
+}
+
+export const TemperatureSchema = z
+  .object({
+    value: finiteNumber,
+    unit: z.literal('celsius'),
+  })
+  .strict();
+
+export type Temperature = Readonly<z.infer<typeof TemperatureSchema>>;
+
+const TemperatureInputSchema = z.discriminatedUnion('unit', [
+  TemperatureSchema,
+  z.object({ value: finiteNumber, unit: z.literal('fahrenheit') }).strict(),
+]);
+
+export function temperature(input: unknown): Temperature {
+  const parsed = TemperatureInputSchema.parse(input);
+  const value =
+    parsed.unit === 'celsius'
+      ? parsed.value
+      : ((parsed.value - 32) * 5) / 9;
+  return freeze(TemperatureSchema.parse({ value, unit: 'celsius' }));
+}
+
+export function temperatureInCelsius(value: number): Temperature {
+  return temperature({ value, unit: 'celsius' });
+}
+
+export function temperatureInFahrenheit(value: number): Temperature {
+  return temperature({ value, unit: 'fahrenheit' });
+}
+
+export function toFahrenheit(value: Temperature): number {
+  return (TemperatureSchema.parse(value).value * 9) / 5 + 32;
+}
+
+export const FuelRateSchema = z
+  .object({
+    value: finiteNonNegativeNumber,
+    unit: z.literal('us-gallon-per-hour'),
+  })
+  .strict();
+
+export type FuelRate = Readonly<z.infer<typeof FuelRateSchema>>;
+
+const FuelRateInputSchema = z.discriminatedUnion('unit', [
+  FuelRateSchema,
+  z
+    .object({ value: finiteNonNegativeNumber, unit: z.literal('liter-per-hour') })
+    .strict(),
+]);
+
+export function fuelRate(input: unknown): FuelRate {
+  const parsed = FuelRateInputSchema.parse(input);
+  const value =
+    parsed.unit === 'us-gallon-per-hour'
+      ? parsed.value
+      : parsed.value / LITERS_PER_US_GALLON;
+  return freeze(FuelRateSchema.parse({ value, unit: 'us-gallon-per-hour' }));
+}
+
+export function fuelRateInUsGallonsPerHour(value: number): FuelRate {
+  return fuelRate({ value, unit: 'us-gallon-per-hour' });
 }

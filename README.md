@@ -6,14 +6,15 @@ The product is intended to produce transparent, defensible planning estimates fo
 
 ## Current state
 
-The canonical private repository is established on `main`. Stages 01 through 08 are complete, verified, and merged.
+The canonical private repository is established on `main`. Stages 01 through 08 are complete, verified, and merged. Stage 09 equipment, trailer, and load profile implementation is complete on pull request `#14`; full repository verification is in progress.
 
-- `@trip-route-calc/foundation` provides product terminology, first-release scope boundaries, explicit measurement primitives, UTC and IANA time-zone handling, DST-safe local appointment and regulatory-boundary resolution, provider-neutral domain contracts, validated driver HOS departure-state and duty-event contracts, the pure Stage 05 core clock engine, the pure Stage 06 rolling cycle engine, and the pure Stage 07 advanced-rule evaluator.
+- `@trip-route-calc/foundation` provides product terminology, first-release scope boundaries, explicit measurement primitives, UTC and IANA time-zone handling, DST-safe local appointment and regulatory-boundary resolution, provider-neutral domain contracts, validated driver HOS departure-state and duty-event contracts, the pure Stage 05 core clock engine, the pure Stage 06 rolling cycle engine, the pure Stage 07 advanced-rule evaluator, and the Stage 09 equipment/load physical-validation domain.
 - Stage 05 covers the standard 10-hour reset, 11-hour driving allowance, 14-hour window, cycle-availability blocking, and 30-minute interruption.
 - Stage 06 derives 60-hour/7-day and 70-hour/8-day availability from timestamped history, reconciles entered facts, returns correctly timed recaps, blocks on-duty work at zero cycle, and applies only explicitly selected and fully evidenced 34-hour restarts.
 - Stage 07 validates explicitly selected 7/3 and 8/2 sleeper pairs, evidence-backed adverse-driving-condition extensions, stricter carrier planning limits, rest-preference conflicts, and unsupported special-rule selections without automatically activating exceptions.
 - Stage 08 adds the comprehensive HOS acceptance, boundary, replay, isolation, and persistence-mapping suite without changing verified production HOS arithmetic.
-- `@trip-route-calc/persistence` provides PostgreSQL and Prisma persistence, tenant-scoped repositories, ordered stops, immutable trip revisions, evidence retention, regulatory history, export history, audit records, and immutable HOS input revisions.
+- Stage 09 adds explicit tractor, trailer, and load profiles; provenance; KPRA and physical consistency checks; structured issues; route physical input; additive profile persistence; and audited tenant-scoped CRUD without inventing legal thresholds or axle distribution.
+- `@trip-route-calc/persistence` provides PostgreSQL and Prisma persistence, tenant-scoped repositories, ordered stops, immutable trip revisions, evidence retention, regulatory history, export history, audit records, immutable HOS input revisions, and additive equipment-profile details.
 
 Commercial routing, compliance evaluation, ETA simulation, API behavior, and UI behavior have not started.
 
@@ -62,6 +63,7 @@ PostgreSQL 18 uses the named volume mounted at `/var/lib/postgresql`.
 - Stage 06: HOS Cycle, Recaps, and 34-Hour Restart, COMPLETE
 - Stage 07: Sleeper Split, Adverse Conditions, and Carrier Policy, COMPLETE
 - Stage 08: HOS Automated Acceptance Suite, COMPLETE
+- Stage 09: Equipment, Load, Dimensions, and Weight, IMPLEMENTATION COMPLETE, VERIFICATION IN PROGRESS
 
 See:
 
@@ -76,7 +78,9 @@ See:
 - `docs/implementation/handoffs/06-hos-cycle-recaps-restart.md`
 - `docs/implementation/handoffs/07-hos-sleeper-adverse-and-carrier-policy.md`
 - `docs/implementation/handoffs/08-hos-automated-test-suite.md`
+- `docs/implementation/handoffs/09-equipment-load-dimensions-weight.md`
 - `docs/domain/product-foundation.md`
+- `docs/equipment/README.md`
 - `docs/hos/README.md`
 - `docs/hos/test-fixtures.md`
 - `docs/persistence/README.md`
@@ -107,4 +111,4 @@ No exception, exemption, emergency declaration, pilot program, adverse-driving r
 
 ## Next action
 
-Begin `docs/specification/09_EQUIPMENT_LOAD_DIMENSIONS_WEIGHT.md` under the Prime Directive, preserving the accepted measurement, persistence, audit, and HOS boundaries.
+Complete the full GitHub Actions gate on pull request `#14`. Correct verified defects without weakening the accepted Stage 01 through Stage 08 boundaries or Stage 09 physical-validation requirements.

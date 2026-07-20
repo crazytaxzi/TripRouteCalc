@@ -41,9 +41,15 @@
     "./units": {
       "types": "./dist/units.d.ts",
       "import": "./dist/units.js"
+    },
+    "./equipment": {
+      "types": "./dist/equipment.d.ts",
+      "import": "./dist/equipment.js"
     }
   },
-  "files": ["dist"],
+  "files": [
+    "dist"
+  ],
   "dependencies": {
     "@js-temporal/polyfill": "^0.5.1",
     "zod": "^3.25.67"
