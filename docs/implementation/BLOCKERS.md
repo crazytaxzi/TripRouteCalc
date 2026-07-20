@@ -51,10 +51,20 @@ Stage 04 required no commercial-routing provider, production regulatory source, 
 
 **Status:** No active Stage 05 blocker
 
-Stage 05 required current official federal property-carrying HOS verification but no commercial-routing provider, production regulatory feed, authentication system, new database migration, or deployment target. Current FMCSA guidance was checked on 2026-07-20, the pure engine and complete boundary suite passed repository CI, and no mandatory Stage 05 requirement remains blocked. B-002 through B-004 remain visible future concerns. Stage 06 can proceed with the existing historical duty data model and must calculate cycle history, recap timing, and explicitly selected restart behavior without inventing a provider or silently trusting entered cycle totals.
+Stage 05 required current official federal property-carrying HOS verification but no commercial-routing provider, production regulatory feed, authentication system, new database migration, or deployment target. Current FMCSA guidance was checked on 2026-07-20, the pure engine and complete boundary suite passed repository CI, and no mandatory Stage 05 requirement remains blocked. B-002 through B-004 remain visible future concerns.
 
 ## Stage 06 blocker review
 
 **Status:** No active Stage 06 blocker
 
-Stage 06 required complete timestamped duty history, an explicit carrier-designated home-terminal regulatory boundary, and current federal cycle and restart verification. Those inputs and authorities were sufficient to implement and verify rolling 60-hour/7-day and 70-hour/8-day calculations, recap timing, discrepancy reporting, cycle blocking, and explicitly selected 34-hour restart behavior. No production routing provider, regulatory feed, authentication system, new database migration, or deployment target was required. B-002 through B-004 remain visible future concerns. The local execution container lacked outbound DNS and package-registry access, but the connected canonical repository and GitHub Actions environment provided a complete verified recovery path without altering requirements or claiming unobserved local success.
+Stage 06 required complete timestamped duty history, an explicit carrier-designated home-terminal regulatory boundary, and current federal cycle and restart verification. Those inputs and authorities were sufficient to implement and verify rolling 60-hour/7-day and 70-hour/8-day calculations, recap timing, discrepancy reporting, cycle blocking, and explicitly selected 34-hour restart behavior. No production routing provider, regulatory feed, authentication system, new database migration, or deployment target was required.
+
+## Stage 07 blocker review
+
+**Status:** No active Stage 07 blocker
+
+Stage 07 required accepted Stage 04 sleeper metadata, the verified Stage 05 core result, explicit user selection, supporting adverse-condition context, carrier targets, and current federal guidance. Those inputs were sufficient to implement and verify split-sleeper qualification, explicit 7/3 and 8/2 selection, current July 1, 2026 rest-period choice guidance, adverse-driving-condition extensions, stricter carrier caps, rest-preference conflicts, and unsupported-rule warnings. No production routing provider, regulatory feed, authentication system, database migration, or deployment target was required.
+
+B-002 through B-004 remain visible future concerns. Pilot-program participation, personal conveyance, yard move, short haul, the 16-hour exception, agriculture, emergency declarations, and other unsupported rules are deliberately blocked from automatic clock alteration rather than hidden behind approximations.
+
+The local container's outbound DNS and package access remained unavailable, but connected GitHub and GitHub Actions supplied a complete recovery and verification path without weakening requirements or claiming unobserved local success.
