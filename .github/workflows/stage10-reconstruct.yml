@@ -13,7 +13,7 @@ permissions:
   contents: write
 
 env:
-  STAGE10_ARCHIVE_SHA: 23c19037f7961b7f1cd994e14b486fb19e03fc4c2cc3e41bbb440771718139e4
+  STAGE10_ARCHIVE_SHA: 687c512631a47943b89ce689c683808e9a75b902c62cbc23a53b7afede958431
 
 jobs:
   reconstruct:
