@@ -1,4 +1,4 @@
-name: Stage 06 diagnostics
+name: Stage 06 lint fix
 
 on:
   push:
@@ -6,69 +6,53 @@ on:
       - agent/stage-06-hos-cycle-recaps-restart
 
 permissions:
-  contents: read
-  pull-requests: write
+  contents: write
 
 jobs:
-  lint-diagnostics:
+  apply-fix:
+    if: github.event.head_commit.message != 'Fix Stage 06 lint findings'
     runs-on: ubuntu-24.04
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
-      - name: Set up Node.js
-        uses: actions/setup-node@v4
         with:
-          node-version: 22
-      - name: Enable pnpm
+          ref: agent/stage-06-hos-cycle-recaps-restart
+      - name: Apply exact lint corrections
+        shell: python
         run: |
-          corepack enable
-          corepack prepare pnpm@9.15.4 --activate
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile
-      - name: Capture targeted lint output
+          from pathlib import Path
+
+          source = Path('packages/foundation/src/hos-cycle.ts')
+          source_text = source.read_text()
+          source_text = source_text.replace(
+              '.map((value) => [value.sourceDate as string, value]),',
+              '.map((value) => [value.sourceDate!, value]),',
+          )
+          source.write_text(source_text)
+
+          tests = Path('packages/foundation/test/hos-cycle.test.ts')
+          test_text = tests.read_text()
+          test_text = test_text.replace(
+              "  const departureAt = String(\n"
+              "    overrides.departureAt ?? '2026-07-20T12:00:00.000Z',\n"
+              "  );\n"
+              "  const departureTimeZone = String(overrides.departureTimeZone ?? 'UTC');",
+              "  const departureAt = typeof overrides.departureAt === 'string'\n"
+              "    ? overrides.departureAt\n"
+              "    : '2026-07-20T12:00:00.000Z';\n"
+              "  const departureTimeZone = typeof overrides.departureTimeZone === 'string'\n"
+              "    ? overrides.departureTimeZone\n"
+              "    : 'UTC';",
+          )
+          tests.write_text(test_text)
+      - name: Commit exact corrections
         shell: bash
         run: |
-          set +e
-          pnpm exec eslint packages/foundation/src/hos-cycle.ts packages/foundation/test/hos-cycle.test.ts --max-warnings=0 > stage06-lint.log 2>&1
-          status=$?
-          printf '%s\n' "$status" > stage06-lint.exit
-          exit 0
-      - name: Upload lint diagnostics
-        uses: actions/upload-artifact@v4
-        with:
-          name: stage06-lint-diagnostics
-          path: |
-            stage06-lint.log
-            stage06-lint.exit
-          if-no-files-found: error
-      - name: Post lint diagnostics to the draft pull request
-        uses: actions/github-script@v7
-        with:
-          script: |
-            const fs = require('fs');
-            const output = fs.readFileSync('stage06-lint.log', 'utf8');
-            const exitCode = fs.readFileSync('stage06-lint.exit', 'utf8').trim();
-            const marker = '<!-- stage06-lint-diagnostics -->';
-            const body = `${marker}\nTemporary Stage 06 targeted lint diagnostics, exit code ${exitCode}:\n\n\`\`\`text\n${output.slice(-60000)}\n\`\`\``;
-            const comments = await github.paginate(github.rest.issues.listComments, {
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              issue_number: 8,
-            });
-            const existing = comments.find((comment) =>
-              comment.user?.type === 'Bot' && comment.body?.includes(marker));
-            if (existing) {
-              await github.rest.issues.updateComment({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                comment_id: existing.id,
-                body,
-              });
-            } else {
-              await github.rest.issues.createComment({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                issue_number: 8,
-                body,
-              });
-            }
+          if git diff --quiet; then
+            exit 0
+          fi
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add packages/foundation/src/hos-cycle.ts packages/foundation/test/hos-cycle.test.ts
+          git commit -m "Fix Stage 06 lint findings"
+          git push origin HEAD:agent/stage-06-hos-cycle-recaps-restart
