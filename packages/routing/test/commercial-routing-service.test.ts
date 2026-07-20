@@ -177,10 +177,10 @@ function provider(
         consumerComparison: true,
       },
     },
-    geocodeLocation: async () => location('geocoded'),
+    geocodeLocation: () => Promise.resolve(location('geocoded')),
     calculateCommercialRoute,
-    getRouteRestrictions: async () => [],
-    calculateConsumerComparison: async () => routePayload('consumer-comparison'),
+    getRouteRestrictions: () => Promise.resolve([]),
+    calculateConsumerComparison: () => Promise.resolve(routePayload('consumer-comparison')),
     ...overrides,
   };
 }
@@ -203,12 +203,12 @@ describe('commercial-routing runtime and execution', () => {
 
   it('retries retryable rate limits within the three-attempt ceiling', async () => {
     let attempts = 0;
-    const sleep = vi.fn(async (): Promise<void> => undefined);
+    const sleep = vi.fn((): Promise<void> => Promise.resolve());
     const dependencies: CommercialRoutingExecutionDependencies = {
       sleep,
       createAbortController: () => new AbortController(),
     };
-    const fixture = provider(async () => {
+    const fixture = provider(() => {
       attempts += 1;
       if (attempts < 3) {
         throw new CommercialRoutingProviderError(
@@ -219,7 +219,7 @@ describe('commercial-routing runtime and execution', () => {
           1,
         );
       }
-      return routePayload();
+      return Promise.resolve(routePayload());
     });
     const service = new CommercialRoutingService(
       fixture,
@@ -236,7 +236,7 @@ describe('commercial-routing runtime and execution', () => {
   });
 
   it('enforces timeout even when an adapter ignores the abort signal', async () => {
-    const fixture = provider(async () => new Promise<never>(() => undefined));
+    const fixture = provider(() => new Promise<never>(() => undefined));
     const service = new CommercialRoutingService(fixture, license, undefined, {
       timeoutMs: 5,
       maximumAttempts: 1,
@@ -249,7 +249,7 @@ describe('commercial-routing runtime and execution', () => {
   });
 
   it('rejects a consumer result from the commercial operation and keeps comparison separate', async () => {
-    const fixture = provider(async () => routePayload('consumer-comparison'));
+    const fixture = provider(() => Promise.resolve(routePayload('consumer-comparison')));
     const service = new CommercialRoutingService(fixture, license);
     await expect(service.calculateCommercialRoute(routeRequest())).rejects.toMatchObject({
       code: 'INVALID_PROVIDER_RESPONSE',
@@ -262,7 +262,7 @@ describe('commercial-routing runtime and execution', () => {
 
 
   it('redacts credential-like text from mapped provider failures', async () => {
-    const fixture = provider(async () => {
+    const fixture = provider(() => {
       throw new Error('apiKey=super-secret-key');
     });
     const service = new CommercialRoutingService(fixture, license, undefined, {
@@ -280,10 +280,10 @@ describe('commercial-routing runtime and execution', () => {
   it('stops after three retryable provider-outage attempts', async () => {
     let attempts = 0;
     const dependencies: CommercialRoutingExecutionDependencies = {
-      sleep: async (): Promise<void> => undefined,
+      sleep: (): Promise<void> => Promise.resolve(),
       createAbortController: () => new AbortController(),
     };
-    const fixture = provider(async () => {
+    const fixture = provider(() => {
       attempts += 1;
       throw new CommercialRoutingProviderError(
         'PROVIDER_OUTAGE',
@@ -306,7 +306,7 @@ describe('commercial-routing runtime and execution', () => {
   });
 
   it('blocks a configured provider when commercial routing licensing is absent', () => {
-    const fixture = provider(async () => routePayload());
+    const fixture = provider(() => Promise.resolve(routePayload()));
     const runtime = createCommercialRoutingRuntime({
       provider: fixture,
       license: { ...license, commercialVehicleRoutingLicensed: false },

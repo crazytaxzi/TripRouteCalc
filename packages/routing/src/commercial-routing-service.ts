@@ -509,10 +509,7 @@ export function createCommercialRoutingRuntime(
     });
   }
 
-  if (
-    config.license === undefined ||
-    !config.license.commercialVehicleRoutingLicensed
-  ) {
+  if (!config.license?.commercialVehicleRoutingLicensed) {
     return freeze({
       status: 'blocked' as const,
       blocker: freeze({
@@ -529,7 +526,7 @@ export function createCommercialRoutingRuntime(
   }
 
   if (
-    config.provider?.metadata.credentialRequirement === 'required' &&
+    config.provider.metadata.credentialRequirement === 'required' &&
     config.credential === undefined
   ) {
     return freeze({
