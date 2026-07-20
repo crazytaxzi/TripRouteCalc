@@ -25,11 +25,11 @@ jobs:
           corepack prepare pnpm@9.15.4 --activate
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
-      - name: Capture lint output
+      - name: Capture targeted lint output
         shell: bash
         run: |
           set +e
-          pnpm lint:source > stage06-lint.log 2>&1
+          pnpm exec eslint packages/foundation/src/hos-cycle.ts packages/foundation/test/hos-cycle.test.ts --max-warnings=0 > stage06-lint.log 2>&1
           status=$?
           printf '%s\n' "$status" > stage06-lint.exit
           exit 0
@@ -49,7 +49,7 @@ jobs:
             const output = fs.readFileSync('stage06-lint.log', 'utf8');
             const exitCode = fs.readFileSync('stage06-lint.exit', 'utf8').trim();
             const marker = '<!-- stage06-lint-diagnostics -->';
-            const body = `${marker}\nTemporary Stage 06 lint diagnostics, exit code ${exitCode}:\n\n\`\`\`text\n${output.slice(-60000)}\n\`\`\``;
+            const body = `${marker}\nTemporary Stage 06 targeted lint diagnostics, exit code ${exitCode}:\n\n\`\`\`text\n${output.slice(-60000)}\n\`\`\``;
             const comments = await github.paginate(github.rest.issues.listComments, {
               owner: context.repo.owner,
               repo: context.repo.repo,
