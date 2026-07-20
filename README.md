@@ -6,12 +6,12 @@ The product is intended to produce transparent, defensible planning estimates fo
 
 ## Current state
 
-The canonical private repository is established on `main`. Stages 01 through 06 are complete, verified, and merged. Stage 07 is under active implementation and verification in pull request `#10`.
+The canonical private repository is established on `main`. Stages 01 through 06 are complete, verified, and merged. Stage 07 is complete and verified in pull request `#10`, pending merge.
 
-- `@trip-route-calc/foundation` provides product terminology, first-release scope boundaries, explicit measurement primitives, UTC and IANA time-zone handling, DST-safe local appointment and regulatory-boundary resolution, provider-neutral domain contracts, validated driver HOS departure-state and duty-event contracts, the pure Stage 05 core clock engine, and the pure Stage 06 rolling cycle engine.
+- `@trip-route-calc/foundation` provides product terminology, first-release scope boundaries, explicit measurement primitives, UTC and IANA time-zone handling, DST-safe local appointment and regulatory-boundary resolution, provider-neutral domain contracts, validated driver HOS departure-state and duty-event contracts, the pure Stage 05 core clock engine, the pure Stage 06 rolling cycle engine, and the pure Stage 07 advanced-rule evaluator.
 - Stage 05 covers the standard 10-hour reset, 11-hour driving allowance, 14-hour window, cycle-availability blocking, and 30-minute interruption.
 - Stage 06 derives 60-hour/7-day and 70-hour/8-day availability from timestamped history, reconciles entered facts, returns correctly timed recaps, blocks on-duty work at zero cycle, and applies only explicitly selected and fully evidenced 34-hour restarts.
-- Stage 07 is adding explicit split-sleeper evaluation, adverse-driving-condition selection, stricter carrier planning limits, and unsupported-rule warnings without automatically activating exceptions.
+- Stage 07 validates explicitly selected 7/3 and 8/2 sleeper pairs, evidence-backed adverse-driving-condition extensions, stricter carrier planning limits, rest-preference conflicts, and unsupported special-rule selections without automatically activating exceptions.
 - `@trip-route-calc/persistence` provides PostgreSQL and Prisma persistence, tenant-scoped repositories, ordered stops, immutable trip revisions, evidence retention, regulatory history, export history, audit records, and immutable HOS input revisions.
 
 Commercial routing, compliance evaluation, ETA simulation, API behavior, and UI behavior have not started.
@@ -59,7 +59,7 @@ PostgreSQL 18 uses the named volume mounted at `/var/lib/postgresql`.
 - Stage 04: Driver HOS Inputs and Duty Events, COMPLETE
 - Stage 05: HOS Core Clocks and 30-Minute Interruption, COMPLETE
 - Stage 06: HOS Cycle, Recaps, and 34-Hour Restart, COMPLETE
-- Stage 07: Sleeper Split, Adverse Conditions, and Carrier Policy, IN PROGRESS
+- Stage 07: Sleeper Split, Adverse Conditions, and Carrier Policy, COMPLETE AND VERIFIED, PENDING MERGE
 
 See:
 
@@ -72,10 +72,11 @@ See:
 - `docs/implementation/handoffs/04-driver-hos-inputs-duty-events.md`
 - `docs/implementation/handoffs/05-hos-core-clocks-interruption.md`
 - `docs/implementation/handoffs/06-hos-cycle-recaps-restart.md`
+- `docs/implementation/handoffs/07-hos-sleeper-adverse-and-carrier-policy.md`
 - `docs/domain/product-foundation.md`
 - `docs/hos/README.md`
 - `docs/persistence/README.md`
-- `docs/specification/07_HOS_SLEEPER_ADVERSE_AND_CARRIER_POLICY.md`
+- `docs/specification/08_HOS_AUTOMATED_TEST_SUITE.md`
 
 ## First-release scope
 
@@ -102,4 +103,4 @@ No exception, exemption, emergency declaration, pilot program, adverse-driving r
 
 ## Next action
 
-Complete and verify Stage 07 using `docs/specification/07_HOS_SLEEPER_ADVERSE_AND_CARRIER_POLICY.md`. After acceptance, proceed to `docs/specification/08_HOS_AUTOMATED_TEST_SUITE.md`.
+Merge verified pull request `#10`, close the Stage 07 ledger on `main`, then begin `docs/specification/08_HOS_AUTOMATED_TEST_SUITE.md` under the Prime Directive.
