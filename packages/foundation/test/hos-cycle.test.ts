@@ -338,8 +338,8 @@ describe('Stage 06 rolling HOS cycle calculation', () => {
         endAt: '2026-07-18T23:20:00.000Z',
       },
       {
-        startAt: '2026-07-19T00:00:00.000Z',
-        endAt: '2026-07-19T23:20:00.000Z',
+        startAt: '2026-07-19T12:40:00.000Z',
+        endAt: '2026-07-20T12:00:00.000Z',
       },
     ];
     const plannedDeparture = departureState({
@@ -411,8 +411,8 @@ describe('Stage 06 rolling HOS cycle calculation', () => {
           endAt: '2026-07-18T23:20:00.000Z',
         },
         {
-          startAt: '2026-07-19T00:00:00.000Z',
-          endAt: '2026-07-19T23:20:00.000Z',
+          startAt: '2026-07-19T12:40:00.000Z',
+          endAt: '2026-07-20T12:00:00.000Z',
         },
       ],
     );
