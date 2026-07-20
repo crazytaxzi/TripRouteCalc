@@ -715,7 +715,7 @@ function recapKey(value: Pick<CycleRecapReturn, 'sourceDate'>): string {
 function recapSeedEntries(
   seeds: readonly AvailabilitySeed[],
 ): readonly (readonly [string, AvailabilitySeed])[] {
-  const entries: Array<readonly [string, AvailabilitySeed]> = [];
+  const entries: (readonly [string, AvailabilitySeed])[] = [];
   for (const seed of seeds) {
     if (seed.kind === 'RECAP' && seed.sourceDate !== undefined) {
       entries.push([seed.sourceDate, seed]);
