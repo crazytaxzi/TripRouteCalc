@@ -1,0 +1,195 @@
+name: Stage 12 Contract Repair
+
+on:
+  pull_request:
+    branches: [main]
+    paths: [.github/workflows/stage12-contract-repair.yml]
+
+permissions:
+  contents: write
+
+jobs:
+  repair:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/stage-12-regulatory-rules
+          fetch-depth: 0
+      - name: Repair regulatory contract boundary
+        run: |
+          python3 <<'PY'
+          from pathlib import Path
+
+          def replace_once(path: str, old: str, new: str) -> None:
+              file = Path(path)
+              text = file.read_text()
+              count = text.count(old)
+              if count != 1:
+                  raise RuntimeError(f'{path}: expected one match, found {count}')
+              file.write_text(text.replace(old, new, 1))
+
+          replace_once(
+              'packages/foundation/src/index.ts',
+              "export * from './regulatory.js';\n",
+              '',
+          )
+
+          replace_once(
+              'packages/foundation/src/regulatory.ts',
+              """export type RegulatoryRequiredAction = Readonly<
+            z.infer<typeof RegulatoryRequiredActionSchema>
+          >;""",
+              """export interface RegulatoryRequiredAction {
+            readonly code: string;
+            readonly instruction: string;
+            readonly mustCompleteBeforeSegment: boolean;
+            readonly requiredUpdatedFacts: readonly string[];
+          }""",
+          )
+          replace_once(
+              'packages/foundation/src/regulatory.ts',
+              "export const RegulatoryRoadScopeSchema = z.discriminatedUnion('kind', [",
+              "export const RegulatoryRoadScopeSchema = z.union([",
+          )
+          replace_once(
+              'packages/foundation/src/regulatory.ts',
+              "  readonly permitIdentifier?: string;",
+              "  readonly permitIdentifier?: string | undefined;",
+          )
+          replace_once(
+              'packages/foundation/src/regulatory.ts',
+              "    z.discriminatedUnion('kind', [",
+              "    z.union([",
+          )
+          replace_once(
+              'packages/foundation/src/regulatory.ts',
+              """export type RegulatoryCoverage = Readonly<
+            z.infer<typeof RegulatoryCoverageSchema>
+          >;""",
+              """export interface RegulatoryCoverage {
+            readonly jurisdictionCodes: readonly string[];
+            readonly status: 'complete' | 'partial' | 'unknown';
+            readonly limitations: readonly string[];
+          }""",
+          )
+
+          replace_once(
+              'packages/compliance/src/regulatory-engine.ts',
+              """} from '@trip-route-calc/foundation';
+          import { validateRegulatoryEvaluationInput } from '@trip-route-calc/foundation';""",
+              """} from '@trip-route-calc/foundation/regulatory';
+          import { validateRegulatoryEvaluationInput } from '@trip-route-calc/foundation/regulatory';""",
+          )
+
+          replace_once(
+              'packages/persistence/src/regulatory-rule-repository.ts',
+              """import {
+            regulatoryComplianceResultSnapshot,
+            regulatoryRuleSetSnapshot,
+            regulatoryRuleSnapshot,
+            utcInstant,
+            validateJurisdictionRule,
+            validateRegulatoryComplianceResult,
+            validateRegulatoryRuleSet,
+          } from '@trip-route-calc/foundation';
+          import type {
+            RegulatoryComplianceResult,
+            RegulatoryRuleSet,
+            RegulatoryRuleSetStatus,
+            UtcInstant,
+          } from '@trip-route-calc/foundation';""",
+              """import { utcInstant } from '@trip-route-calc/foundation';
+          import type { UtcInstant } from '@trip-route-calc/foundation';
+          import {
+            regulatoryComplianceResultSnapshot,
+            regulatoryRuleSetSnapshot,
+            regulatoryRuleSnapshot,
+            validateJurisdictionRule,
+            validateRegulatoryComplianceResult,
+            validateRegulatoryRuleSet,
+          } from '@trip-route-calc/foundation/regulatory';
+          import type {
+            RegulatoryComplianceResult,
+            RegulatoryRuleSet,
+            RegulatoryRuleSetStatus,
+          } from '@trip-route-calc/foundation/regulatory';""",
+          )
+
+          replace_once(
+              'packages/compliance/test/regulatory-fixtures.ts',
+              """  utcInstant,
+            validateJurisdictionRule,
+            validateRegulatoryRuleSet,
+            volumeInUsGallons,""",
+              """  utcInstant,
+            volumeInUsGallons,""",
+          )
+          replace_once(
+              'packages/compliance/test/regulatory-fixtures.ts',
+              """import type {
+            JurisdictionRule,
+            RegulatoryEvaluationInput,
+            RegulatoryRouteSegmentContext,
+            RegulatoryRuleSet,
+          } from '@trip-route-calc/foundation';""",
+              """import {
+            validateJurisdictionRule,
+            validateRegulatoryRuleSet,
+          } from '@trip-route-calc/foundation/regulatory';
+          import type {
+            JurisdictionRule,
+            RegulatoryEvaluationInput,
+            RegulatoryRouteSegmentContext,
+            RegulatoryRuleSet,
+          } from '@trip-route-calc/foundation/regulatory';""",
+          )
+
+          replace_once(
+              'packages/foundation/test/regulatory.test.ts',
+              """import {
+            lengthInFeet,
+            validateJurisdictionRule,
+            validateRegulatoryRuleSet,
+            utcInstant,
+          } from '../src/index.js';
+          import type { JurisdictionRule } from '../src/index.js';""",
+              """import { lengthInFeet, utcInstant } from '../src/index.js';
+          import {
+            validateJurisdictionRule,
+            validateRegulatoryRuleSet,
+          } from '../src/regulatory.js';
+          import type { JurisdictionRule } from '../src/regulatory.js';""",
+          )
+
+          replace_once(
+              'packages/persistence/test/regulatory-rule-workflow.integration.test.ts',
+              """  utcInstant,
+            validateJurisdictionRule,
+            validateRegulatoryComplianceResult,
+            validateRegulatoryRuleSet,
+          } from '@trip-route-calc/foundation';
+          import type { JurisdictionRule, RegulatoryRuleSet } from '@trip-route-calc/foundation';""",
+              """  utcInstant,
+          } from '@trip-route-calc/foundation';
+          import {
+            validateJurisdictionRule,
+            validateRegulatoryComplianceResult,
+            validateRegulatoryRuleSet,
+          } from '@trip-route-calc/foundation/regulatory';
+          import type {
+            JurisdictionRule,
+            RegulatoryRuleSet,
+          } from '@trip-route-calc/foundation/regulatory';""",
+          )
+          PY
+      - name: Commit contract repair
+        run: |
+          set -euo pipefail
+          git diff --check
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add packages
+          git commit -m 'Isolate Stage 12 regulatory contract exports'
+          git push origin HEAD:agent/stage-12-regulatory-rules
