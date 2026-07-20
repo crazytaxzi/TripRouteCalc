@@ -3,13 +3,14 @@
 - Source: `docs/specification/10_STOPS_APPOINTMENTS_AND_SERVICE.md`
 - Date: 2026-07-20
 - Implementation branch: `agent/stage-10-stops-appointments-service`
-- Completion status: COMPLETE, VERIFIED, PENDING MERGE
-- Verified implementation head: `ef2e982d0c7c42cbf6ae74cdfbbd908cf02a70f0`
-- GitHub Actions CI run: `422`
+- Pull request: `#16 Implement Stage 10 stops appointments and service`
+- Completion status: COMPLETE, VERIFIED, AND MERGED
+- Final documented pull-request head: `e158b40b4ea4b0fc6457d82b111203944113974f`
+- Merge commit: `9b068794fd2b45808de05e63f55afc3d81d98eaf`
 
 ## Protected governance
 
-Stage 10 is executed under `PRIME_DIRECTIVE.md`. The local environment cannot clone the private repository or run its complete dependency graph, so `ERROR_RECOVERY_PROTOCOL.md` required an isolated branch, bounded connector-backed reconstruction, explicit evidence, and GitHub Actions as the authoritative full-repository gate. No unavailable local check is represented as successful.
+Stage 10 was executed under `PRIME_DIRECTIVE.md`. The local environment could not clone the private repository or run its complete dependency graph, so `ERROR_RECOVERY_PROTOCOL.md` required an isolated branch, bounded connector-backed reconstruction, explicit evidence, and GitHub Actions as the authoritative full-repository gate. No unavailable local check was represented as successful.
 
 ## Implemented scope
 
@@ -44,8 +45,8 @@ Stage 10 is executed under `PRIME_DIRECTIVE.md`. The local environment cannot cl
 - Git blob comparison against the preserved local payload showed chunks `00` through `03` were exact and chunks `04` and `05` had changed in transit.
 - Only chunks `04` and `05` were replaced, restoring their original blob hashes.
 - Reassembling the preserved local chunks produced archive SHA-256 `687c512631a47943b89ce689c683808e9a75b902c62cbc23a53b7afede958431`; the earlier workflow checksum was incorrect and was corrected without changing product content.
-- Stage 10 reconstruction workflow run `29767836659` then passed, applied the payload, passed `git diff --check`, committed the implementation as `32f1dab8c5ed756f97ea4426c1e76a01cc73ce65`, and removed every temporary payload and reconstruction file.
-- The bot-authored implementation head produced an `action_required` CI record rather than an executable verdict. Permanent handoff updates supplied normal connector-authored heads for authoritative verification.
+- Reconstruction workflow run `29767836659` passed, applied the payload, passed `git diff --check`, committed the implementation as `32f1dab8c5ed756f97ea4426c1e76a01cc73ce65`, and removed every temporary payload and reconstruction file.
+- Bot-authored heads that produced `action_required` CI records were followed by permanent connector-authored documentation commits for authoritative verification.
 
 ## Verification corrections applied
 
@@ -60,16 +61,23 @@ Stage 10 is executed under `PRIME_DIRECTIVE.md`. The local environment cannot cl
 
 ## Verification results
 
-GitHub Actions CI run `422` passed on implementation head `ef2e982d0c7c42cbf6ae74cdfbbd908cf02a70f0`:
+The complete repository gate passed twice after the final product corrections:
 
-- frozen-lockfile dependency installation: PASS
-- Prisma client generation: PASS
-- Prisma schema validation: PASS
-- clean PostgreSQL 18 migration deployment: PASS
-- ESLint: PASS
-- strict TypeScript type-check: PASS
-- complete Vitest unit and integration suite: PASS
-- production TypeScript build: PASS
+- CI run `422` on implementation head `ef2e982d0c7c42cbf6ae74cdfbbd908cf02a70f0`
+- final CI run `424` on documented head `e158b40b4ea4b0fc6457d82b111203944113974f`
+
+Each run passed:
+
+- frozen-lockfile dependency installation
+- Prisma client generation
+- Prisma schema validation
+- clean PostgreSQL 18 migration deployment
+- ESLint
+- strict TypeScript type-check
+- complete Vitest unit and integration suite
+- production TypeScript build
+
+Pull request `#16` was squash-merged into `main` as `9b068794fd2b45808de05e63f55afc3d81d98eaf`.
 
 ## Remaining limitations
 
@@ -79,6 +87,6 @@ GitHub Actions CI run `422` passed on implementation head `ef2e982d0c7c42cbf6ae7
 - No route is represented as legal or provider-verified.
 - API, UI, authentication, maps, exports, and production deployment remain future stages.
 
-## Next source after merge and ledger close
+## Next source
 
-`docs/specification/11_COMMERCIAL_ROUTING_PROVIDER_LAYER.md`
+Stage 10 is complete, verified, and merged. Reopen the protected Prime Directive and Error Recovery Protocol and begin `docs/specification/11_COMMERCIAL_ROUTING_PROVIDER_LAYER.md` from the accepted equipment, stop-order, HOS, time-zone, persistence, and audit boundaries.
