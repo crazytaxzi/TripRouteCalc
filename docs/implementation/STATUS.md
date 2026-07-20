@@ -5,10 +5,10 @@
 - Canonical repository: `crazytaxzi/TripRouteCalc`
 - Repository visibility: private
 - Default branch: `main`
-- Active implementation branch: `agent/stage-05-hos-core-clocks`
-- Active pull request: `#6`
-- Last completed pull request: `#4`
-- Product status: pure standard federal property-carrying HOS core clocks and 30-minute interruption implementation complete and verified
+- Active implementation branch: none
+- Active pull request: none
+- Last completed pull request: `#6`
+- Product status: pure standard federal property-carrying HOS core clocks and 30-minute interruption implementation complete, verified, and merged
 - Completed sources: `01_REPOSITORY_AUDIT_AND_PLAN.md`, `02_PRODUCT_FOUNDATION_DOMAIN_UNITS_TIME.md`, `03_PERSISTENCE_REVISIONS_AUDITABILITY.md`, `04_DRIVER_HOS_INPUTS_AND_DUTY_EVENTS.md`, `05_HOS_CORE_CLOCKS_AND_INTERRUPTION.md`
 - Stage 01 status: COMPLETE
 - Stage 02 status: COMPLETE
@@ -36,7 +36,7 @@
 
 ## Verification evidence
 
-GitHub Actions CI run 145 passed against a clean PostgreSQL 18 service at commit `e145c74cd4801a691c5c0db2263afa2ca437c5f9`:
+GitHub Actions CI run 159 passed against a clean PostgreSQL 18 service on the final pull-request head `2369e8177fef72e05de58e0a9cc207ac47a83fd2`:
 
 - `pnpm install --frozen-lockfile`
 - `pnpm db:generate`
@@ -46,6 +46,8 @@ GitHub Actions CI run 145 passed against a clean PostgreSQL 18 service at commit
 - `pnpm typecheck:source`
 - `pnpm test:source`
 - `pnpm build:source`
+
+The verified Stage 05 pull request was squash-merged into `main` as commit `3ee806dfedbf853647b05e44270009a5c6d2c0a7`.
 
 A strict isolated TypeScript 5.8.3 harness also passed on Node.js 22.16.0. Runtime probes verified the exact 480/481-minute interruption boundary and a 10-hour reset followed by resumed driving. Current FMCSA guidance was checked on 2026-07-20 against the official property-carrying 11-hour, 14-hour, and 30-minute-break summary before implementation.
 
@@ -64,4 +66,4 @@ A strict isolated TypeScript 5.8.3 harness also passed on Node.js 22.16.0. Runti
 
 ## Next source
 
-Stage 05 is complete and verified. Begin the next dedicated implementation stage with `06_HOS_CYCLE_RECAPS_AND_RESTART.md` after reinspecting the accepted Stage 04 evidence contracts and Stage 05 pure core engine on `main`.
+Stage 05 is complete, verified, and merged. Begin the next dedicated implementation stage with `06_HOS_CYCLE_RECAPS_AND_RESTART.md` after reopening the Prime Directive and Error Recovery Protocol and reinspecting the accepted Stage 04 evidence contracts and Stage 05 pure core engine on `main`.
