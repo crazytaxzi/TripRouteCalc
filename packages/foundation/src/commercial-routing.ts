@@ -586,9 +586,8 @@ export interface CommercialRoutingContractSummary {
 }
 
 export function commercialRouteResultSnapshot(
-  input: unknown,
+  result: NormalizedCommercialRouteResult,
 ): Readonly<Record<string, unknown>> {
-  const result = assessCommercialRoute(input);
   return freeze({
     routeId: result.routeId,
     routeKind: result.routeKind,
