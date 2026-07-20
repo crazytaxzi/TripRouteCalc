@@ -1,0 +1,11 @@
+
+> trip-route-calc@0.0.0 lint:source /home/runner/work/TripRouteCalc/TripRouteCalc
+> eslint . --max-warnings=0
+
+
+/home/runner/work/TripRouteCalc/TripRouteCalc/packages/foundation/test/equipment.test.ts
+  15:3  error  'utcInstant' is defined but never used  @typescript-eslint/no-unused-vars
+
+✖ 1 problem (1 error, 0 warnings)
+
+ ELIFECYCLE  Command failed with exit code 1.
