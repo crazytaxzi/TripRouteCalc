@@ -6,12 +6,12 @@ The product is intended to produce transparent, defensible planning estimates fo
 
 ## Current state
 
-The canonical private repository is established on `main`. Stages 01 through 03 are complete.
+The canonical private repository is established on `main`. Stages 01 through 04 are complete.
 
-- `@trip-route-calc/foundation` provides product terminology, first-release scope boundaries, explicit measurement primitives, UTC and IANA time-zone handling, DST-safe local appointment resolution, and provider-neutral domain contracts.
-- `@trip-route-calc/persistence` provides PostgreSQL and Prisma persistence, tenant-scoped repositories, ordered stops, immutable trip revisions, evidence retention, regulatory history, export history, and audit records.
+- `@trip-route-calc/foundation` provides product terminology, first-release scope boundaries, explicit measurement primitives, UTC and IANA time-zone handling, DST-safe local appointment resolution, provider-neutral domain contracts, and validated driver HOS departure-state and duty-event contracts.
+- `@trip-route-calc/persistence` provides PostgreSQL and Prisma persistence, tenant-scoped repositories, ordered stops, immutable trip revisions, evidence retention, regulatory history, export history, audit records, and immutable HOS input revisions.
 
-HOS calculations, commercial routing, compliance evaluation, ETA simulation, API behavior, and UI behavior have not started.
+The complete HOS clock engine, commercial routing, compliance evaluation, ETA simulation, API behavior, and UI behavior have not started.
 
 ## Workspace checks
 
@@ -53,7 +53,7 @@ PostgreSQL 18 uses the named volume mounted at `/var/lib/postgresql`.
 - Stage 01: Repository Audit and Implementation Plan, COMPLETE
 - Stage 02: Product Foundation, Domain, Units, and Time, COMPLETE
 - Stage 03: Persistence, Revisions, and Auditability, COMPLETE
-- Stage 04: Driver HOS Inputs and Duty Events, NOT STARTED
+- Stage 04: Driver HOS Inputs and Duty Events, COMPLETE
 
 See:
 
@@ -63,9 +63,11 @@ See:
 - `docs/implementation/handoffs/01-repository-audit-and-plan.md`
 - `docs/implementation/handoffs/02-product-foundation-domain-units-time.md`
 - `docs/implementation/handoffs/03-persistence-revisions-auditability.md`
+- `docs/implementation/handoffs/04-driver-hos-inputs-duty-events.md`
 - `docs/domain/product-foundation.md`
+- `docs/hos/README.md`
 - `docs/persistence/README.md`
-- `docs/specification/04_DRIVER_HOS_INPUTS_AND_DUTY_EVENTS.md`
+- `docs/specification/05_HOS_CORE_CLOCKS_AND_INTERRUPTION.md`
 
 ## First-release scope
 
@@ -92,4 +94,4 @@ No exception, exemption, emergency declaration, pilot program, adverse-driving r
 
 ## Next action
 
-Begin Stage 04 using `docs/specification/04_DRIVER_HOS_INPUTS_AND_DUTY_EVENTS.md`. Reinspect the canonical repository and import the existing foundation and persistence packages rather than duplicating their contracts.
+Begin Stage 05 using `docs/specification/05_HOS_CORE_CLOCKS_AND_INTERRUPTION.md`. Reinspect the accepted Stage 04 contracts and consume its recorded facts without replacing or inferring them.
