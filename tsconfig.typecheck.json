@@ -5,7 +5,9 @@
     "noEmit": true,
     "paths": {
       "@trip-route-calc/foundation": ["packages/foundation/src/index.ts"],
-      "@trip-route-calc/foundation/*": ["packages/foundation/src/*.ts"]
+      "@trip-route-calc/foundation/*": ["packages/foundation/src/*.ts"],
+      "@trip-route-calc/routing": ["packages/routing/src/index.ts"],
+      "@trip-route-calc/routing/*": ["packages/routing/src/*.ts"]
     },
     "types": ["node", "vitest/globals"]
   },
