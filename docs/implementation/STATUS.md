@@ -5,11 +5,11 @@
 - Canonical repository: `crazytaxzi/TripRouteCalc`
 - Repository visibility: private
 - Default branch: `main`
-- Active implementation branch: `agent/stage-10-stops-appointments-service`
-- Active pull request: pending
-- Last completed pull request: `#15`
-- Product status: Stage 10 stop, appointment, and service implementation complete; full repository verification in progress
-- Completed sources on `main`: `01_REPOSITORY_AUDIT_AND_PLAN.md` through `09_EQUIPMENT_LOAD_DIMENSIONS_WEIGHT.md`
+- Active implementation branch: none
+- Active pull request: none
+- Last completed pull request: `#16`
+- Product status: Stage 10 stops, appointments, waiting, and service simulation complete, verified, and merged
+- Completed sources: `01_REPOSITORY_AUDIT_AND_PLAN.md` through `10_STOPS_APPOINTMENTS_AND_SERVICE.md`
 - Stage 01 status: COMPLETE
 - Stage 02 status: COMPLETE
 - Stage 03 status: COMPLETE
@@ -19,46 +19,59 @@
 - Stage 07 status: COMPLETE
 - Stage 08 status: COMPLETE
 - Stage 09 status: COMPLETE
-- Stage 10 status: IMPLEMENTATION COMPLETE, VERIFICATION IN PROGRESS
-- Active source: `10_STOPS_APPOINTMENTS_AND_SERVICE.md`
+- Stage 10 status: COMPLETE
+- Next source: `11_COMMERCIAL_ROUTING_PROVIDER_LAYER.md`
 - Application code: `@trip-route-calc/foundation` and `@trip-route-calc/persistence`
+- Database migrations: Stage 03 initial migration, Stage 04 append-only HOS evidence migration, Stage 09 additive equipment-profile migration, and Stage 10 additive stop-detail migration
 - Production integrations: none
 
 ## Stage 10 implementation
 
 - Added independent ordered stop plans with required, optional, and locked-position controls.
-- Added resolved locations and time zones, six appointment modes, facility hours, late tolerance, parking flags, notes, and instructions.
-- Added separate check-in and service durations with exact, expected, range, and labeled historical-average methods.
-- Added overridable suggested defaults with no hidden immutable delay.
-- Added deterministic list operations and five-stop ordered processing.
-- Added distinct arrival, wait, check-in, service, HOS hold, and departure timestamps.
+- Added all specified stop types, resolved locations, IANA time zones, six appointment modes, facility hours, late tolerance, parking flags, notes, and instructions.
+- Added separate waiting, check-in, and service durations with exact, expected, range, and labeled historical-average methods.
+- Added overridable suggested defaults without hidden immutable delays.
+- Added pure list operations for add, insert, duplicate, remove, reorder, type change, required state, and position lock.
+- Added distinct arrival, waiting, check-in, service start, service completion, HOS hold, and legal departure timestamps.
 - Added early, on-time, at-risk, and missed appointment outcomes plus the earliest supplied checkpoint where lateness became unavoidable.
-- Reused the existing pure HOS core for stop duty events and parking-dependent interruption or rest overlap.
+- Reused the existing HOS core for stop duty events and parking-dependent interruption or ten-hour-rest overlap.
+- Added deterministic ordered multi-stop processing with timestamped route-leg duty events.
 - Added additive Prisma stop details inside immutable tenant-scoped trip revisions.
 
-## Verification state
+## Verification evidence
 
-The local environment does not provide a usable private-repository checkout or complete dependency graph. That limitation is classified under `ERROR_RECOVERY_PROTOCOL.md`; no unavailable local repository check is represented as successful.
+The complete repository gate passed on the final implementation and final documented heads:
 
-The complete GitHub Actions gate is authoritative and must pass before Stage 10 is marked complete:
+- CI run `422` on `ef2e982d0c7c42cbf6ae74cdfbbd908cf02a70f0`
+- final CI run `424` on `e158b40b4ea4b0fc6457d82b111203944113974f`
+
+Each run passed:
 
 - `pnpm install --frozen-lockfile`
 - `pnpm db:generate`
 - `pnpm db:validate`
-- `pnpm db:migrate:deploy`
+- clean PostgreSQL 18 `pnpm db:migrate:deploy`
 - `pnpm lint:source`
 - `pnpm typecheck:source`
-- `pnpm test:source`
+- complete `pnpm test:source`
 - `pnpm build:source`
 
-## Preserved Stage 09 evidence
+Pull request `#16` was squash-merged into `main` as `9b068794fd2b45808de05e63f55afc3d81d98eaf`.
 
-Stage 09 implementation CI run 375 passed on `cf46769b0a000cea2f885b062658dede35f1f0e0` with 133 tests. Pull request `#14` was squash-merged as `71d5d267851dafd65df9e9f520c7a913dce0c5e9`. Ledger CI run 381 passed and pull request `#15` was squash-merged as `2f8ceffce4060995a1b564cca0195b573e303973`.
+The local environment did not provide a usable private-repository checkout or complete dependency graph. That limitation was handled under `ERROR_RECOVERY_PROTOCOL.md`; no unavailable local repository check is represented as successful.
+
+## Recovery summary
+
+- Diagnosed and replaced two payload chunks altered during connector transfer.
+- Corrected the recorded payload archive checksum against preserved local SHA-256 evidence.
+- Removed every temporary payload, reconstruction, diagnostic, and repair workflow before final verification.
+- Corrected a duplicate Stage 03 index creation and Prisma column-name mismatches in the additive Stage 10 migration.
+- Corrected HOS event enum casing, mutable-array freezing, time-resolution error boundaries, leg null checking, and nested composite-relation persistence without weakening accepted rules.
 
 ## Deferred decisions and limitations
 
 - Commercial-routing provider and credentials remain unselected.
-- Facility data and appointment-confirmation providers remain unselected.
+- Facility data, appointment-confirmation, traffic, closure, and historical-service providers remain unselected.
 - Production regulatory, restriction, permit, and licensed data sources remain unselected.
 - No route may be called legal or provider-verified yet.
 - Cycle availability is never guessed; known recaps and explicitly selected restarts remain Stage 06 evidence.
@@ -66,4 +79,4 @@ Stage 09 implementation CI run 375 passed on `cf46769b0a000cea2f885b062658dede35
 
 ## Next action
 
-Complete the full repository gate for Stage 10. Correct verified defects without weakening tests, stop-time separation, DST handling, HOS boundaries, tenant isolation, or immutable revision evidence.
+Reopen the protected Prime Directive and Error Recovery Protocol, then begin `docs/specification/11_COMMERCIAL_ROUTING_PROVIDER_LAYER.md` from the accepted equipment, ordered-stop, HOS, time-zone, tenant, immutable-revision, and audit boundaries.
