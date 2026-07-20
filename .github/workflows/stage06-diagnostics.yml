@@ -1,4 +1,4 @@
-name: Stage 06 diagnostics
+name: Stage 06 final lint fix
 
 on:
   push:
@@ -6,79 +6,64 @@ on:
       - agent/stage-06-hos-cycle-recaps-restart
 
 permissions:
-  contents: read
-  pull-requests: write
+  contents: write
 
 jobs:
-  lint-diagnostics:
+  apply-fix:
+    if: github.event.head_commit.message != 'Resolve Stage 06 recap seed typing'
     runs-on: ubuntu-24.04
-    services:
-      postgres:
-        image: postgres:18-alpine
-        env:
-          POSTGRES_DB: trip_route_calc_test
-          POSTGRES_USER: postgres
-          POSTGRES_PASSWORD: postgres
-        ports:
-          - 5432:5432
-        options: >-
-          --health-cmd "pg_isready -U postgres -d trip_route_calc_test"
-          --health-interval 5s
-          --health-timeout 5s
-          --health-retries 12
-    env:
-      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/trip_route_calc_test
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
-      - name: Set up Node.js
-        uses: actions/setup-node@v4
         with:
-          node-version: 22
-      - name: Enable pnpm
+          ref: agent/stage-06-hos-cycle-recaps-restart
+      - name: Replace assertion with explicit typed entries
+        shell: python
         run: |
-          corepack enable
-          corepack prepare pnpm@9.15.4 --activate
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile
-      - name: Generate Prisma client
-        run: pnpm db:generate
-      - name: Capture full lint output
+          from pathlib import Path
+
+          source = Path('packages/foundation/src/hos-cycle.ts')
+          text = source.read_text()
+          old = """function reconcileRecaps(
+            entered: readonly CycleRecapReturn[],
+            derivedSeeds: readonly AvailabilitySeed[],
+          ): HosRecapReconciliation {
+            const mismatches: HosRecapMismatch[] = [];
+            const enteredByDate = new Map(entered.map((value) => [recapKey(value), value]));
+            const derivedByDate = new Map(
+              derivedSeeds
+                .filter((value) => value.kind === 'RECAP' && value.sourceDate !== undefined)
+                .map((value) => [value.sourceDate!, value]),
+            );
+          """
+          new = """function recapSeedEntries(
+            seeds: readonly AvailabilitySeed[],
+          ): readonly (readonly [string, AvailabilitySeed])[] {
+            const entries: Array<readonly [string, AvailabilitySeed]> = [];
+            for (const seed of seeds) {
+              if (seed.kind === 'RECAP' && seed.sourceDate !== undefined) {
+                entries.push([seed.sourceDate, seed]);
+              }
+            }
+            return freeze(entries);
+          }
+
+          function reconcileRecaps(
+            entered: readonly CycleRecapReturn[],
+            derivedSeeds: readonly AvailabilitySeed[],
+          ): HosRecapReconciliation {
+            const mismatches: HosRecapMismatch[] = [];
+            const enteredByDate = new Map(entered.map((value) => [recapKey(value), value]));
+            const derivedByDate = new Map(recapSeedEntries(derivedSeeds));
+          """
+          if old not in text:
+              raise SystemExit('Expected recap reconciliation block was not found.')
+          source.write_text(text.replace(old, new))
+      - name: Commit exact correction
         shell: bash
         run: |
-          set +e
-          pnpm lint:source > stage06-lint.log 2>&1
-          status=$?
-          printf '%s\n' "$status" > stage06-lint.exit
-          exit 0
-      - name: Post lint diagnostics to the draft pull request
-        uses: actions/github-script@v7
-        with:
-          script: |
-            const fs = require('fs');
-            const output = fs.readFileSync('stage06-lint.log', 'utf8');
-            const exitCode = fs.readFileSync('stage06-lint.exit', 'utf8').trim();
-            const marker = '<!-- stage06-lint-diagnostics -->';
-            const body = `${marker}\nTemporary Stage 06 full lint diagnostics, exit code ${exitCode}:\n\n\`\`\`text\n${output.slice(-60000)}\n\`\`\``;
-            const comments = await github.paginate(github.rest.issues.listComments, {
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              issue_number: 8,
-            });
-            const existing = comments.find((comment) =>
-              comment.user?.type === 'Bot' && comment.body?.includes(marker));
-            if (existing) {
-              await github.rest.issues.updateComment({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                comment_id: existing.id,
-                body,
-              });
-            } else {
-              await github.rest.issues.createComment({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                issue_number: 8,
-                body,
-              });
-            }
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add packages/foundation/src/hos-cycle.ts
+          git commit -m "Resolve Stage 06 recap seed typing"
+          git push origin HEAD:agent/stage-06-hos-cycle-recaps-restart
