@@ -7,8 +7,28 @@ import {
   inspectLocalTime,
   resolveAppointmentWindow,
   resolveZonedLocalDateTime,
+  TimeResolutionError,
+  type TimeResolutionErrorCode,
   utcInstant,
 } from '../src/time.js';
+
+function expectTimeResolutionError(
+  action: () => unknown,
+  expectedCode: TimeResolutionErrorCode,
+): void {
+  try {
+    action();
+  } catch (error) {
+    expect(error).toBeInstanceOf(TimeResolutionError);
+    if (!(error instanceof TimeResolutionError)) {
+      throw error;
+    }
+    expect(error.code).toBe(expectedCode);
+    return;
+  }
+
+  throw new Error(`Expected TimeResolutionError with code ${expectedCode}.`);
+}
 
 describe('UTC and IANA time foundations', () => {
   it('canonicalizes authoritative instants to UTC', () => {
@@ -29,8 +49,9 @@ describe('UTC and IANA time foundations', () => {
     };
 
     expect(inspectLocalTime(local)).toEqual({ kind: 'gap' });
-    expect(() => resolveZonedLocalDateTime(local)).toThrowError(
-      expect.objectContaining({ code: 'NONEXISTENT_LOCAL_TIME' }),
+    expectTimeResolutionError(
+      () => resolveZonedLocalDateTime(local),
+      'NONEXISTENT_LOCAL_TIME',
     );
   });
 
@@ -42,8 +63,9 @@ describe('UTC and IANA time foundations', () => {
     const inspection = inspectLocalTime(local);
 
     expect(inspection.kind).toBe('repeated');
-    expect(() => resolveZonedLocalDateTime(local)).toThrowError(
-      expect.objectContaining({ code: 'AMBIGUOUS_LOCAL_TIME' }),
+    expectTimeResolutionError(
+      () => resolveZonedLocalDateTime(local),
+      'AMBIGUOUS_LOCAL_TIME',
     );
 
     const earlier = resolveZonedLocalDateTime({
@@ -79,19 +101,19 @@ describe('UTC and IANA time foundations', () => {
   });
 
   it('rejects appointment windows that do not move forward in time', () => {
-    expect(() =>
-      resolveAppointmentWindow({
-        start: {
-          localDateTime: '2026-07-20T10:00',
-          timeZone: 'America/Chicago',
-        },
-        end: {
-          localDateTime: '2026-07-20T09:00',
-          timeZone: 'America/Chicago',
-        },
-      }),
-    ).toThrowError(
-      expect.objectContaining({ code: 'INVALID_APPOINTMENT_WINDOW' }),
+    expectTimeResolutionError(
+      () =>
+        resolveAppointmentWindow({
+          start: {
+            localDateTime: '2026-07-20T10:00',
+            timeZone: 'America/Chicago',
+          },
+          end: {
+            localDateTime: '2026-07-20T09:00',
+            timeZone: 'America/Chicago',
+          },
+        }),
+      'INVALID_APPOINTMENT_WINDOW',
     );
   });
 
