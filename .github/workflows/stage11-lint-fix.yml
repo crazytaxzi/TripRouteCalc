@@ -1,0 +1,115 @@
+name: Stage 11 Lint Fix
+
+on:
+  pull_request:
+    branches:
+      - main
+    types:
+      - synchronize
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out implementation branch
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          ref: ${{ github.head_ref }}
+
+      - name: Apply exact Stage 11 lint corrections
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+
+          def replace_once(path: str, before: str, after: str) -> None:
+              target = Path(path)
+              text = target.read_text()
+              count = text.count(before)
+              if count != 1:
+                  raise SystemExit(f'{path}: expected one exact match, found {count}: {before!r}')
+              target.write_text(text.replace(before, after))
+
+          foundation = 'packages/foundation/test/commercial-routing.test.ts'
+          replace_once(
+              foundation,
+              "} from '../src/index.js';\n\nfunction location(",
+              "} from '../src/index.js';\nimport type {\n  CommercialRoutePayload,\n  CommercialRouteRequest,\n  ResolvedCommercialLocation,\n} from '../src/index.js';\n\nfunction location(",
+          )
+          replace_once(
+              foundation,
+              "): Readonly<Record<string, unknown>> {\n  return {",
+              "): ResolvedCommercialLocation {\n  return {",
+          )
+          replace_once(
+              foundation,
+              "function request(): Readonly<Record<string, unknown>> {",
+              "function request(): CommercialRouteRequest {",
+          )
+          replace_once(
+              foundation,
+              "  overrides: Record<string, unknown> = {},\n): Readonly<Record<string, unknown>> {",
+              "  overrides: Partial<CommercialRoutePayload> = {},\n): CommercialRoutePayload {",
+          )
+
+          persistence = 'packages/persistence/test/route-provider-contract.integration.test.ts'
+          replace_once(
+              persistence,
+              "} from '@trip-route-calc/foundation';\nimport { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';",
+              "} from '@trip-route-calc/foundation';\nimport type { NormalizedCommercialRouteResult } from '@trip-route-calc/foundation';\nimport { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';",
+          )
+          replace_once(
+              persistence,
+              "function routeResult() {",
+              "function routeResult(): NormalizedCommercialRouteResult {",
+          )
+
+          service = 'packages/routing/src/commercial-routing-service.ts'
+          replace_once(
+              service,
+              "const calculateComparison = this.provider.calculateConsumerComparison;",
+              "const calculateComparison = this.provider.calculateConsumerComparison.bind(\n      this.provider,\n    );",
+          )
+          replace_once(
+              service,
+              "const getTrafficEstimate = this.provider.getTrafficEstimate;",
+              "const getTrafficEstimate = this.provider.getTrafficEstimate.bind(\n      this.provider,\n    );",
+          )
+          replace_once(
+              service,
+              "const getRoadClosures = this.provider.getRoadClosures;",
+              "const getRoadClosures = this.provider.getRoadClosures.bind(this.provider);",
+          )
+          replace_once(
+              service,
+              "config.provider.metadata.credentialRequirement === 'required'",
+              "config.provider?.metadata.credentialRequirement === 'required'",
+          )
+
+          routing_test = 'packages/routing/test/commercial-routing-service.test.ts'
+          replace_once(
+              routing_test,
+              "JSON.stringify { credential })",
+              "JSON.stringify({ credential })",
+          )
+
+          Path('.github/workflows/stage11-lint-diagnostic.yml').unlink(missing_ok=True)
+          Path('.github/workflows/stage11-lint-fix.yml').unlink(missing_ok=True)
+          PY
+
+      - name: Commit Stage 11 lint corrections
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git diff --cached --check
+          git commit -m "Fix Stage 11 lint findings"
+          git push origin HEAD:agent/stage-11-commercial-routing-provider
