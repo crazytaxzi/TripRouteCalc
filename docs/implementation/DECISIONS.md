@@ -129,3 +129,27 @@ Regulatory rule sets and jurisdiction rules are versioned, effective-dated, sour
 **Status:** Accepted
 
 Export history stores revision, actor, timestamp, format, content hash, and metadata. Generated document bodies remain outside the database unless a later retention decision explicitly requires otherwise.
+
+## D-019: Keep departure clocks and carrier targets independent
+
+**Status:** Accepted
+
+Driving time remaining, shift time remaining, and cycle time remaining are separate entered facts. No value is inferred from another. Carrier driving and duty targets are additional planning constraints and may be stricter than the entered legal clocks without making the departure state contradictory. Later engines must apply the most restrictive applicable constraint explicitly.
+
+## D-020: Model Stage 04 as validated facts, not legal scheduling conclusions
+
+**Status:** Accepted
+
+Stage 04 records current duty status, clock values, prior-day totals, recap returns, sleeper evidence, restart intent, rest preferences, and timestamped duty events. It validates contradictions, ordering, duration, provenance, and explicit clock-effect metadata, but does not calculate legal continuation time, insert rest, validate a sleeper pairing, or activate an exception. Those conclusions belong to later pure HOS stages.
+
+## D-021: Preserve HOS inputs and event history as append-only evidence revisions
+
+**Status:** Accepted
+
+A complete HOS departure state and its ordered duty-event history are written together in one transaction. The records are carrier-scoped, actor-attributed, driver-owned, canonical-hashed, and protected by PostgreSQL append-only triggers. Loading a revision revalidates the domain payload and verifies its hash before returning it.
+
+## D-022: Distinguish data origin from verification
+
+**Status:** Accepted
+
+User-entered, provider-derived, and calculated values each carry a separate verification state, source, and explanation. Provider-derived does not automatically mean verified. Missing verification must remain visible to later engines and user interfaces.
