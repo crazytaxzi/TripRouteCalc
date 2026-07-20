@@ -69,14 +69,14 @@ function priorDays(
 export function departureState(
   overrides: Readonly<Record<string, unknown>> = {},
 ): DriverHosDepartureState {
-  const departureAt = typeof overrides['departureAt'] === 'string'
-    ? overrides['departureAt']
+  const departureAt = typeof overrides.departureAt === 'string'
+    ? overrides.departureAt
     : '2026-07-20T00:00:00.000Z';
-  const departureTimeZone = typeof overrides['departureTimeZone'] === 'string'
-    ? overrides['departureTimeZone']
+  const departureTimeZone = typeof overrides.departureTimeZone === 'string'
+    ? overrides.departureTimeZone
     : 'UTC';
   const cycleType = (
-    overrides['cycleType'] ?? 'SEVENTY_HOURS_EIGHT_DAYS'
+    overrides.cycleType ?? 'SEVENTY_HOURS_EIGHT_DAYS'
   ) as HosCycleType;
   return validateDriverHosDepartureState({
     driver: { id: 'driver-stage-08', nameOrIdentifier: 'Driver Stage 08' },
