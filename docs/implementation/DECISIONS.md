@@ -153,3 +153,21 @@ A complete HOS departure state and its ordered duty-event history are written to
 **Status:** Accepted
 
 User-entered, provider-derived, and calculated values each carry a separate verification state, source, and explanation. Provider-derived does not automatically mean verified. Missing verification must remain visible to later engines and user interfaces.
+
+## D-023: Keep the Stage 05 HOS core pure and transition-oriented
+
+**Status:** Accepted
+
+`calculateHosCore` consumes only validated Stage 04 facts and a complete ordered event sequence. It performs deterministic integer-minute arithmetic and returns immutable clock snapshots, per-event transitions, violations, milestones, blocking reasons, next actions, and explanations. It has no UI, ORM, database, map, route-provider, ETA, or network dependency. Later HOS modules must extend or compose this boundary rather than duplicate its arithmetic.
+
+## D-024: Derive the standard 30-minute interruption from consecutive non-driving statuses
+
+**Status:** Accepted
+
+For the standard federal property-carrying rule, any consecutive combination of off-duty, sleeper-berth, and on-duty-not-driving time may satisfy the 30-minute interruption. The engine therefore evaluates the ordered duty-status sequence directly rather than trusting a single event's candidate-qualification flag. The candidate flag remains recorded evidence, while the Stage 05 legal conclusion is derived transparently from status and time.
+
+## D-025: A 10-hour reset restores daily clocks but not cycle availability
+
+**Status:** Accepted
+
+Ten consecutive hours composed of off-duty and sleeper-berth time restore the standard 11-hour driving allowance and create a fresh 14-hour window when work resumes. The reset does not restore cycle availability. Cycle recaps and explicitly selected 34-hour restarts remain the responsibility of Stage 06.
