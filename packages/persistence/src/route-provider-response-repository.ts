@@ -67,7 +67,17 @@ export class RouteProviderResponseRepository {
   public async saveNormalizedCommercialRouteEvidence(
     input: SaveNormalizedCommercialRouteEvidenceInput,
   ): Promise<Prisma.RouteProviderResponseGetPayload<Record<string, never>>> {
-    const result = assessCommercialRoute(input.result);
+    const result = assessCommercialRoute({
+      routeId: input.result.routeId,
+      routeKind: input.result.routeKind,
+      provider: input.result.provider,
+      totalDistance: input.result.totalDistance,
+      travelDuration: input.result.travelDuration,
+      geometry: input.result.geometry,
+      legs: input.result.legs,
+      restrictions: input.result.restrictions,
+      unavailableFields: input.result.unavailableFields,
+    });
     const common = {
       tripRevisionId: input.tripRevisionId,
       ...(input.routeId === undefined ? {} : { routeId: input.routeId }),
