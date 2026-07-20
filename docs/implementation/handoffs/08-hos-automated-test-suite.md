@@ -79,7 +79,7 @@ Stage 08 began from accepted production behavior. It was treated as a proof and 
 
 None in the intended Stage 08 diff.
 
-Temporary payload, reconstruction workflow, lint diagnostic, and trigger files were used only on the isolated branch during protected recovery and removed before final review.
+Temporary payload, reconstruction workflow, lint diagnostic, ledger-patch workflow, and trigger files were used only on the isolated branch during protected recovery and removed before final review.
 
 ## Database and data changes
 
@@ -96,11 +96,15 @@ The new persistence test creates isolated test records and relies on the existin
 
 The local container still lacked normal GitHub and package-registry DNS, pnpm, Docker, and GitHub CLI. Recovery preserved the Stage 07 main checkpoint, compiled the new foundation tests through a strict isolated TypeScript harness, moved hash-verified payloads through a one-use branch workflow, removed all staging artifacts, and used GitHub Actions for authoritative repository verification.
 
-The first CI pass found five test-fixture dot-notation lint findings. They were corrected without changing behavior. No product-source defect was found by the expanded suite.
+The first CI pass found five test-fixture dot-notation lint findings. They were corrected without changing behavior. A later documentation patch repeatedly completed its edits but failed a brittle commit precheck; the valid edits were recovered, the precheck was removed, and all temporary workflow and trigger files were deleted. No product-source defect was found by the expanded suite.
 
 ## Verification results
 
-GitHub Actions CI run 293 passed against implementation head `106c9842023e8a41a38d29b72e75b5f447ec9894`:
+GitHub Actions CI run 293 passed against implementation head `106c9842023e8a41a38d29b72e75b5f447ec9894`.
+
+GitHub Actions CI run 313 passed against the clean documented head `2721c749a496da804b5f953141bd048a7bc2d1fd`.
+
+Both successful runs included:
 
 - frozen-lockfile installation: PASS
 - Prisma client generation: PASS
@@ -111,7 +115,7 @@ GitHub Actions CI run 293 passed against implementation head `106c9842023e8a41a3
 - complete Vitest unit and integration suite: PASS
 - production TypeScript build: PASS
 
-The final documentation commits remain behind the same full gate and must pass repeatedly before pull request `#12` leaves draft or merges.
+The final handoff and repeated-verification record remain behind the same full gate. Pull request `#12` must not leave draft or merge unless that final documented head is successful.
 
 ## Boundary and adversarial audit
 
@@ -144,8 +148,8 @@ No remaining item blocks the Stage 08 exit gate.
 
 - Stage branch: `agent/stage-08-hos-automated-tests`
 - Pull request: `#12`
-- Last fully verified implementation checkpoint: `106c9842023e8a41a38d29b72e75b5f447ec9894`
-- Required merge condition: repeated successful full CI runs on the final documented head
+- Last fully verified clean checkpoint: `2721c749a496da804b5f953141bd048a7bc2d1fd`
+- Required merge condition: successful full CI on the final documented pull-request head
 - Stage 08 remains isolated from `main` until merge
 
 ## Next source
