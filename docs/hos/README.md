@@ -1,6 +1,6 @@
 # Driver HOS Contracts and Calculation Engines
 
-Stages 04 through 06 establish the validated HOS facts and the first pure federal property-carrying calculation services. The implementation is a planning engine, not an ELD, and it does not claim that a complete trip or route is legal.
+Stages 04 through 07 establish validated HOS evidence and separate pure federal property-carrying calculation services. TripRouteCalc remains a planning engine, not an ELD, and it does not claim that a complete trip or route is legal.
 
 ## Stable boundaries
 
@@ -19,153 +19,148 @@ The Stage 06 rolling cycle engine is exported from:
 - `@trip-route-calc/foundation`
 - `@trip-route-calc/foundation/hos-cycle`
 
-The persistence functions are exported from `@trip-route-calc/persistence`.
+The Stage 07 advanced-rule evaluator is exported from:
 
-## Departure state
+- `@trip-route-calc/foundation`
+- `@trip-route-calc/foundation/hos-advanced`
 
-A `DriverHosDepartureState` records the complete minute-precise state at departure:
+Persistence functions are exported from `@trip-route-calc/persistence`.
 
-- driver identifier or name
-- UTC departure timestamp and IANA departure time zone
-- current duty status and the UTC timestamp when it began
-- independent driving, shift, and cycle clocks
-- selected 60-hour/7-day or 70-hour/8-day cycle
-- driving since the last qualifying interruption
-- current-shift on-duty time
-- immediately preceding off-duty time and 10-hour-break claim
-- the required previous seven or eight local-day on-duty totals
-- ordered cycle recap returns
-- sleeper eligibility and existing sleeper-period evidence
-- explicit split-sleeper and 34-hour-restart intent
-- carrier driving and duty targets
-- optional local nightly-rest preference
-- provenance for every input group
+## Departure state and duty events
 
-The three primary clocks remain independent. A carrier target is also a separate planning constraint and may be stricter than the entered legal clock.
+A `DriverHosDepartureState` preserves the driver, departure instant and time zone, current duty status, independent driving, shift, and cycle clocks, interruption state, current-shift duty time, prior cycle history, recap expectations, sleeper eligibility and evidence, explicit split-sleeper and restart intent, carrier targets, optional rest preference, and provenance.
 
-## Duty events
+Every `DutyEvent` records exact UTC timestamps and integer-minute duration, duty status, event type and location, source and explanation, clock effects, interruption candidacy, sleeper-pair participation, and provenance.
 
-Every `DutyEvent` records:
+History validation rejects caller-supplied events that are out of order, overlap, or contain unexplained gaps. It never silently sorts, truncates, joins, or changes events.
 
-- UTC start and end timestamps
-- exact integer-minute duration
-- one supported duty status
-- event type, location, and IANA time zone
-- source and explanation
-- explicit driving, shift-window, and cycle effects
-- whether it is a candidate qualifying 30-minute interruption
-- whether it is candidate evidence for a sleeper pairing
-- provenance and verification state
+Sleeper-pair candidate validation permits:
 
-History validation rejects caller-supplied events that are out of order, overlap, or contain an unexplained gap. It never silently sorts, truncates, joins, or changes events.
+- a long period of at least seven consecutive hours only in `SLEEPER_BERTH`
+- a short period of at least two consecutive hours in `OFF_DUTY` or `SLEEPER_BERTH`
+
+Candidate metadata alone never makes a pair legally effective.
 
 ## Stage 05 core calculation
 
-`calculateHosCore` consumes one validated departure state and a complete ordered event sequence beginning at the departure boundary. It returns immutable snapshots and transitions containing:
+`calculateHosCore` consumes one validated departure state and a complete ordered event sequence beginning at departure. It owns:
 
-- driving, shift, and cycle minutes remaining
-- cumulative driving since the last qualifying interruption
-- current-shift on-duty time
-- consecutive non-driving and reset-qualifying streaks
-- whether the 14-hour window is active
-- whether driving may legally continue under the Stage 05 core constraints
-- structured blocking reasons and violations
-- exact timestamps when a violation first begins
-- legal and prohibited driving minutes for every driving event
-- qualifying interruption and 10-hour-reset milestones
-- the next required legal action and plain-language reasons
+- the standard 11-hour driving allowance
+- the 14-consecutive-hour driving window
+- the 30-minute interruption after eight cumulative driving hours
+- the standard 10-consecutive-hour reset
+- immutable snapshots, transitions, violations, milestones, blocking reasons, and next actions
 
-The standard Stage 05 rule set applies:
-
-- no more than 11 driving hours after a qualifying 10-consecutive-hour off-duty period
-- no driving after the end of the 14-consecutive-hour window
-- no additional driving after eight cumulative driving hours without at least 30 consecutive non-driving minutes
-- any combination of off-duty, sleeper-berth, and on-duty-not-driving time may satisfy the standard 30-minute interruption
-- only consecutive off-duty and sleeper-berth time contributes to the 10-hour reset
-- a 10-hour reset restores the 11-hour driving allowance and 14-hour window but does not restore cycle availability
-- ordinary stops do not pause an active 14-hour window
-- on-duty-not-driving work consumes shift and cycle time but not driving time
+A 10-hour reset restores the standard driving allowance and shift window but does not restore cycle availability.
 
 ## Stage 06 rolling cycle calculation
 
-`calculateHosCycle` consumes:
+`calculateHosCycle` consumes complete timestamped history, optional planned events, a carrier-designated home-terminal regulatory-day boundary, and optional explicitly selected restart evidence. It owns:
+
+- rolling 60-hour/7-day and 70-hour/8-day calculations
+- regulatory-day windows and DST boundary evidence
+- recap timing and reconciliation
+- cycle blocking and exact first-prohibited timestamps
+- explicitly selected and fully evidenced 34-hour restart effects
+
+Stage 06 does not reimplement Stage 05 daily-clock arithmetic.
+
+## Stage 07 advanced-rule calculation
+
+`calculateHosAdvancedRules` consumes:
 
 - one validated departure state
-- a complete contiguous historical duty-event sequence ending exactly at departure
-- an optional complete planned duty-event sequence beginning exactly at departure
-- an explicit carrier-designated home-terminal regulatory-day boundary
-- an optional explicitly selected historical 34-hour restart supported by timestamped evidence
+- complete historical evidence when needed for existing sleeper periods
+- the planned duty-event sequence
+- a matching Stage 05 core result
+- an optional explicitly selected sleeper-pair identifier
+- an optional adverse-driving-condition selection
+- optional unsupported special-rule selections
 
-The regulatory boundary includes a validated IANA time zone, local `HH:mm` start time, repeated-time choice, and nonexistent-time resolution. Event-location time zones do not redefine this home-terminal cycle boundary.
+It returns immutable sleeper, adverse, carrier-policy, rest-preference, and unsupported-rule results with structured issues and explanations.
 
-The service returns immutable results containing:
+### Split sleeper
 
-- the seven-day or eight-day regulatory window
-- exact UTC start and end timestamps for every regulatory day
-- DST boundary-resolution evidence
-- derived on-duty minutes for every regulatory day
-- entered-versus-derived cycle-clock reconciliation
-- entered-versus-derived recap reconciliation
-- timestamped recap and restart availability events
-- initial and final cycle snapshots
-- per-event legal and prohibited on-duty minutes
-- exact cycle-violation timestamps
-- structured blocking reasons and violations
-- next-cycle-availability guidance and plain-language reasons
+A pair affects clocks only when:
 
-The standard Stage 06 behavior is:
+- split sleeper is enabled and the driver is recorded as eligible
+- the caller explicitly selects one pair identifier
+- exactly one long and one short period carry that identity
+- both periods have exact supporting events or exact recorded evidence
+- the periods do not overlap
+- each period lasts at least two hours
+- the long period lasts at least seven consecutive hours in the sleeper berth
+- the combined periods total at least ten hours
+- the recalculated driving and 14-hour limits remain valid around both periods
 
-- driving and on-duty-not-driving consume rolling cycle availability
-- off-duty and sleeper-berth time do not consume cycle availability
-- the 60-hour/7-day or 70-hour/8-day limit is derived from timestamped history
-- entered cycle clocks and recap predictions are preserved and reconciled rather than silently overwritten
-- hours from the oldest regulatory day return at the configured home-terminal boundary
-- driving and on-duty work are blocked when derived cycle availability reaches zero
-- a historical 34-hour restart is applied only when explicitly selected and fully evidenced
-- a future 34-hour restart is applied only when explicitly planned and actually completed in the supplied timeline
-- qualifying rest already in progress before departure may continue across the departure boundary
-- an earlier sufficient recap is preferred over an unnecessary restart
+For an applied pair, the engine:
 
-All authoritative arithmetic uses non-negative integer minutes and UTC instants.
+- preserves both period identities and their order
+- recalculates at the end of the second period
+- anchors the recalculation at the end of the first period
+- excludes both qualifying periods from the 14-hour calculation
+- leaves cycle availability unchanged
+- explains the exact driving and shift time remaining
+
+An explicitly selected valid pair may still be used when a ten-consecutive-hour qualifying period could independently reset the standard clocks. The Stage 05 reset remains visible in its own result; Stage 07 preserves the documented pair choice rather than silently discarding it.
+
+### Adverse driving conditions
+
+The adverse result is `NOT_SELECTED`, `APPLIED`, or `REJECTED`.
+
+An extension is applied only when the selection includes:
+
+- an identifier, encounter timestamp, condition type, description, source, and explanation
+- a requested whole-minute extension no greater than 120 minutes
+- a supported or verified evidence confidence
+- confirmation that the run was legally completable under normal limits
+- confirmation that the driver could not reasonably know of the condition before the relevant duty or qualifying-rest period
+- confirmation that the carrier could not reasonably know before dispatch
+- confirmation that the condition prevented safe completion within normal limits
+- an encounter timestamp that matches a Stage 05 event boundary
+
+The result may extend the federal driving limit and driving window by no more than two hours. It never restores cycle availability or waives the 30-minute interruption. Ordinary congestion, routine weather, delay, or poor planning is not automatically classified as adverse.
+
+### Carrier policy and rest preference
+
+Carrier maximum daily-driving and duty targets remain separate from federal maxima. The engine reports the effective lower planning limits and exact timestamps when carrier policy is exceeded.
+
+An optional nightly-rest preference is evaluated as a planning-policy conflict. It does not rewrite federal HOS clocks or create a federal violation.
+
+### Unsupported special rules
+
+Personal conveyance, yard move, short haul, the 16-hour exception, agriculture, emergency declarations or exceptions, team-driver operation, and pilot programs are never automatically approximated. Selections remain visible as blocking/manual warnings and do not alter clocks.
+
+The current 6/4 and 5/5 flexible-sleeper alternatives and split-duty alternatives are pilot-only, not standard Stage 07 rules.
 
 ## Composition boundary
 
-Stage 05 and Stage 06 intentionally return separate result objects. A caller must obey the most restrictive applicable constraint from both engines. Stage 06 does not reimplement the 11-hour, 14-hour, interruption, or 10-hour-reset calculations, and Stage 05 does not derive rolling cycle history, recaps, or restart restoration.
+Stages 05, 06, and 07 intentionally return separate immutable result objects. A later caller must compose them and obey every applicable legal or stricter carrier constraint.
 
-## Provenance
+- Stage 05 owns standard daily clocks and reset transitions.
+- Stage 06 owns rolling cycle history, recaps, and restart effects.
+- Stage 07 owns explicit advanced-rule qualification and carrier-policy outcomes.
 
-Inputs identify their origin as:
-
-- `USER_ENTERED`
-- `PROVIDER_DERIVED`
-- `CALCULATED`
-
-Each origin also carries `UNVERIFIED` or `VERIFIED`, plus an optional source name, verification timestamp, and explanation. A provider-derived value is not considered verified merely because it came from a provider.
+No module may duplicate another module's authoritative arithmetic for convenience.
 
 ## Persistence
 
-`createDriverHosRevision` writes one immutable departure-state revision and one immutable ordered event-history revision in a single transaction. Records are carrier-scoped, actor-attributed, driver-owned, and protected by canonical SHA-256 hashes and PostgreSQL append-only triggers.
+`createDriverHosRevision` writes immutable departure-state and ordered event-history evidence. `getDriverHosRevision` reloads, validates, and hash-verifies that evidence.
 
-`getDriverHosRevision` reloads the evidence, validates it again through the pure domain contracts, and verifies both hashes before returning it.
-
-Stages 05 and 06 add no database table or migration. Calculation outputs remain pure derived results until a later stage defines their revision boundary.
+Stages 05 through 07 add no database table or migration. Their outputs remain derived results until a later stage defines a persisted calculation-result revision boundary.
 
 ## Deliberate boundaries
 
-Stages 05 and 06 do not:
+The accepted HOS modules do not:
 
-- infer one entered primary clock from another
-- validate a sleeper split
-- apply adverse conditions or carrier-policy limits
-- apply personal conveyance, an exception, exemption, pilot program, or emergency declaration
-- persist calculation outputs
+- activate an exception, exemption, declaration, pilot program, personal conveyance, or yard move automatically
+- insert route events or choose rest locations
 - merge HOS results into routing or ETA
+- persist calculation outputs
 - call a route or complete trip legal
-
-Those behaviors belong to later numbered stages and must consume the recorded facts and accepted calculation transitions rather than duplicating the arithmetic.
 
 ## Regulatory verification
 
-The Stage 05 standard rule behavior was checked on 2026-07-20 against current official FMCSA property-carrying HOS guidance and the federal 30-minute-break explanation.
+Stage 07 behavior was checked on 2026-07-20 against current official FMCSA HOS guidance, the property-carrying HOS summary, and revised split-sleeper guidance issued July 1, 2026. The standard representation remains at least seven consecutive hours in the sleeper berth plus at least two consecutive hours off duty inside or outside the berth, totaling at least ten hours, with neither period counted against the 14-hour window. The adverse-driving-condition provision may extend the driving limit and driving window by up to two hours when fully qualified.
 
-The Stage 06 cycle and restart behavior was checked on 2026-07-20 against current official FMCSA guidance and 49 CFR 395.2, 395.3, and 395.8. The implementation uses the carrier-designated home-terminal 24-hour period and does not apply obsolete 1 a.m. to 5 a.m. or once-per-168-hour restart restrictions. Production regulatory records remain subject to the later versioned, effective-dated, source-attributed regulatory workflow.
+Production regulatory records remain subject to the later versioned, effective-dated, source-attributed regulatory workflow.

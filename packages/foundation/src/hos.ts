@@ -708,11 +708,14 @@ export function validateDutyEvent(input: unknown, path = 'dutyEvent'): DutyEvent
   if (dutyStatus === 'DRIVING' && qualifiesForThirtyMinuteInterruption) {
     issues.push({ code: 'CONTRADICTORY_STATE', path: `${path}.qualifiesForThirtyMinuteInterruption`, message: 'Driving cannot satisfy the non-driving interruption.' });
   }
-  if (sleeperPair.participates && dutyStatus !== 'SLEEPER_BERTH') {
-    issues.push({ code: 'CONTRADICTORY_STATE', path: `${path}.sleeperPair`, message: 'Only sleeper-berth events may participate in a sleeper pairing.' });
-  }
   if (sleeperPair.participates) {
     const candidateRole = sleeperPair.candidateRole ?? 'SHORT_PERIOD';
+    const statusQualifies = candidateRole === 'LONG_PERIOD'
+      ? dutyStatus === 'SLEEPER_BERTH'
+      : dutyStatus === 'OFF_DUTY' || dutyStatus === 'SLEEPER_BERTH';
+    if (!statusQualifies) {
+      issues.push({ code: 'CONTRADICTORY_STATE', path: `${path}.sleeperPair`, message: 'A long paired period must be sleeper-berth time; a short paired period may be off-duty or sleeper-berth time.' });
+    }
     const minimum = candidateRole === 'LONG_PERIOD' ? 7 * 60 : 2 * 60;
     if (parsedDuration.value < minimum) {
       issues.push({ code: 'CONTRADICTORY_STATE', path: `${path}.sleeperPair.candidateRole`, message: `${candidateRole} requires at least ${String(minimum)} minutes.` });
