@@ -6,19 +6,19 @@
 - Repository visibility: private
 - Default branch: `main`
 - Active implementation branch: `stage-04-clean-hos-inputs`
-- Active pull request: pending
-- Product status: validated driver HOS departure-state and timestamped duty-event implementation assembled; authoritative CI verification pending
-- Completed sources: `01_REPOSITORY_AUDIT_AND_PLAN.md`, `02_PRODUCT_FOUNDATION_DOMAIN_UNITS_TIME.md`, `03_PERSISTENCE_REVISIONS_AUDITABILITY.md`
+- Active pull request: `#4`
+- Product status: validated driver HOS departure-state and timestamped duty-event implementation complete and verified
+- Completed sources: `01_REPOSITORY_AUDIT_AND_PLAN.md`, `02_PRODUCT_FOUNDATION_DOMAIN_UNITS_TIME.md`, `03_PERSISTENCE_REVISIONS_AUDITABILITY.md`, `04_DRIVER_HOS_INPUTS_AND_DUTY_EVENTS.md`
 - Stage 01 status: COMPLETE
 - Stage 02 status: COMPLETE
 - Stage 03 status: COMPLETE
-- Active source: `04_DRIVER_HOS_INPUTS_AND_DUTY_EVENTS.md`
-- Stage 04 status: VERIFICATION PENDING
+- Stage 04 status: COMPLETE
+- Next source: `05_HOS_CORE_CLOCKS_AND_INTERRUPTION.md`
 - Application code: `@trip-route-calc/foundation` and `@trip-route-calc/persistence`
-- Database migrations: Stage 03 initial migration plus the pending Stage 04 append-only HOS evidence migration
+- Database migrations: Stage 03 initial migration plus the verified Stage 04 append-only HOS evidence migration
 - Production integrations: none
 
-## Stage 04 implementation assembled
+## Stage 04 completed
 
 - Added a pure HOS departure-state and duty-event contract to the existing foundation package.
 - Represented driving, shift, and cycle clocks as independent integer-minute constraints.
@@ -31,17 +31,9 @@
 - Added PostgreSQL constraints and append-only triggers for the new HOS evidence tables.
 - Added focused pure-domain tests and PostgreSQL integration coverage.
 
-## Verification evidence so far
+## Verification evidence
 
-The isolated Stage 04 source passed the following checks with Node.js 22 and TypeScript 5.8.3:
-
-- strict TypeScript compilation for the HOS source
-- strict TypeScript compilation for the persistence repository source
-- TypeScript compilation of the Vitest test shapes
-- 11 focused Node test-harness checks for validation, ordering, serialization, tenant isolation, hashing, and round-trip loading
-- static migration assertions
-
-The local execution environment could not download pnpm packages and did not provide Docker, Podman, or PostgreSQL. The following repository-authoritative checks remain required in the pull-request workflow before Stage 04 can be marked complete:
+GitHub Actions CI run 128 passed against a clean PostgreSQL 18 service:
 
 - `pnpm install --frozen-lockfile`
 - `pnpm db:generate`
@@ -51,6 +43,8 @@ The local execution environment could not download pnpm packages and did not pro
 - `pnpm typecheck:source`
 - `pnpm test:source`
 - `pnpm build:source`
+
+The isolated pre-publication checks also passed with Node.js 22.16.0 and TypeScript 5.8.3, including strict compilation and 11 focused HOS and persistence harness tests. The pull-request workflow exposed and verified corrections for migration foreign-key naming, strict lint formatting, an exported type-name collision, and one unbranded test timestamp.
 
 ## Deferred decisions and limitations
 
@@ -68,4 +62,4 @@ The local execution environment could not download pnpm packages and did not pro
 
 ## Next source
 
-Do not begin the next source until Stage 04 CI and the exit-gate audit pass. The next source after acceptance is `05_HOS_CORE_CLOCKS_AND_INTERRUPTION.md`.
+Stage 04 is complete. Begin the next dedicated implementation stage with `05_HOS_CORE_CLOCKS_AND_INTERRUPTION.md` after reinspecting the accepted Stage 04 contracts on `main`.
