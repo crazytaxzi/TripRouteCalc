@@ -5,43 +5,44 @@
 - Canonical repository: `crazytaxzi/TripRouteCalc`
 - Repository visibility: private
 - Default branch: `main`
-- Active implementation branch: none
-- Active pull request: none
+- Active implementation branch: `agent/stage-07-hos-sleeper-adverse-policy`
+- Active pull request: `#10`
 - Last completed pull request: `#8`
-- Product status: rolling federal property-carrying HOS cycle history, recap timing, and explicitly selected 34-hour restart behavior complete, verified, and merged
-- Completed sources: `01_REPOSITORY_AUDIT_AND_PLAN.md` through `06_HOS_CYCLE_RECAPS_AND_RESTART.md`
+- Product status: explicit federal split-sleeper evaluation, adverse-driving-condition selection, stricter carrier planning limits, and unsupported-rule warnings complete and verified, pending merge
+- Completed sources on `main`: `01_REPOSITORY_AUDIT_AND_PLAN.md` through `06_HOS_CYCLE_RECAPS_AND_RESTART.md`
 - Stage 01 status: COMPLETE
 - Stage 02 status: COMPLETE
 - Stage 03 status: COMPLETE
 - Stage 04 status: COMPLETE
 - Stage 05 status: COMPLETE
 - Stage 06 status: COMPLETE
-- Next source: `07_HOS_ADVANCED_RULES_AND_CARRIER_POLICY.md`
+- Stage 07 status: COMPLETE, VERIFIED, PENDING MERGE
+- Next source after merge: `08_HOS_AUTOMATED_TEST_SUITE.md`
 - Application code: `@trip-route-calc/foundation` and `@trip-route-calc/persistence`
-- Database migrations: Stage 03 initial migration plus the verified Stage 04 append-only HOS evidence migration; Stages 05 and 06 added no migration
+- Database migrations: Stage 03 initial migration plus the verified Stage 04 append-only HOS evidence migration; Stages 05 through 07 added no migration
 - Production integrations: none
 
-## Stage 06 completed
+## Stage 07 completed
 
-- Added a pure `calculateHosCycle` service isolated from UI, persistence, routing, ETA, provider, and Stage 05 daily-clock concerns.
-- Derived 60-hour/7-day and 70-hour/8-day cycle availability from complete timestamped driving and on-duty-not-driving history.
-- Reconciled entered cycle time remaining and entered recap predictions against derived history without mutating or silently replacing the recorded evidence.
-- Required an explicit carrier-designated home-terminal IANA time zone, local 24-hour boundary, repeated-time choice, and nonexistent-time resolution.
-- Split on-duty evidence across regulatory days and returned timestamped recap availability at the configured boundary rather than arbitrary midnight.
-- Blocked both driving and on-duty-not-driving planning when derived cycle availability reached zero and reported exact first-prohibited timestamps.
-- Applied a historical 34-hour restart only when the caller explicitly selected a fully evidenced qualifying interval.
-- Applied a future 34-hour restart only when restart intent was explicitly recorded and the supplied event timeline actually completed 2,040 consecutive off-duty or sleeper-berth minutes.
-- Preserved qualifying rest already in progress across the departure boundary rather than artificially restarting the 34-hour count.
-- Preferred an earlier sufficient recap over an unnecessary 34-hour restart and returned structured next-availability guidance when cycle time was exhausted.
-- Returned immutable regulatory-day windows, reconciliation results, snapshots, per-event transitions, recap and restart availability events, violations, reasons, and next-cycle availability.
-- Added focused tests for both cycle types, zero-cycle departure, exact recap timing, explicit versus unplanned restart behavior, 2,039/2,040/2,041-minute restart boundaries, selected historical restarts, home-terminal time-zone ownership, DST gaps, and repeated local times.
-- Exported the engine through `@trip-route-calc/foundation` and `@trip-route-calc/foundation/hos-cycle`.
+- Added pure `calculateHosAdvancedRules` composition over validated Stage 04 evidence and the accepted Stage 05 core result.
+- Validated explicit sleeper-pair identity, exact period evidence, distinct long and short roles, ordering, overlap, duration, combined rest, and clock feasibility.
+- Supported current federal 7/3 and 8/2 pairings: at least seven consecutive hours in the sleeper berth plus at least two consecutive hours off duty inside or outside the berth, totaling at least ten hours.
+- Allowed the short qualifying period to be `OFF_DUTY` or `SLEEPER_BERTH` while requiring the long qualifying period to be `SLEEPER_BERTH`.
+- Recalculated the 11-hour driving allowance and 14-hour window from the end of the first selected period while excluding both qualifying periods and leaving cycle availability unchanged.
+- Honored an explicitly selected valid pair even when a ten-consecutive-hour rest period could also reset the standard clocks, matching FMCSA guidance issued July 1, 2026.
+- Applied adverse-driving-condition extensions only after explicit selection, supporting context, sufficient confidence, a normally completable run, and evidence that the condition was not reasonably knowable beforehand.
+- Limited adverse extensions to 120 minutes and preserved cycle and 30-minute-interruption constraints.
+- Applied carrier daily-driving and duty caps independently from federal maxima and reported exact carrier-policy violation timestamps.
+- Reported nightly-rest preference conflicts as planning-policy results without rewriting federal clocks.
+- Preserved unsupported personal-conveyance, exception, exemption, emergency, and pilot selections as blocking/manual warnings with no automatic clock effect.
+- Exported the module through `@trip-route-calc/foundation` and `@trip-route-calc/foundation/hos-advanced`.
+- Added 12 focused tests covering valid and invalid pairs, explicit pair selection, the ten-hour-reset choice, exact adverse boundaries, carrier caps, rest preferences, and unsupported special rules.
 
 ## Verification evidence
 
-GitHub Actions CI run 210 passed against a clean PostgreSQL 18 service on implementation head `32f1ac6be7ecd33dc3a891819d648f977d8b3097`.
+GitHub Actions CI run 254 passed on implementation head `e08be59579c593bddbb50ff8a2e8ba9442f365be` after the initial lint corrections.
 
-Final GitHub Actions CI run 224 passed on the documented pull-request head `9367738b3061a8ca2626a61aa5d747946bb3b75b`:
+GitHub Actions CI run 259 passed on current-guidance head `ca606daae073683eb51e1da64f325fb43138080d`:
 
 - `pnpm install --frozen-lockfile`
 - `pnpm db:generate`
@@ -52,27 +53,24 @@ Final GitHub Actions CI run 224 passed on the documented pull-request head `9367
 - `pnpm test:source`
 - `pnpm build:source`
 
-The Stage 06 suite contributed 13 cycle, recap, restart, time-zone, and DST tests, and the complete repository test suite passed without modifying a database schema.
+The complete repository test suite passed against PostgreSQL 18. Stage 07 changed no Prisma schema and required no migration.
 
-The verified Stage 06 pull request was squash-merged into `main` as commit `4e35a594bb483dca234f324ca877c3a1261cd767`.
+Current federal behavior was checked on 2026-07-20 against official FMCSA HOS guidance, the property-carrying HOS summary, and the revised split-sleeper FAQs issued July 1, 2026. Current 6/4, 5/5, and split-duty alternatives remain pilot-only and are not standard production rules.
 
-A strict isolated TypeScript 5.8.3 harness also passed on Node.js 22.16.0. The container could not clone GitHub or install packages because outbound DNS and registry access were unavailable, so canonical repository reads, writes, and CI verification used the connected GitHub environment. No success was inferred from the unavailable local network path.
-
-Current federal cycle and restart behavior was checked on 2026-07-20 against official FMCSA guidance and the current text of 49 CFR 395.2, 395.3, and 395.8. The implementation uses the carrier-designated home-terminal 24-hour period and does not revive obsolete 1 a.m. to 5 a.m. or once-per-168-hour restart restrictions.
+The local execution container could not reach GitHub or the package registry through normal DNS. Canonical repository reads and writes used the connected GitHub application, strict isolated TypeScript checks used the local recovered source, and authoritative frozen-lockfile, PostgreSQL, lint, type, runtime, and build verification used GitHub Actions. No unavailable local check was reported as successful.
 
 ## Deferred decisions and limitations
 
-- Stage 06 owns rolling cycle arithmetic only. Stage 05 remains authoritative for the 11-hour driving allowance, 14-hour window, 30-minute interruption, and 10-hour reset.
-- Callers must compose Stage 05 and Stage 06 results and obey the most restrictive applicable constraint; this stage does not merge the two result objects into a route or ETA calculation.
-- Sleeper evidence remains candidate data only. Stage 07 owns split-sleeper validation.
-- Adverse conditions and carrier-policy limits remain Stage 07 concerns.
-- Personal conveyance, exceptions, exemptions, pilot programs, and emergency declarations are never activated automatically.
+- Stage 05 remains authoritative for standard daily clocks, the 30-minute interruption, and the 10-hour reset.
+- Stage 06 remains authoritative for rolling cycle history, recaps, and explicitly selected 34-hour restart effects.
+- Stage 07 composes the accepted evidence and Stage 05 result; it does not merge all HOS modules into routing or ETA.
+- The adverse-driving-condition result remains an explicitly selected planning calculation. It is not an automatic claim that ordinary congestion, routine weather, delay, or poor planning qualifies.
+- Personal conveyance, yard move, short haul, the 16-hour exception, agriculture, emergency declarations, emergency exceptions, team operation, and pilot programs remain unsupported/manual.
 - Commercial-routing provider and credentials remain unselected.
 - Production regulatory and licensed data sources remain unselected.
 - No route may be called legal or provider-verified yet.
-- Production hosting, secrets management, backup schedules, recovery objectives, retention periods, and database operations remain undecided.
-- No API, UI, map, export renderer, or production deployment exists yet.
+- No API, UI, map, export renderer, authentication system, or production deployment exists yet.
 
 ## Next source
 
-Stage 06 is complete, verified, and merged. Begin the next dedicated implementation stage with `07_HOS_ADVANCED_RULES_AND_CARRIER_POLICY.md` after reopening the Prime Directive and Error Recovery Protocol and reinspecting the accepted Stage 04 evidence contracts plus the Stage 05 and Stage 06 pure calculation boundaries on `main`.
+After pull request `#10` is merged and the Stage 07 ledger is closed on `main`, reopen the Prime Directive and Error Recovery Protocol and begin `docs/specification/08_HOS_AUTOMATED_TEST_SUITE.md` from the accepted Stage 04 through Stage 07 contracts and engines.
