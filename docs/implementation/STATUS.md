@@ -5,11 +5,11 @@
 - Canonical repository: `crazytaxzi/TripRouteCalc`
 - Repository visibility: private
 - Default branch: `main`
-- Active implementation branch: `agent/stage-08-hos-automated-tests`
-- Active pull request: `#12`
-- Last completed pull request: `#10`
-- Product status: comprehensive HOS acceptance, boundary, replay, isolation, and persistence-mapping coverage complete and verified, pending merge
-- Completed sources on `main`: `01_REPOSITORY_AUDIT_AND_PLAN.md` through `07_HOS_SLEEPER_ADVERSE_AND_CARRIER_POLICY.md`
+- Active implementation branch: none
+- Active pull request: none
+- Last completed pull request: `#12`
+- Product status: comprehensive HOS acceptance, boundary, replay, isolation, and persistence-mapping coverage complete, verified, and merged
+- Completed sources: `01_REPOSITORY_AUDIT_AND_PLAN.md` through `08_HOS_AUTOMATED_TEST_SUITE.md`
 - Stage 01 status: COMPLETE
 - Stage 02 status: COMPLETE
 - Stage 03 status: COMPLETE
@@ -17,8 +17,8 @@
 - Stage 05 status: COMPLETE
 - Stage 06 status: COMPLETE
 - Stage 07 status: COMPLETE
-- Stage 08 status: COMPLETE, VERIFIED, PENDING MERGE
-- Next source after merge: `09_EQUIPMENT_LOAD_DIMENSIONS_WEIGHT.md`
+- Stage 08 status: COMPLETE
+- Next source: `09_EQUIPMENT_LOAD_DIMENSIONS_WEIGHT.md`
 - Application code: `@trip-route-calc/foundation` and `@trip-route-calc/persistence`
 - Database migrations: Stage 03 initial migration plus the verified Stage 04 append-only HOS evidence migration; Stages 05 through 08 added no migration
 - Production integrations: none
@@ -40,11 +40,13 @@
 
 ## Verification evidence
 
-GitHub Actions CI run 293 passed on implementation head `106c9842023e8a41a38d29b72e75b5f447ec9894`.
+The full repository gate passed repeatedly:
 
-GitHub Actions CI run 313 passed on the clean documented head `2721c749a496da804b5f953141bd048a7bc2d1fd`.
+- CI run 293 on `106c9842023e8a41a38d29b72e75b5f447ec9894`
+- CI run 313 on `2721c749a496da804b5f953141bd048a7bc2d1fd`
+- final CI run 317 on `65d5e60f42843e5472477c1819405866b3e16a4a`
 
-Both successful runs executed the complete gate:
+Each run completed:
 
 - `pnpm install --frozen-lockfile`
 - `pnpm db:generate`
@@ -56,6 +58,8 @@ Both successful runs executed the complete gate:
 - `pnpm build:source`
 
 The complete repository suite passed repeatedly against PostgreSQL 18. Stage 08 changed no Prisma schema and required no migration.
+
+The verified Stage 08 pull request was squash-merged into `main` as commit `16e10af983e344d2b3a87d88667bcf92854166b5`.
 
 A strict isolated TypeScript harness also passed for the new foundation fixtures, master acceptance suite, and pure-engine isolation suite before repository upload. The local container still lacked normal GitHub and package-registry DNS, so GitHub Actions remained the authoritative frozen-lockfile, PostgreSQL, lint, type, runtime, and build environment. No unavailable local check was reported as successful.
 
@@ -73,4 +77,4 @@ A strict isolated TypeScript harness also passed for the new foundation fixtures
 
 ## Next source
 
-After pull request `#12` is merged and the Stage 08 ledger is closed on `main`, reopen the Prime Directive and Error Recovery Protocol and begin `docs/specification/09_EQUIPMENT_LOAD_DIMENSIONS_WEIGHT.md` from the accepted foundation and persistence boundaries.
+Stage 08 is complete, verified, and merged. Reopen the Prime Directive and Error Recovery Protocol and begin `docs/specification/09_EQUIPMENT_LOAD_DIMENSIONS_WEIGHT.md` from the accepted foundation and persistence boundaries.
