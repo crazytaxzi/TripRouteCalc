@@ -1,0 +1,40 @@
+model TripStopDetails {
+  id                          String   @id @default(uuid()) @db.Uuid
+  carrierId                   String   @db.Uuid
+  tripStopId                  String   @unique @db.Uuid
+  lockedPosition              Boolean
+  locationDescription         String
+  addressText                 String?
+  latitude                    Decimal? @db.Decimal(10, 7)
+  longitude                   Decimal? @db.Decimal(10, 7)
+  locationResolutionStatus    String
+  locationSourceName          String?
+  locationProviderReference   String?
+  appointmentMode             String
+  appointmentSnapshot         Json
+  facilityHoursSnapshot       Json
+  checkInDurationValue        BigInt
+  checkInDurationUnit         String   @default("minute")
+  serviceDurationMode         String
+  serviceMinimumDurationValue BigInt?
+  serviceExpectedDurationValue BigInt
+  serviceMaximumDurationValue BigInt?
+  serviceDurationUnit         String   @default("minute")
+  historicalAverageSource     String?
+  historicalAverageSampleSize Int?
+  waitingDutyStatus           String
+  checkInDutyStatus           String
+  serviceDutyStatus           String
+  earlyParkingAllowed         Boolean
+  overnightParkingAllowed     Boolean
+  notes                       String?
+  instructions                String?
+  createdAt                   DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt                   DateTime @updatedAt @db.Timestamptz(3)
+
+  tripStop TripStop @relation(fields: [tripStopId, carrierId], references: [id, carrierId], onDelete: Cascade)
+
+  @@unique([tripStopId, carrierId])
+  @@index([carrierId, appointmentMode, serviceDurationMode])
+  @@map("trip_stop_details")
+}

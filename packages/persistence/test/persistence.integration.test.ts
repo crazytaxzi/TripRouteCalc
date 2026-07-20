@@ -43,6 +43,7 @@ const TABLES_IN_DELETE_ORDER = [
   'route_legs',
   'routes',
   'appointment_windows',
+  'trip_stop_details',
   'trip_stops',
   'trips',
   'trip_revisions',

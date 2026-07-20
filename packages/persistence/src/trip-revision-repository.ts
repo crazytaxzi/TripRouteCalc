@@ -3,12 +3,15 @@ import {
   LocalAppointmentWindowSchema,
   StopTypeSchema,
   ianaTimeZone,
+  validateTripStopPlan,
   resolveAppointmentWindow,
 } from '@trip-route-calc/foundation';
 import type {
   Duration,
   LocalAppointmentWindow,
+  StopServiceDurationPlan,
   StopType,
+  TripStopPlan,
   UtcInstant,
 } from '@trip-route-calc/foundation';
 
@@ -28,6 +31,11 @@ import {
 import type { TenantContext } from './tenant.js';
 import { assertTenantMembership } from './tenant.js';
 
+export type CreateTripStopDetailsInput = Omit<
+  TripStopPlan,
+  'id' | 'sequence' | 'type' | 'required'
+>;
+
 export interface CreateTripStopInput {
   readonly sequence: number;
   readonly type: StopType;
@@ -36,6 +44,7 @@ export interface CreateTripStopInput {
   readonly timeZone: string;
   readonly expectedServiceDuration: Duration;
   readonly appointmentWindow?: LocalAppointmentWindow;
+  readonly details?: CreateTripStopDetailsInput;
 }
 
 export interface CreateCalculationAssumptionInput {
@@ -85,7 +94,7 @@ export interface CreateTripRevisionInput {
 
 export type PersistedTripRevision = Prisma.TripRevisionGetPayload<{
   include: {
-    stops: { include: { appointmentWindow: true } };
+    stops: { include: { appointmentWindow: true; details: true } };
     assumptions: true;
     warnings: { include: { acknowledgements: true } };
     overrides: true;
@@ -99,6 +108,50 @@ export type PersistedTripRevision = Prisma.TripRevisionGetPayload<{
 export type PersistedTrip = Prisma.TripGetPayload<{
   include: { currentRevision: true };
 }>;
+
+interface ServiceDurationColumns {
+  readonly minimum: bigint | null;
+  readonly expected: bigint;
+  readonly maximum: bigint | null;
+  readonly historicalAverageSource: string | null;
+  readonly historicalAverageSampleSize: number | null;
+}
+
+function serviceDurationColumns(
+  plan: StopServiceDurationPlan,
+): ServiceDurationColumns {
+  switch (plan.mode) {
+    case 'exact':
+    case 'expected':
+      return {
+        minimum: null,
+        expected: BigInt(plan.duration.value),
+        maximum: null,
+        historicalAverageSource: null,
+        historicalAverageSampleSize: null,
+      };
+    case 'range':
+      return {
+        minimum: BigInt(plan.minimum.value),
+        expected: BigInt(plan.expected.value),
+        maximum: BigInt(plan.maximum.value),
+        historicalAverageSource: null,
+        historicalAverageSampleSize: null,
+      };
+    case 'historical-average':
+      return {
+        minimum: null,
+        expected: BigInt(plan.duration.value),
+        maximum: null,
+        historicalAverageSource: plan.sourceName,
+        historicalAverageSampleSize: plan.sampleSize ?? null,
+      };
+  }
+}
+
+function expectedServiceMinutes(plan: StopServiceDurationPlan): number {
+  return Number(serviceDurationColumns(plan).expected);
+}
 
 export class TripRevisionRepository {
   public constructor(
@@ -123,7 +176,7 @@ export class TripRevisionRepository {
       include: {
         stops: {
           orderBy: { sequence: 'asc' },
-          include: { appointmentWindow: true },
+          include: { appointmentWindow: true, details: true },
         },
         assumptions: true,
         warnings: { include: { acknowledgements: true } },
@@ -159,6 +212,30 @@ export class TripRevisionRepository {
         appointmentWindow === undefined
           ? undefined
           : resolveAppointmentWindow(appointmentWindow);
+      const details =
+        stop.details === undefined
+          ? undefined
+          : validateTripStopPlan({
+              id: `revision-stop-${String(sequence)}`,
+              sequence,
+              type,
+              required: stop.required,
+              ...stop.details,
+            });
+      if (details !== undefined && details.location.timeZone !== timeZone) {
+        throw new RangeError(
+          `stops[${String(index)}].details location time zone must match the base stop time zone.`,
+        );
+      }
+      if (
+        details !== undefined &&
+        expectedServiceMinutes(details.serviceDuration) !==
+          expectedServiceDuration.value
+      ) {
+        throw new RangeError(
+          `stops[${String(index)}] expected service duration must match the detailed stop service expectation.`,
+        );
+      }
 
       return {
         ...stop,
@@ -168,6 +245,7 @@ export class TripRevisionRepository {
         expectedServiceDuration,
         appointmentWindow,
         resolvedAppointment,
+        ...(details === undefined ? {} : { details }),
       };
     });
 
@@ -275,6 +353,7 @@ export class TripRevisionRepository {
         timeZone: stop.timeZone,
         expectedServiceDuration: stop.expectedServiceDuration,
         appointmentWindow: stop.appointmentWindow ?? null,
+        details: stop.details ?? null,
       })),
       assumptions,
       warnings,
@@ -331,6 +410,66 @@ export class TripRevisionRepository {
               stop.expectedServiceDuration.value,
             ),
             expectedServiceDurationUnit: stop.expectedServiceDuration.unit,
+            ...(stop.details === undefined
+              ? {}
+              : {
+                  details: {
+                    create: {
+                      lockedPosition: stop.details.lockedPosition,
+                      locationDescription: stop.details.location.description,
+                      addressText: stop.details.location.addressText ?? null,
+                      latitude: stop.details.location.latitude ?? null,
+                      longitude: stop.details.location.longitude ?? null,
+                      locationResolutionStatus:
+                        stop.details.location.resolutionStatus,
+                      locationSourceName:
+                        stop.details.location.sourceName ?? null,
+                      locationProviderReference:
+                        stop.details.location.providerReference ?? null,
+                      appointmentMode: stop.details.appointment.mode,
+                      appointmentSnapshot: asInputJson(
+                        stop.details.appointment,
+                        `stop.${String(stop.sequence)}.appointment`,
+                      ),
+                      facilityHoursSnapshot: asInputJson(
+                        stop.details.facilityHours,
+                        `stop.${String(stop.sequence)}.facilityHours`,
+                      ),
+                      checkInDurationValue: BigInt(
+                        stop.details.checkInDuration.value,
+                      ),
+                      checkInDurationUnit:
+                        stop.details.checkInDuration.unit,
+                      serviceDurationMode:
+                        stop.details.serviceDuration.mode,
+                      serviceMinimumDurationValue:
+                        serviceDurationColumns(stop.details.serviceDuration)
+                          .minimum,
+                      serviceExpectedDurationValue:
+                        serviceDurationColumns(stop.details.serviceDuration)
+                          .expected,
+                      serviceMaximumDurationValue:
+                        serviceDurationColumns(stop.details.serviceDuration)
+                          .maximum,
+                      serviceDurationUnit: 'minute',
+                      historicalAverageSource:
+                        serviceDurationColumns(stop.details.serviceDuration)
+                          .historicalAverageSource,
+                      historicalAverageSampleSize:
+                        serviceDurationColumns(stop.details.serviceDuration)
+                          .historicalAverageSampleSize,
+                      waitingDutyStatus: stop.details.waitingDutyStatus,
+                      checkInDutyStatus: stop.details.checkInDutyStatus,
+                      serviceDutyStatus: stop.details.serviceDutyStatus,
+                      earlyParkingAllowed:
+                        stop.details.earlyParkingAllowed,
+                      overnightParkingAllowed:
+                        stop.details.overnightParkingAllowed,
+                      notes: stop.details.notes ?? null,
+                      instructions: stop.details.instructions ?? null,
+                    },
+                  },
+                }),
           },
           select: { id: true },
         });
