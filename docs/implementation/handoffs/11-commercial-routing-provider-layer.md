@@ -62,7 +62,7 @@ Until that setup exists, the runtime returns a blocked result and no route may b
 
 CI run `463` accepted the frozen workspace lock, generated and validated Prisma, and deployed every migration to clean PostgreSQL 18. It stopped at ESLint. Diagnostic run `465` identified nine mechanical findings: exact fixture typing, one missing persistence helper return type, three binding-safe provider callbacks, one optional-chain preference, and one malformed test expression.
 
-Recovery now uses a standalone syntax-checked Python patch rather than repeated embedded-YAML replacements. The trusted recovery workflow executes that script, restores permanent CI from `main`, deletes every temporary recovery file, and commits only the corrected Stage 11 sources. This is a materially different recovery layer under the ERP loop-detection rule.
+Recovery now uses a standalone syntax-checked Python patch rather than repeated embedded-YAML replacements. The first standalone run failed inside the patch, and the standard Actions log endpoint clipped the traceback. ERP recovery therefore moved to an artifact diagnostic that captures the complete script output, exit code, changed-file status, and workflow inventory before another correction is attempted.
 
 The complete repository gate must pass before the stage is marked complete:
 
