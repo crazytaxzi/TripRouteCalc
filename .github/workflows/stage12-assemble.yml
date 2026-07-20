@@ -1,6 +1,7 @@
 name: Stage 12 Assemble
 
 on:
+  workflow_dispatch:
   push:
     branches: [agent/stage-12-regulatory-rules]
     paths: [.github/workflows/stage12-assemble.yml]
@@ -24,7 +25,6 @@ jobs:
         run: |
           set -euo pipefail
           mkdir -p packages/foundation/src packages/compliance/src packages/compliance/test packages/persistence/src packages/persistence/test
-
           {
             cat .stage12-src/regulatory.part-00.ts
             printf '\n'
@@ -32,7 +32,6 @@ jobs:
             printf '\n'
             cat .stage12-src/regulatory.part-02.ts
           } > packages/foundation/src/regulatory.ts
-
           {
             cat .stage12-src/engine.part-00.ts
             cat .stage12-src/engine.part-01.ts
@@ -40,32 +39,13 @@ jobs:
             cat .stage12-src/engine.part-02.ts
             cat .stage12-src/engine.part-03.ts
           } > packages/compliance/src/regulatory-engine.ts
-
-          cat \
-            .stage12-src/regulatory-repository.part-00.ts \
-            .stage12-src/regulatory-repository.part-01.ts \
-            .stage12-src/regulatory-repository.part-02.ts \
-            .stage12-src/regulatory-repository.part-03.ts \
-            > packages/persistence/src/regulatory-rule-repository.ts
-
-          cat \
-            .stage12-src/regulatory-workflow-test.part-00.ts \
-            .stage12-src/regulatory-workflow-test.part-01.ts \
-            .stage12-src/regulatory-workflow-test.part-02.ts \
-            .stage12-src/regulatory-workflow-test.part-03.ts \
-            > packages/persistence/test/regulatory-rule-workflow.integration.test.ts
-
-          cat \
-            .stage12-src/compliance-test.part-00a.ts \
-            .stage12-src/compliance-test.part-00b.ts \
-            .stage12-src/compliance-test.part-01a.ts \
-            .stage12-src/compliance-test.fixture-tail.ts \
-            > packages/compliance/test/regulatory-fixtures.ts
+          cat .stage12-src/regulatory-repository.part-00.ts .stage12-src/regulatory-repository.part-01.ts .stage12-src/regulatory-repository.part-02.ts .stage12-src/regulatory-repository.part-03.ts > packages/persistence/src/regulatory-rule-repository.ts
+          cat .stage12-src/regulatory-workflow-test.part-00.ts .stage12-src/regulatory-workflow-test.part-01.ts .stage12-src/regulatory-workflow-test.part-02.ts .stage12-src/regulatory-workflow-test.part-03.ts > packages/persistence/test/regulatory-rule-workflow.integration.test.ts
+          cat .stage12-src/compliance-test.part-00a.ts .stage12-src/compliance-test.part-00b.ts .stage12-src/compliance-test.part-01a.ts .stage12-src/compliance-test.fixture-tail.ts > packages/compliance/test/regulatory-fixtures.ts
           sed -i "/import { describe, expect, it } from 'vitest';/d" packages/compliance/test/regulatory-fixtures.ts
           for name in equipment segment kpraRule ruleSet input; do
             sed -i "s/^function ${name}(/export function ${name}(/" packages/compliance/test/regulatory-fixtures.ts
           done
-
           printf "%s\n" "export * from './regulatory-engine.js';" > packages/compliance/src/index.ts
 
       - name: Verify reconstructed source hashes
