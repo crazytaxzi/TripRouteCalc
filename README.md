@@ -6,9 +6,22 @@ The product is intended to produce transparent, defensible planning estimates fo
 
 ## Current state
 
-The canonical private repository is established on `main`. Stage 01 repository audit and implementation planning are complete.
+The canonical private repository is established on `main`. Stage 01 repository audit and implementation planning are complete, and Stage 02 establishes the first buildable TypeScript workspace and shared foundation package.
 
-The repository remains intentionally greenfield: it contains the controlling product specification, ordered implementation source pack, architecture plan, risks, decisions, blockers, baseline evidence, and completed Stage 01 handoff. Application scaffolding and production code have not started.
+`@trip-route-calc/foundation` now provides authoritative product terminology, first-release scope boundaries, explicit measurement primitives, UTC and IANA time-zone handling, DST-safe local appointment resolution, and provider-neutral domain contracts. HOS, routing, compliance, ETA, persistence, API, and UI engines have not started.
+
+## Workspace checks
+
+Use Node.js 22 and pnpm 9.15.4 or later within the 9.x line.
+
+```bash
+corepack enable
+corepack prepare pnpm@9.15.4 --activate
+pnpm install --frozen-lockfile
+pnpm check
+```
+
+`pnpm check` runs lint, type-check, unit tests, and the production TypeScript build.
 
 ## Authority order
 
@@ -22,7 +35,8 @@ The repository remains intentionally greenfield: it contains the controlling pro
 ## Stage status
 
 - Stage 01: Repository Audit and Implementation Plan, COMPLETE
-- Stage 02: Product Foundation, Domain, Units, and Time, NOT STARTED
+- Stage 02: Product Foundation, Domain, Units, and Time, COMPLETE
+- Stage 03: Persistence, Revisions, and Auditability, NOT STARTED
 
 See:
 
@@ -30,7 +44,9 @@ See:
 - `docs/implementation/DECISIONS.md`
 - `docs/implementation/BLOCKERS.md`
 - `docs/implementation/handoffs/01-repository-audit-and-plan.md`
-- `docs/specification/02_PRODUCT_FOUNDATION_DOMAIN_UNITS_TIME.md`
+- `docs/implementation/handoffs/02-product-foundation-domain-units-time.md`
+- `docs/domain/product-foundation.md`
+- `docs/specification/03_PERSISTENCE_REVISIONS_AUDITABILITY.md`
 
 ## First-release scope
 
@@ -56,4 +72,4 @@ No exception, exemption, emergency declaration, pilot program, adverse-driving r
 
 ## Next action
 
-Begin a dedicated Stage 02 implementation chat using `docs/specification/02_PRODUCT_FOUNDATION_DOMAIN_UNITS_TIME.md`. Reinspect the canonical repository before scaffolding the real workspace.
+Begin Stage 03 using `docs/specification/03_PERSISTENCE_REVISIONS_AUDITABILITY.md`. Reinspect the canonical repository and import the stable Stage 02 foundation contracts rather than duplicating them.
