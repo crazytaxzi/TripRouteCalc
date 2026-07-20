@@ -62,7 +62,7 @@ Until that setup exists, the runtime returns a blocked result and no route may b
 
 CI run `463` accepted the frozen workspace lock, generated and validated Prisma, and deployed every migration to clean PostgreSQL 18. It stopped at ESLint. Diagnostic run `465` identified nine mechanical findings: exact fixture typing, one missing persistence helper return type, three binding-safe provider callbacks, one optional-chain preference, and one malformed test expression.
 
-Recovery now uses a standalone syntax-checked Python patch rather than repeated embedded-YAML replacements. The first standalone run failed inside the patch, and the standard Actions log endpoint clipped the traceback. ERP recovery therefore moved to an artifact diagnostic that captures the complete script output, exit code, changed-file status, and workflow inventory before another correction is attempted.
+ERP recovery isolated a non-UTF-8 byte in the routing-service test, restored the preserved UTF-8 source, applied the intended credential JSON correction, and removed all recovery artifacts. CI run `500` again passed frozen install, Prisma generation and validation, and clean PostgreSQL migration deployment, then reported residual lint findings. A bounded final lint artifact now captures only the current post-repair findings.
 
 The complete repository gate must pass before the stage is marked complete:
 
