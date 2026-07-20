@@ -5,19 +5,19 @@
 - Canonical repository: `crazytaxzi/TripRouteCalc`
 - Repository visibility: private
 - Default branch: `main`
-- Active implementation branch: `agent/stage-07-hos-sleeper-adverse-policy`
-- Active pull request: `#10`
-- Last completed pull request: `#8`
-- Product status: explicit federal split-sleeper evaluation, adverse-driving-condition selection, stricter carrier planning limits, and unsupported-rule warnings complete and verified, pending merge
-- Completed sources on `main`: `01_REPOSITORY_AUDIT_AND_PLAN.md` through `06_HOS_CYCLE_RECAPS_AND_RESTART.md`
+- Active implementation branch: none
+- Active pull request: none
+- Last completed pull request: `#10`
+- Product status: explicit federal split-sleeper evaluation, adverse-driving-condition selection, stricter carrier planning limits, and unsupported-rule warnings complete, verified, and merged
+- Completed sources: `01_REPOSITORY_AUDIT_AND_PLAN.md` through `07_HOS_SLEEPER_ADVERSE_AND_CARRIER_POLICY.md`
 - Stage 01 status: COMPLETE
 - Stage 02 status: COMPLETE
 - Stage 03 status: COMPLETE
 - Stage 04 status: COMPLETE
 - Stage 05 status: COMPLETE
 - Stage 06 status: COMPLETE
-- Stage 07 status: COMPLETE, VERIFIED, PENDING MERGE
-- Next source after merge: `08_HOS_AUTOMATED_TEST_SUITE.md`
+- Stage 07 status: COMPLETE
+- Next source: `08_HOS_AUTOMATED_TEST_SUITE.md`
 - Application code: `@trip-route-calc/foundation` and `@trip-route-calc/persistence`
 - Database migrations: Stage 03 initial migration plus the verified Stage 04 append-only HOS evidence migration; Stages 05 through 07 added no migration
 - Production integrations: none
@@ -42,7 +42,9 @@
 
 GitHub Actions CI run 254 passed on implementation head `e08be59579c593bddbb50ff8a2e8ba9442f365be` after the initial lint corrections.
 
-GitHub Actions CI run 259 passed on current-guidance head `ca606daae073683eb51e1da64f325fb43138080d`:
+GitHub Actions CI run 259 passed on current-guidance head `ca606daae073683eb51e1da64f325fb43138080d`.
+
+Final GitHub Actions CI run 273 passed on documented pull-request head `ebe95890c1fa723b19065c987d27f38cc5e9765a`:
 
 - `pnpm install --frozen-lockfile`
 - `pnpm db:generate`
@@ -54,6 +56,8 @@ GitHub Actions CI run 259 passed on current-guidance head `ca606daae073683eb51e1
 - `pnpm build:source`
 
 The complete repository test suite passed against PostgreSQL 18. Stage 07 changed no Prisma schema and required no migration.
+
+The verified Stage 07 pull request was squash-merged into `main` as commit `2cb7d412675e757eb2d3ee70de8f23fd1711530d`.
 
 Current federal behavior was checked on 2026-07-20 against official FMCSA HOS guidance, the property-carrying HOS summary, and the revised split-sleeper FAQs issued July 1, 2026. Current 6/4, 5/5, and split-duty alternatives remain pilot-only and are not standard production rules.
 
@@ -73,4 +77,4 @@ The local execution container could not reach GitHub or the package registry thr
 
 ## Next source
 
-After pull request `#10` is merged and the Stage 07 ledger is closed on `main`, reopen the Prime Directive and Error Recovery Protocol and begin `docs/specification/08_HOS_AUTOMATED_TEST_SUITE.md` from the accepted Stage 04 through Stage 07 contracts and engines.
+Stage 07 is complete, verified, and merged. Reopen the Prime Directive and Error Recovery Protocol and begin `docs/specification/08_HOS_AUTOMATED_TEST_SUITE.md` from the accepted Stage 04 through Stage 07 contracts and engines.
