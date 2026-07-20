@@ -712,17 +712,25 @@ function recapKey(value: Pick<CycleRecapReturn, 'sourceDate'>): string {
   return value.sourceDate;
 }
 
+function recapSeedEntries(
+  seeds: readonly AvailabilitySeed[],
+): readonly (readonly [string, AvailabilitySeed])[] {
+  const entries: Array<readonly [string, AvailabilitySeed]> = [];
+  for (const seed of seeds) {
+    if (seed.kind === 'RECAP' && seed.sourceDate !== undefined) {
+      entries.push([seed.sourceDate, seed]);
+    }
+  }
+  return freeze(entries);
+}
+
 function reconcileRecaps(
   entered: readonly CycleRecapReturn[],
   derivedSeeds: readonly AvailabilitySeed[],
 ): HosRecapReconciliation {
   const mismatches: HosRecapMismatch[] = [];
   const enteredByDate = new Map(entered.map((value) => [recapKey(value), value]));
-  const derivedByDate = new Map(
-    derivedSeeds
-      .filter((value) => value.kind === 'RECAP' && value.sourceDate !== undefined)
-      .map((value) => [value.sourceDate!, value]),
-  );
+  const derivedByDate = new Map(recapSeedEntries(derivedSeeds));
   for (const [sourceDate, derived] of derivedByDate) {
     const enteredValue = enteredByDate.get(sourceDate);
     if (enteredValue === undefined) {
