@@ -5,8 +5,9 @@
 - Canonical repository: `crazytaxzi/TripRouteCalc`
 - Repository visibility: private
 - Default branch: `main`
-- Active implementation branch: `stage-04-clean-hos-inputs`
-- Active pull request: `#4`
+- Active implementation branch: none
+- Active pull request: none
+- Last completed pull request: `#4`
 - Product status: validated driver HOS departure-state and timestamped duty-event implementation complete and verified
 - Completed sources: `01_REPOSITORY_AUDIT_AND_PLAN.md`, `02_PRODUCT_FOUNDATION_DOMAIN_UNITS_TIME.md`, `03_PERSISTENCE_REVISIONS_AUDITABILITY.md`, `04_DRIVER_HOS_INPUTS_AND_DUTY_EVENTS.md`
 - Stage 01 status: COMPLETE
