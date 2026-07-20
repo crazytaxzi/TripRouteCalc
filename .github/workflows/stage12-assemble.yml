@@ -1,0 +1,113 @@
+name: Stage 12 Assemble
+
+on:
+  push:
+    branches: [agent/stage-12-regulatory-rules]
+    paths: [.github/workflows/stage12-assemble.yml]
+
+permissions:
+  contents: write
+
+jobs:
+  assemble:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Check out Stage 12 branch
+        uses: actions/checkout@v4
+        with:
+          ref: agent/stage-12-regulatory-rules
+          fetch-depth: 0
+
+      - name: Assemble verified source files
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p packages/foundation/src packages/compliance/src packages/compliance/test packages/persistence/src packages/persistence/test
+
+          {
+            cat .stage12-src/regulatory.part-00.ts
+            printf '\n'
+            cat .stage12-src/regulatory.part-01.ts
+            printf '\n'
+            cat .stage12-src/regulatory.part-02.ts
+          } > packages/foundation/src/regulatory.ts
+
+          {
+            cat .stage12-src/engine.part-00.ts
+            cat .stage12-src/engine.part-01.ts
+            printf '\n'
+            cat .stage12-src/engine.part-02.ts
+            cat .stage12-src/engine.part-03.ts
+          } > packages/compliance/src/regulatory-engine.ts
+
+          cat \
+            .stage12-src/regulatory-repository.part-00.ts \
+            .stage12-src/regulatory-repository.part-01.ts \
+            .stage12-src/regulatory-repository.part-02.ts \
+            .stage12-src/regulatory-repository.part-03.ts \
+            > packages/persistence/src/regulatory-rule-repository.ts
+
+          cat \
+            .stage12-src/regulatory-workflow-test.part-00.ts \
+            .stage12-src/regulatory-workflow-test.part-01.ts \
+            .stage12-src/regulatory-workflow-test.part-02.ts \
+            .stage12-src/regulatory-workflow-test.part-03.ts \
+            > packages/persistence/test/regulatory-rule-workflow.integration.test.ts
+
+          cat \
+            .stage12-src/compliance-test.part-00a.ts \
+            .stage12-src/compliance-test.part-00b.ts \
+            .stage12-src/compliance-test.part-01a.ts \
+            .stage12-src/compliance-test.fixture-tail.ts \
+            > packages/compliance/test/regulatory-fixtures.ts
+          sed -i "/import { describe, expect, it } from 'vitest';/d" packages/compliance/test/regulatory-fixtures.ts
+          for name in equipment segment kpraRule ruleSet input; do
+            sed -i "s/^function ${name}(/export function ${name}(/" packages/compliance/test/regulatory-fixtures.ts
+          done
+
+          printf "%s\n" "export * from './regulatory-engine.js';" > packages/compliance/src/index.ts
+
+      - name: Verify reconstructed source hashes
+        shell: bash
+        run: |
+          set -euo pipefail
+          cat > /tmp/stage12.sha256 <<'EOF'
+          146774cf551e6fd13b6000b8f47307e17c5edd28213534dac74505fc2597f2cd  packages/foundation/src/regulatory.ts
+          4e1152b47a34be85c69d3348cb7fef20d12108eb9fdbd356ccf33a0e499525a1  packages/compliance/src/regulatory-engine.ts
+          892ae137b15f436e653e8d372be622a544a73b51747dd2e21bb34683cecc9958  packages/persistence/src/regulatory-rule-repository.ts
+          dcd4ee941a0aaebaba4fe6af7785f5442809df240e521cd858a7ff444f02326a  packages/persistence/test/regulatory-rule-workflow.integration.test.ts
+          0ec214a00ab75dc8c9ab0e75fa99bdaf98168c21ce674509f4711e6c29aa607d  packages/compliance/test/regulatory-fixtures.ts
+          EOF
+          sha256sum --check /tmp/stage12.sha256
+
+      - name: Update package metadata and lockfile
+        shell: bash
+        run: |
+          set -euo pipefail
+          node <<'NODE'
+          const fs = require('node:fs');
+          const path = 'packages/foundation/package.json';
+          const manifest = JSON.parse(fs.readFileSync(path, 'utf8'));
+          manifest.exports['./regulatory'] = {
+            types: './dist/regulatory.d.ts',
+            import: './dist/regulatory.js'
+          };
+          fs.writeFileSync(path, `${JSON.stringify(manifest, null, 2)}\n`);
+          NODE
+          corepack enable
+          corepack prepare pnpm@9.15.4 --activate
+          pnpm install --lockfile-only
+
+      - name: Remove transfer artifacts and commit
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -rf .stage12-src
+          rm -f .github/workflows/stage12-assemble.yml
+          git diff --check
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add -A
+          git commit -m 'Implement Stage 12 regulatory rules engine'
+          git push origin HEAD:agent/stage-12-regulatory-rules
