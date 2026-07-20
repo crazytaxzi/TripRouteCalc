@@ -1,8 +1,10 @@
 import { createHash } from 'node:crypto';
 
 export type JsonPrimitive = boolean | number | string | null;
-export type JsonObject = Record<string, JsonValue>;
 export type JsonValue = JsonPrimitive | JsonValue[] | JsonObject;
+export interface JsonObject {
+  [key: string]: JsonValue;
+}
 
 function isPlainObject(value: object): value is Record<string, unknown> {
   return (
