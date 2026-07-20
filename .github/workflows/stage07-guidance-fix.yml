@@ -1,0 +1,166 @@
+name: Stage 07 current guidance fix
+
+on:
+  push:
+    branches:
+      - agent/stage-07-hos-sleeper-adverse-policy
+
+permissions:
+  contents: write
+
+jobs:
+  apply-fix:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Check out Stage 07 branch
+        uses: actions/checkout@v4
+        with:
+          ref: agent/stage-07-hos-sleeper-adverse-policy
+      - name: Apply current split-sleeper choice guidance
+        shell: python
+        run: |
+          from pathlib import Path
+
+          source = Path('packages/foundation/src/hos-advanced.ts')
+          lines = source.read_text().splitlines()
+
+          issue_line = "| 'STANDARD_RESET_SUPERSEDES_PAIR'"
+          issue_indexes = [
+              index for index, line in enumerate(lines) if line.strip() == issue_line
+          ]
+          if len(issue_indexes) != 1:
+              raise SystemExit(
+                  f'Expected one obsolete sleeper issue code, found {len(issue_indexes)}.'
+              )
+          del lines[issue_indexes[0]]
+
+          helper_indexes = [
+              index for index, line in enumerate(lines)
+              if line.strip() == 'function hasTenHourReset('
+          ]
+          if len(helper_indexes) != 1:
+              raise SystemExit(
+                  f'Expected one hasTenHourReset helper, found {len(helper_indexes)}.'
+              )
+          helper_start = helper_indexes[0]
+          depth = 0
+          opened = False
+          helper_end = None
+          for index in range(helper_start, len(lines)):
+              depth += lines[index].count('{')
+              if lines[index].count('{') > 0:
+                  opened = True
+              depth -= lines[index].count('}')
+              if opened and depth == 0:
+                  helper_end = index + 1
+                  break
+          if helper_end is None:
+              raise SystemExit('Could not find the end of hasTenHourReset.')
+          if helper_end < len(lines) and lines[helper_end].strip() == '':
+              helper_end += 1
+          del lines[helper_start:helper_end]
+
+          rejection_starts = []
+          for index, line in enumerate(lines):
+              if line.strip() != 'if (':
+                  continue
+              window = '\n'.join(lines[index:index + 14])
+              if (
+                  'first.duration.value >= 600' in window
+                  and 'STANDARD_RESET_SUPERSEDES_PAIR' in window
+              ):
+                  rejection_starts.append(index)
+          if len(rejection_starts) != 1:
+              raise SystemExit(
+                  f'Expected one obsolete reset-supersedes-pair block, found {len(rejection_starts)}.'
+              )
+          rejection_start = rejection_starts[0]
+          depth = 0
+          opened = False
+          rejection_end = None
+          for index in range(rejection_start, len(lines)):
+              depth += lines[index].count('{')
+              if lines[index].count('{') > 0:
+                  opened = True
+              depth -= lines[index].count('}')
+              if opened and depth == 0:
+                  rejection_end = index + 1
+                  break
+          if rejection_end is None:
+              raise SystemExit('Could not find the end of the obsolete pair rejection.')
+          del lines[rejection_start:rejection_end]
+          source.write_text('\n'.join(lines) + '\n')
+
+          tests = Path('packages/foundation/test/hos-advanced.test.ts')
+          test_lines = tests.read_text().splitlines()
+          adverse_marker = "describe('Stage 07 adverse-driving-condition selection', () => {"
+          adverse_indexes = [
+              index for index, line in enumerate(test_lines)
+              if line.strip() == adverse_marker
+          ]
+          if len(adverse_indexes) != 1:
+              raise SystemExit(
+                  f'Expected one adverse describe marker, found {len(adverse_indexes)}.'
+              )
+          adverse_index = adverse_indexes[0]
+          if adverse_index < 1 or test_lines[adverse_index - 1].strip() != '':
+              raise SystemExit('Expected a blank line before the adverse describe block.')
+          sleeper_close = adverse_index - 2
+          if sleeper_close < 0 or test_lines[sleeper_close].strip() != '});':
+              raise SystemExit('Could not find the sleeper-pair describe closing line.')
+
+          new_test = """  it('honors an explicitly selected pair even when the long period also qualifies as a 10-hour reset', () => {
+            const departure = departureState();
+            const dutyEvents = [
+              event({
+                id: 'long-ten-sleeper-choice',
+                startAt: departure.departureAt,
+                minutes: 600,
+                dutyStatus: 'SLEEPER_BERTH',
+                pairId: 'pair-reset-or-split-choice',
+                candidateRole: 'LONG_PERIOD',
+              }),
+              event({
+                id: 'drive-after-ten-choice',
+                startAt: '2026-07-20T10:00:00.000Z',
+                minutes: 180,
+                dutyStatus: 'DRIVING',
+              }),
+              event({
+                id: 'short-two-off-duty-choice',
+                startAt: '2026-07-20T13:00:00.000Z',
+                minutes: 120,
+                dutyStatus: 'OFF_DUTY',
+                pairId: 'pair-reset-or-split-choice',
+                candidateRole: 'SHORT_PERIOD',
+              }),
+            ];
+            const result = evaluate(departure, dutyEvents, {
+              selectedSleeperPairId: 'pair-reset-or-split-choice',
+            });
+
+            expect(result.sleeper.appliedPair?.status).toBe(
+              'VALID_SELECTED_AND_APPLIED',
+            );
+            expect(
+              result.sleeper.appliedPair?.recalculation?.drivingTimeRemaining.value,
+            ).toBe(480);
+            expect(
+              result.sleeper.appliedPair?.recalculation?.shiftTimeRemaining.value,
+            ).toBe(660);
+          });
+          """.splitlines()
+          test_lines[sleeper_close:sleeper_close] = new_test + ['']
+          tests.write_text('\n'.join(test_lines) + '\n')
+      - name: Remove temporary workflow
+        shell: bash
+        run: rm -f .github/workflows/stage07-guidance-fix.yml
+      - name: Commit current-guidance correction
+        shell: bash
+        run: |
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add -A
+          git diff --cached --check
+          git commit -m "Honor explicit split-sleeper choice after ten-hour rest"
+          git push origin HEAD:agent/stage-07-hos-sleeper-adverse-policy
