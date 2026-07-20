@@ -352,8 +352,7 @@ function validateCoreComposition(
     dutyEvents.forEach((event, index) => {
       const transition = coreResult.transitions[index];
       if (
-        transition === undefined
-        || transition.event.id !== event.id
+        transition?.event.id !== event.id
         || compareInstants(transition.event.startAt, event.startAt) !== 0
         || compareInstants(transition.event.endAt, event.endAt) !== 0
       ) {
@@ -669,31 +668,36 @@ function evaluatePair(
       const firstWindowMinutes = exactMinutes(dutyWindowStart, first.startAt)
         + exactMinutes(first.endAt, second.startAt);
       const secondWindowMinutes = exactMinutes(first.endAt, second.startAt);
+      let clockLimitsValid = true;
       if (drivingBeforeFirst + drivingBetween > rules.drivingLimitMinutes) {
+        clockLimitsValid = false;
         issues.push(pairIssue(
           'DRIVING_LIMIT_AROUND_FIRST_PERIOD_EXCEEDED',
           'Driving immediately before and after the first paired period exceeds eleven hours.',
         ));
       }
       if (firstWindowMinutes > rules.shiftWindowMinutes) {
+        clockLimitsValid = false;
         issues.push(pairIssue(
           'SHIFT_WINDOW_AROUND_FIRST_PERIOD_EXCEEDED',
           'The 14-hour window around the first paired period is exceeded after excluding that qualifying period.',
         ));
       }
       if (drivingBetween > rules.drivingLimitMinutes) {
+        clockLimitsValid = false;
         issues.push(pairIssue(
           'DRIVING_LIMIT_AFTER_FIRST_PERIOD_EXCEEDED',
           'Driving after the first paired period exceeds eleven hours before the second period completes.',
         ));
       }
       if (secondWindowMinutes > rules.shiftWindowMinutes) {
+        clockLimitsValid = false;
         issues.push(pairIssue(
           'SHIFT_WINDOW_AFTER_FIRST_PERIOD_EXCEEDED',
           'The recalculated 14-hour window from the end of the first period is exceeded.',
         ));
       }
-      if (issues.length === 0) {
+      if (clockLimitsValid) {
         recalculation = freeze({
           recalculatedAt: second.endAt,
           recalculationAnchorAt: first.endAt,
@@ -879,9 +883,9 @@ function evaluateAdverse(
       'An adverse selection requires an identifier, description, source, and explanation.',
     ));
   }
-  if (snapshot !== undefined && snapshot.blockingReasons.some((reason) =>
+  if (snapshot?.blockingReasons.some((reason) =>
     reason.code === 'CYCLE_LIMIT_REACHED'
-    || reason.code === 'THIRTY_MINUTE_INTERRUPTION_REQUIRED')) {
+    || reason.code === 'THIRTY_MINUTE_INTERRUPTION_REQUIRED') === true) {
     issues.push(adverseIssue(
       'BLOCKED_BY_UNEXTENDED_RULE',
       'Adverse driving conditions do not restore cycle availability or waive the 30-minute interruption.',
@@ -892,7 +896,7 @@ function evaluateAdverse(
     status: applied ? 'APPLIED' : 'REJECTED',
     selection,
     issues: freeze(issues),
-    ...(applied && snapshot !== undefined
+    ...(applied
       ? {
           appliedAt: selection.encounteredAt,
           normalDrivingTimeRemainingAtSelection: snapshot.drivingTimeRemaining,
@@ -1096,10 +1100,7 @@ export function calculateHosAdvancedRules(
     : validateDutyEventHistory(input.dutyEvents, {
         expectedStartAt: departureState.departureAt,
       });
-  if (
-    input.selectedSleeperPairId !== undefined
-    && input.selectedSleeperPairId.trim() === ''
-  ) {
+  if (input.selectedSleeperPairId?.trim() === '') {
     throw new HosAdvancedValidationError([freeze({
       code: 'INVALID_SELECTED_PAIR_ID',
       path: 'selectedSleeperPairId',

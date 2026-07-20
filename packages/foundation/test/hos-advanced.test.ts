@@ -538,9 +538,9 @@ describe('Stage 07 carrier policy and unsupported selections', () => {
     });
 
     expect(result.unsupportedRuleWarnings).toHaveLength(2);
-    expect(result.unsupportedRuleWarnings.every(
-      (warning) => warning.severity === 'BLOCKING',
-    )).toBe(true);
+    expect(result.unsupportedRuleWarnings.map(
+      (warning) => warning.severity,
+    )).toEqual(['BLOCKING', 'BLOCKING']);
     expect(result.clockAlterationBlocked).toBe(true);
     expect(result.adverseDrivingCondition.status).toBe('NOT_SELECTED');
   });
