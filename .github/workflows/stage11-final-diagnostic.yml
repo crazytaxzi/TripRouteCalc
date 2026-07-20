@@ -31,17 +31,18 @@ jobs:
           corepack enable
           corepack prepare pnpm@9.15.4 --activate
 
-      - name: Capture lint findings
+      - name: Capture generated lint findings
         shell: bash
         run: |
           set +e
-          pnpm install --frozen-lockfile > stage11-final-lint.txt 2>&1
-          pnpm lint:source >> stage11-final-lint.txt 2>&1
+          pnpm install --frozen-lockfile > stage11-final-lint-generated.txt 2>&1
+          pnpm db:generate >> stage11-final-lint-generated.txt 2>&1
+          pnpm lint:source >> stage11-final-lint-generated.txt 2>&1
           exit 0
 
-      - name: Upload lint findings
+      - name: Upload generated lint findings
         uses: actions/upload-artifact@v4
         with:
-          name: stage11-final-lint
-          path: stage11-final-lint.txt
+          name: stage11-final-lint-generated
+          path: stage11-final-lint-generated.txt
           if-no-files-found: error
