@@ -43,7 +43,7 @@ Stage 11 is executed under `PRIME_DIRECTIVE.md` and `ERROR_RECOVERY_PROTOCOL.md`
 
 ## Database and data changes
 
-No Prisma schema change or migration is required. Stage 03 already created route, leg, segment, restriction, and provider-response evidence tables. Stage 11 adds a typed repository method over the existing provider-response retention modes.
+No Prisma schema change or migration is required. Stage 03 already created route, leg, segment, restriction, and provider-response evidence tables. Stage 11 adds a typed repository method over the existing provider-response retention modes. The workspace lockfile was regenerated with pnpm 9.15.4 to include the new routing package importer without changing external dependency versions.
 
 ## Live provider blocker
 
