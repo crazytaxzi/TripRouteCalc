@@ -60,7 +60,7 @@ Until that setup exists, the runtime returns a blocked result and no route may b
 
 ## Verification pending
 
-CI run `522` passed frozen install, Prisma generation and validation, clean PostgreSQL migration deployment, and ESLint. The strict TypeScript diagnostic isolated one widened `providerVerificationStatus` expression. It is now explicitly typed against `CommercialRouteAssessment['providerVerificationStatus']`; all temporary diagnostics are removed and the complete permanent gate is running on the identical repaired source.
+CI run `522` passed frozen install, Prisma generation and validation, clean PostgreSQL migration deployment, and ESLint. ERP then corrected the widened provider-verification union and declared the normalized route collections as readonly, matching the frozen runtime result. The strict TypeScript diagnostic now passes with no compiler errors. All temporary diagnostics are removed and the complete permanent gate is running on the identical repaired source.
 
 The complete repository gate must pass before the stage is marked complete:
 
