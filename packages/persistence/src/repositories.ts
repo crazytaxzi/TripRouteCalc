@@ -1,6 +1,7 @@
 import type { JsonObject } from './json.js';
 import { toJsonObject } from './json.js';
 
+export * from './driver-hos-repository.js';
 export * from './export-history-repository.js';
 export * from './regulatory-rule-repository.js';
 export * from './route-provider-response-repository.js';
