@@ -422,9 +422,17 @@ export interface CommercialRouteAssessment {
   readonly confidenceReasons: readonly string[];
 }
 
-export interface NormalizedCommercialRouteResult extends CommercialRoutePayload {
-  readonly assessment: CommercialRouteAssessment;
-}
+export type NormalizedCommercialRouteResult = Readonly<
+  Omit<
+    CommercialRoutePayload,
+    'legs' | 'restrictions' | 'unavailableFields'
+  > & {
+    readonly legs: readonly CommercialRouteLeg[];
+    readonly restrictions: readonly CommercialRouteRestriction[];
+    readonly unavailableFields: readonly RouteUnavailableField[];
+    readonly assessment: CommercialRouteAssessment;
+  }
+>;
 
 function allRestrictions(
   payload: CommercialRoutePayload,
