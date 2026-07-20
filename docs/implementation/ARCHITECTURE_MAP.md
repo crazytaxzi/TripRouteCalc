@@ -20,6 +20,8 @@ TripRouteCalc/
 ├── docs/
 │   ├── domain/
 │   │   └── product-foundation.md
+│   ├── hos/
+│   │   └── README.md
 │   ├── persistence/
 │   │   └── README.md
 │   ├── specification/
@@ -40,19 +42,25 @@ TripRouteCalc/
 │       └── handoffs/
 │           ├── 01-repository-audit-and-plan.md
 │           ├── 02-product-foundation-domain-units-time.md
-│           └── 03-persistence-revisions-auditability.md
+│           ├── 03-persistence-revisions-auditability.md
+│           └── 04-driver-hos-inputs-duty-events.md
 └── packages/
     ├── foundation/
     │   ├── package.json
     │   ├── tsconfig.json
     │   ├── src/
     │   │   ├── domain.ts
+    │   │   ├── hos.ts
     │   │   ├── index.ts
     │   │   ├── scope.ts
     │   │   ├── terminology.ts
     │   │   ├── time.ts
     │   │   └── units.ts
     │   └── test/
+    │       ├── domain.test.ts
+    │       ├── hos.test.ts
+    │       ├── time.test.ts
+    │       └── units.test.ts
     └── persistence/
         ├── package.json
         ├── prisma.config.ts
@@ -61,10 +69,13 @@ TripRouteCalc/
         │   ├── schema.prisma
         │   └── migrations/
         │       ├── migration_lock.toml
-        │       └── 20260720000000_stage03_persistence/
+        │       ├── 20260720000000_stage03_persistence/
+        │       │   └── migration.sql
+        │       └── 20260720050000_stage04_driver_hos_inputs/
         │           └── migration.sql
         ├── src/
         │   ├── client.ts
+        │   ├── driver-hos-repository.ts
         │   ├── errors.ts
         │   ├── export-history-repository.ts
         │   ├── index.ts
@@ -76,6 +87,7 @@ TripRouteCalc/
         │   ├── tenant.ts
         │   └── trip-revision-repository.ts
         └── test/
+            ├── driver-hos.integration.test.ts
             └── persistence.integration.test.ts
 ```
 
@@ -85,15 +97,16 @@ The Prisma-generated client is created under `packages/persistence/src/generated
 
 - Node.js 22 and pnpm 9 TypeScript workspace
 - Stable shared foundation package
+- Validated HOS departure-state and timestamped duty-event contracts
 - PostgreSQL 18 local and CI service configuration
-- Prisma 7 schema, generated client, and committed migration
+- Prisma 7 schema, generated client, and committed migrations
 - Carrier-scoped tenant repositories
-- Immutable calculation revisions and evidence
+- Immutable calculation and HOS evidence revisions
 - Versioned regulatory persistence and change history
 - Strict ESLint, TypeScript, Vitest, and GitHub Actions verification
 
 ## Boundaries not yet created
 
-There is no frontend, backend application, REST API, authentication system, HOS calculation engine, commercial-routing adapter, regulatory evaluation engine, ETA simulator, map UI, export renderer, or production deployment configuration.
+There is no frontend, backend application, REST API, authentication system, complete HOS clock engine, commercial-routing adapter, regulatory evaluation engine, ETA simulator, map UI, export renderer, or production deployment configuration.
 
-Future packages and applications must import `@trip-route-calc/foundation` and `@trip-route-calc/persistence` rather than duplicating unit, time, domain, tenant, revision, or audit contracts.
+Future packages and applications must import `@trip-route-calc/foundation` and `@trip-route-calc/persistence` rather than duplicating unit, time, domain, HOS input, tenant, revision, or audit contracts. Stages 05 through 08 must consume Stage 04 facts without rewriting them or silently inferring missing clocks.
