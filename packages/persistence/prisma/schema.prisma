@@ -409,6 +409,7 @@ model TripStop {
   tripRevision                 TripRevision         @relation(fields: [tripRevisionId], references: [id], onDelete: Restrict)
   facility                     Facility?            @relation(fields: [facilityId], references: [id], onDelete: Restrict)
   appointmentWindow            AppointmentWindow?
+  details                      TripStopDetails?
   originRouteLegs              RouteLeg[]           @relation("RouteLegOrigin")
   destinationRouteLegs         RouteLeg[]           @relation("RouteLegDestination")
   plannedEvents                PlannedEvent[]
