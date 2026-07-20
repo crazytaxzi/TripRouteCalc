@@ -14,6 +14,10 @@
       "types": "./dist/domain.d.ts",
       "import": "./dist/domain.js"
     },
+    "./hos-core": {
+      "types": "./dist/hos-core.d.ts",
+      "import": "./dist/hos-core.js"
+    },
     "./hos": {
       "types": "./dist/hos.d.ts",
       "import": "./dist/hos.js"
