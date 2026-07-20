@@ -1,4 +1,11 @@
-import type { UtcInstant } from '@trip-route-calc/foundation';
+import {
+  assessCommercialRoute,
+  commercialRouteResultSnapshot,
+} from '@trip-route-calc/foundation';
+import type {
+  NormalizedCommercialRouteResult,
+  UtcInstant,
+} from '@trip-route-calc/foundation';
 
 import type { PersistenceClient } from './client.js';
 import {
@@ -35,11 +42,70 @@ export interface SaveRouteProviderResponseInput {
   readonly responseHash?: string;
 }
 
+export interface SaveNormalizedCommercialRouteEvidenceInput {
+  readonly tripRevisionId: string;
+  readonly routeId?: string;
+  readonly receivedAt: UtcInstant;
+  readonly result: NormalizedCommercialRouteResult;
+  readonly retention:
+    | Readonly<{
+        mode: 'normalized-snapshot';
+        normalizedSnapshotRetentionAllowed: true;
+      }>
+    | Readonly<{
+        mode: 'provider-reference';
+        providerReference: string;
+      }>;
+}
+
 export class RouteProviderResponseRepository {
   public constructor(
     private readonly client: PersistenceClient,
     private readonly context: TenantContext,
   ) {}
+
+  public async saveNormalizedCommercialRouteEvidence(
+    input: SaveNormalizedCommercialRouteEvidenceInput,
+  ): Promise<Prisma.RouteProviderResponseGetPayload<Record<string, never>>> {
+    const result = assessCommercialRoute({
+      routeId: input.result.routeId,
+      routeKind: input.result.routeKind,
+      provider: input.result.provider,
+      totalDistance: input.result.totalDistance,
+      travelDuration: input.result.travelDuration,
+      geometry: input.result.geometry,
+      legs: input.result.legs,
+      restrictions: input.result.restrictions,
+      unavailableFields: input.result.unavailableFields,
+    });
+    const common = {
+      tripRevisionId: input.tripRevisionId,
+      ...(input.routeId === undefined ? {} : { routeId: input.routeId }),
+      providerName: result.provider.providerName,
+      ...(result.provider.providerVersion === undefined
+        ? {}
+        : { providerVersion: result.provider.providerVersion }),
+      ...(result.provider.providerRequestId === undefined
+        ? {}
+        : { providerRequestId: result.provider.providerRequestId }),
+      receivedAt: input.receivedAt,
+      licenseAllowsRawStorage: false,
+    };
+
+    if (input.retention.mode === 'normalized-snapshot') {
+      return this.save({
+        ...common,
+        storageMode: 'normalized-snapshot',
+        normalizedSnapshot: commercialRouteResultSnapshot(result),
+      });
+    }
+
+    return this.save({
+      ...common,
+      storageMode: 'provider-reference',
+      providerReference: input.retention.providerReference,
+    });
+  }
 
   public async save(
     input: SaveRouteProviderResponseInput,

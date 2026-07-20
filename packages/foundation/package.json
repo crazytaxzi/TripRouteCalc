@@ -45,6 +45,10 @@
     "./equipment": {
       "types": "./dist/equipment.d.ts",
       "import": "./dist/equipment.js"
+    },
+    "./commercial-routing": {
+      "types": "./dist/commercial-routing.d.ts",
+      "import": "./dist/commercial-routing.js"
     }
   },
   "files": [
