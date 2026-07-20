@@ -27,7 +27,7 @@ export type LocalTimeResolution =
 export interface ZonedLocalDateTime {
   readonly localDateTime: LocalDateTime;
   readonly timeZone: IanaTimeZone;
-  readonly repeatedTimeChoice?: RepeatedTimeChoice;
+  readonly repeatedTimeChoice?: RepeatedTimeChoice | undefined;
 }
 
 export interface ResolvedZonedLocalDateTime {
@@ -234,9 +234,7 @@ function samePlainDateTime(
 }
 
 export function inspectLocalTime(input: unknown): LocalTimeResolution {
-  const parsed = ZonedLocalDateTimeSchema.omit({
-    repeatedTimeChoice: true,
-  }).parse(input);
+  const parsed = ZonedLocalDateTimeSchema.parse(input);
   const plain = Temporal.PlainDateTime.from(parsed.localDateTime);
   const fields = zonedDateTimeFields(parsed.localDateTime, parsed.timeZone);
   const earlier = Temporal.ZonedDateTime.from(fields, {
@@ -247,7 +245,10 @@ export function inspectLocalTime(input: unknown): LocalTimeResolution {
   });
 
   if (earlier.epochNanoseconds === later.epochNanoseconds) {
-    return freeze({ kind: 'exact', instant: toCanonicalInstant(earlier.toInstant()) });
+    return freeze({
+      kind: 'exact',
+      instant: toCanonicalInstant(earlier.toInstant()),
+    });
   }
 
   const earlierMatches = samePlainDateTime(earlier, plain);
