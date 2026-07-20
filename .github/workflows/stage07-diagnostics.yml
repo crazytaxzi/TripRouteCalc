@@ -1,4 +1,4 @@
-name: Stage 07 lint fix
+name: Stage 07 structural lint fix
 
 on:
   push:
@@ -16,114 +16,118 @@ jobs:
         uses: actions/checkout@v4
         with:
           ref: agent/stage-07-hos-sleeper-adverse-policy
-      - name: Apply exact lint corrections
+      - name: Apply structural lint corrections
         shell: python
         run: |
           from pathlib import Path
 
           source = Path('packages/foundation/src/hos-advanced.ts')
-          text = source.read_text()
-          replacements = [
-              (
-                  """        transition === undefined
-                  || transition.event.id !== event.id
-          """,
-                  """        transition?.event.id !== event.id
-          """,
-              ),
-              (
-                  """      if (drivingBeforeFirst + drivingBetween > rules.drivingLimitMinutes) {
-                  issues.push(pairIssue(
-          """,
-                  """      let clockLimitsValid = true;
-                if (drivingBeforeFirst + drivingBetween > rules.drivingLimitMinutes) {
-                  clockLimitsValid = false;
-                  issues.push(pairIssue(
-          """,
-              ),
-              (
-                  """      if (firstWindowMinutes > rules.shiftWindowMinutes) {
-                  issues.push(pairIssue(
-          """,
-                  """      if (firstWindowMinutes > rules.shiftWindowMinutes) {
-                  clockLimitsValid = false;
-                  issues.push(pairIssue(
-          """,
-              ),
-              (
-                  """      if (drivingBetween > rules.drivingLimitMinutes) {
-                  issues.push(pairIssue(
-          """,
-                  """      if (drivingBetween > rules.drivingLimitMinutes) {
-                  clockLimitsValid = false;
-                  issues.push(pairIssue(
-          """,
-              ),
-              (
-                  """      if (secondWindowMinutes > rules.shiftWindowMinutes) {
-                  issues.push(pairIssue(
-          """,
-                  """      if (secondWindowMinutes > rules.shiftWindowMinutes) {
-                  clockLimitsValid = false;
-                  issues.push(pairIssue(
-          """,
-              ),
-              (
-                  """      if (issues.length === 0) {
-                  recalculation = freeze({
-          """,
-                  """      if (clockLimitsValid) {
-                  recalculation = freeze({
-          """,
-              ),
-              (
-                  """  if (snapshot !== undefined && snapshot.blockingReasons.some((reason) =>
-              reason.code === 'CYCLE_LIMIT_REACHED'
-              || reason.code === 'THIRTY_MINUTE_INTERRUPTION_REQUIRED')) {
-          """,
-                  """  if (snapshot?.blockingReasons.some((reason) =>
-              reason.code === 'CYCLE_LIMIT_REACHED'
-              || reason.code === 'THIRTY_MINUTE_INTERRUPTION_REQUIRED') === true) {
-          """,
-              ),
-              (
-                  """    ...(applied && snapshot !== undefined
-                ? {
-          """,
-                  """    ...(applied
-                ? {
-          """,
-              ),
-              (
-                  """  if (
-              input.selectedSleeperPairId !== undefined
-              && input.selectedSleeperPairId.trim() === ''
-            ) {
-          """,
-                  """  if (input.selectedSleeperPairId?.trim() === '') {
-          """,
-              ),
+          lines = source.read_text().splitlines()
+
+          def indexes_for(statement: str) -> list[int]:
+              return [index for index, line in enumerate(lines) if line.strip() == statement]
+
+          transition_indexes = indexes_for('transition === undefined')
+          if len(transition_indexes) != 1:
+              raise SystemExit(f'Expected one undefined-transition check, found {len(transition_indexes)}.')
+          transition_index = transition_indexes[0]
+          if lines[transition_index + 1].strip() != '|| transition.event.id !== event.id':
+              raise SystemExit('Transition identity check was not adjacent to the undefined check.')
+          indent = lines[transition_index][:len(lines[transition_index]) - len(lines[transition_index].lstrip())]
+          lines[transition_index] = indent + 'transition?.event.id !== event.id'
+          del lines[transition_index + 1]
+
+          clock_conditions = [
+              'if (drivingBeforeFirst + drivingBetween > rules.drivingLimitMinutes) {',
+              'if (firstWindowMinutes > rules.shiftWindowMinutes) {',
+              'if (drivingBetween > rules.drivingLimitMinutes) {',
+              'if (secondWindowMinutes > rules.shiftWindowMinutes) {',
           ]
-          for old, new in replacements:
-              count = text.count(old)
-              if count != 1:
-                  raise SystemExit(f'Expected one source replacement, found {count}: {old[:80]!r}')
-              text = text.replace(old, new)
-          source.write_text(text)
+          first_clock_indexes = indexes_for(clock_conditions[0])
+          if len(first_clock_indexes) != 1:
+              raise SystemExit(f'Expected one first clock condition, found {len(first_clock_indexes)}.')
+          first_clock_index = first_clock_indexes[0]
+          clock_indent = lines[first_clock_index][:len(lines[first_clock_index]) - len(lines[first_clock_index].lstrip())]
+          lines.insert(first_clock_index, clock_indent + 'let clockLimitsValid = true;')
+
+          for statement in clock_conditions:
+              matches = indexes_for(statement)
+              if len(matches) != 1:
+                  raise SystemExit(f'Expected one clock condition {statement!r}, found {len(matches)}.')
+              condition_index = matches[0]
+              indent = lines[condition_index][:len(lines[condition_index]) - len(lines[condition_index].lstrip())]
+              lines.insert(condition_index + 1, indent + '  clockLimitsValid = false;')
+
+          first_clock_index = indexes_for(clock_conditions[0])[0]
+          recalculation_matches = [
+              index
+              for index in range(first_clock_index, min(len(lines), first_clock_index + 100))
+              if lines[index].strip() == 'if (issues.length === 0) {'
+          ]
+          if len(recalculation_matches) != 1:
+              raise SystemExit(f'Expected one recalculation issue check, found {len(recalculation_matches)}.')
+          recalculation_index = recalculation_matches[0]
+          indent = lines[recalculation_index][:len(lines[recalculation_index]) - len(lines[recalculation_index].lstrip())]
+          lines[recalculation_index] = indent + 'if (clockLimitsValid) {'
+
+          snapshot_statement = "if (snapshot !== undefined && snapshot.blockingReasons.some((reason) =>"
+          snapshot_matches = indexes_for(snapshot_statement)
+          if len(snapshot_matches) != 1:
+              raise SystemExit(f'Expected one snapshot condition, found {len(snapshot_matches)}.')
+          snapshot_index = snapshot_matches[0]
+          indent = lines[snapshot_index][:len(lines[snapshot_index]) - len(lines[snapshot_index].lstrip())]
+          lines[snapshot_index] = indent + 'if (snapshot?.blockingReasons.some((reason) =>'
+          closing_statement = "|| reason.code === 'THIRTY_MINUTE_INTERRUPTION_REQUIRED')) {"
+          if lines[snapshot_index + 2].strip() != closing_statement:
+              raise SystemExit('Snapshot blocking-reason condition did not have the expected closing line.')
+          closing_indent = lines[snapshot_index + 2][:len(lines[snapshot_index + 2]) - len(lines[snapshot_index + 2].lstrip())]
+          lines[snapshot_index + 2] = closing_indent + "|| reason.code === 'THIRTY_MINUTE_INTERRUPTION_REQUIRED') === true) {"
+
+          applied_statement = '...(applied && snapshot !== undefined'
+          applied_matches = indexes_for(applied_statement)
+          if len(applied_matches) != 1:
+              raise SystemExit(f'Expected one applied snapshot spread, found {len(applied_matches)}.')
+          applied_index = applied_matches[0]
+          indent = lines[applied_index][:len(lines[applied_index]) - len(lines[applied_index].lstrip())]
+          lines[applied_index] = indent + '...(applied'
+
+          selected_start_matches = [
+              index
+              for index, line in enumerate(lines)
+              if line.strip() == 'if ('
+              and index + 3 < len(lines)
+              and lines[index + 1].strip() == 'input.selectedSleeperPairId !== undefined'
+              and lines[index + 2].strip() == "&& input.selectedSleeperPairId.trim() === ''"
+              and lines[index + 3].strip() == ') {'
+          ]
+          if len(selected_start_matches) != 1:
+              raise SystemExit(f'Expected one selected-pair blank check, found {len(selected_start_matches)}.')
+          selected_index = selected_start_matches[0]
+          indent = lines[selected_index][:len(lines[selected_index]) - len(lines[selected_index].lstrip())]
+          lines[selected_index:selected_index + 4] = [
+              indent + "if (input.selectedSleeperPairId?.trim() === '') {",
+          ]
+
+          source.write_text('\n'.join(lines) + '\n')
 
           tests = Path('packages/foundation/test/hos-advanced.test.ts')
-          test_text = tests.read_text()
-          old_test = """    expect(result.unsupportedRuleWarnings.every(
-              (warning) => warning.severity === 'BLOCKING',
-            )).toBe(true);
-          """
-          new_test = """    expect(result.unsupportedRuleWarnings.map(
-              (warning) => warning.severity,
-            )).toEqual(['BLOCKING', 'BLOCKING']);
-          """
-          if test_text.count(old_test) != 1:
-              raise SystemExit('Expected one Stage 07 unsupported-warning assertion.')
-          tests.write_text(test_text.replace(old_test, new_test))
+          test_lines = tests.read_text().splitlines()
+          test_matches = [
+              index for index, line in enumerate(test_lines)
+              if line.strip() == 'expect(result.unsupportedRuleWarnings.every('
+          ]
+          if len(test_matches) != 1:
+              raise SystemExit(f'Expected one unsupported-warning every assertion, found {len(test_matches)}.')
+          test_index = test_matches[0]
+          if test_lines[test_index + 2].strip() != ')).toBe(true);':
+              raise SystemExit('Unsupported-warning assertion did not have the expected three-line shape.')
+          indent = test_lines[test_index][:len(test_lines[test_index]) - len(test_lines[test_index].lstrip())]
+          test_lines[test_index:test_index + 3] = [
+              indent + 'expect(result.unsupportedRuleWarnings.map(',
+              indent + '  (warning) => warning.severity,',
+              indent + ")).toEqual(['BLOCKING', 'BLOCKING']);",
+          ]
+          tests.write_text('\n'.join(test_lines) + '\n')
       - name: Remove temporary Stage 07 files
         shell: bash
         run: |
