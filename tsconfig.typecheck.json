@@ -7,7 +7,9 @@
       "@trip-route-calc/foundation": ["packages/foundation/src/index.ts"],
       "@trip-route-calc/foundation/*": ["packages/foundation/src/*.ts"],
       "@trip-route-calc/routing": ["packages/routing/src/index.ts"],
-      "@trip-route-calc/routing/*": ["packages/routing/src/*.ts"]
+      "@trip-route-calc/routing/*": ["packages/routing/src/*.ts"],
+      "@trip-route-calc/compliance": ["packages/compliance/src/index.ts"],
+      "@trip-route-calc/compliance/*": ["packages/compliance/src/*.ts"]
     },
     "types": ["node", "vitest/globals"]
   },
