@@ -24,16 +24,19 @@ jobs:
 
           tests = Path('packages/foundation/test/hos-cycle.test.ts')
           text = tests.read_text()
-          old = """        startAt: '2026-07-19T00:00:00.000Z',
-                  endAt: '2026-07-19T23:20:00.000Z',
-          """
-          new = """        startAt: '2026-07-19T12:40:00.000Z',
-                  endAt: '2026-07-20T12:00:00.000Z',
-          """
-          count = text.count(old)
-          if count != 2:
-              raise SystemExit(f'Expected two restart fixture intervals, found {count}.')
-          tests.write_text(text.replace(old, new))
+          old_start = "startAt: '2026-07-19T00:00:00.000Z'"
+          old_end = "endAt: '2026-07-19T23:20:00.000Z'"
+          if text.count(old_start) != 2 or text.count(old_end) != 2:
+              raise SystemExit('Expected exactly two restart fixture timestamps.')
+          text = text.replace(
+              old_start,
+              "startAt: '2026-07-19T12:40:00.000Z'",
+          )
+          text = text.replace(
+              old_end,
+              "endAt: '2026-07-20T12:00:00.000Z'",
+          )
+          tests.write_text(text)
       - name: Commit exact fixture correction
         shell: bash
         run: |
