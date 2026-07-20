@@ -26,54 +26,85 @@ jobs:
           fetch-depth: 0
           ref: ${{ github.head_ref }}
 
-      - name: Reconstruct verified payload
-        shell: bash
-        run: |
-          set -euo pipefail
-          archive=/tmp/stage10-payload.tar.gz
-          cat .stage10-payload/chunk-* | base64 --decode > "$archive"
-          actual_sha=$(sha256sum "$archive" | awk '{print $1}')
-          test "$actual_sha" = "$STAGE10_ARCHIVE_SHA"
-          tar -tzf "$archive" > /tmp/stage10-archive-list.txt
-          tar -xzf "$archive" -C .
-          python3 stage10_apply.py
-          rm -f stage10_apply.py
-          rm -rf .stage10-payload
-          rm -f .github/workflows/stage10-reconstruct.yml
-
-      - name: Capture commit diagnostics
+      - name: Reconstruct with exported diagnostics
         shell: bash
         run: |
           set +e
-          {
-            echo "head=$(git rev-parse HEAD)"
-            echo "--- status ---"
-            git status --short
-            echo "--- diff stat ---"
-            git diff --stat
-            echo "--- diff check ---"
-            git diff --check
-            echo "diff_check_exit=$?"
-            echo "--- staged diff check after add ---"
-            git add -A
-            git diff --cached --check
-            echo "staged_diff_check_exit=$?"
-            echo "--- staged stat ---"
-            git diff --cached --stat
-          } > /tmp/stage10-commit-diagnostic.txt 2>&1
+          log=/tmp/stage10-reconstruction-diagnostic.txt
+          archive=/tmp/stage10-payload.tar.gz
+          success=/tmp/stage10-reconstruction-succeeded
+          : > "$log"
+          failed=0
+
+          echo "head=$(git rev-parse HEAD)" >> "$log"
+          echo "chunk_count=$(find .stage10-payload -maxdepth 1 -type f -name 'chunk-*' | wc -l)" >> "$log"
+          echo "chunk_bytes=$(cat .stage10-payload/chunk-* | wc -c)" >> "$log"
+
+          cat .stage10-payload/chunk-* | base64 --decode > "$archive" 2>> "$log"
+          rc=$?
+          echo "base64_decode_exit=$rc" >> "$log"
+          if [[ "$rc" -ne 0 ]]; then failed=1; fi
+
+          if [[ "$failed" -eq 0 ]]; then
+            actual_sha=$(sha256sum "$archive" | awk '{print $1}')
+            echo "expected_sha=$STAGE10_ARCHIVE_SHA" >> "$log"
+            echo "actual_sha=$actual_sha" >> "$log"
+            if [[ "$actual_sha" != "$STAGE10_ARCHIVE_SHA" ]]; then failed=1; fi
+          fi
+
+          if [[ "$failed" -eq 0 ]]; then
+            tar -tzf "$archive" > /tmp/stage10-archive-list.txt 2>> "$log"
+            rc=$?
+            echo "archive_list_exit=$rc" >> "$log"
+            cat /tmp/stage10-archive-list.txt >> "$log"
+            if [[ "$rc" -ne 0 ]]; then failed=1; fi
+          fi
+
+          if [[ "$failed" -eq 0 ]]; then
+            tar -xzf "$archive" -C . >> "$log" 2>&1
+            rc=$?
+            echo "archive_extract_exit=$rc" >> "$log"
+            if [[ "$rc" -ne 0 ]]; then failed=1; fi
+          fi
+
+          if [[ "$failed" -eq 0 ]]; then
+            python3 stage10_apply.py >> "$log" 2>&1
+            rc=$?
+            echo "apply_exit=$rc" >> "$log"
+            if [[ "$rc" -ne 0 ]]; then failed=1; fi
+          fi
+
+          if [[ "$failed" -eq 0 ]]; then
+            git status --short >> "$log" 2>&1
+            git diff --check >> "$log" 2>&1
+            rc=$?
+            echo "diff_check_exit=$rc" >> "$log"
+            if [[ "$rc" -ne 0 ]]; then failed=1; fi
+          fi
+
+          if [[ "$failed" -eq 0 ]]; then
+            rm -f stage10_apply.py
+            rm -rf .stage10-payload
+            rm -f .github/workflows/stage10-reconstruct.yml
+            touch "$success"
+            echo "result=success" >> "$log"
+          else
+            echo "result=failure" >> "$log"
+          fi
           exit 0
 
-      - name: Upload commit diagnostic
+      - name: Upload reconstruction diagnostic
         uses: actions/upload-artifact@v4
         with:
-          name: stage10-commit-diagnostic
-          path: /tmp/stage10-commit-diagnostic.txt
+          name: stage10-reconstruction-diagnostic
+          path: /tmp/stage10-reconstruction-diagnostic.txt
           if-no-files-found: error
 
       - name: Commit reconstructed Stage 10 implementation
         shell: bash
         run: |
           set -euo pipefail
+          test -f /tmp/stage10-reconstruction-succeeded
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add -A
