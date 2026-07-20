@@ -106,9 +106,11 @@ jobs:
           if addition not in text and marker in text:
               text = text.replace(marker, marker + addition)
           architecture.write_text(text)
-      - name: Remove temporary workflow
+      - name: Remove temporary workflow and trigger
         shell: bash
-        run: rm -f .github/workflows/stage08-doc-patch.yml
+        run: |
+          rm -f .stage08-doc-trigger
+          rm -f .github/workflows/stage08-doc-patch.yml
       - name: Commit Stage 08 ledger patches
         shell: bash
         run: |
