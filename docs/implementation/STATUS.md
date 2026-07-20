@@ -5,17 +5,19 @@
 - Canonical repository: `crazytaxzi/TripRouteCalc`
 - Repository visibility: private
 - Default branch: `main`
-- Active implementation branch: none
+- Active implementation branch: `agent/stage-06-cycle-recaps-restart`
 - Active pull request: none
-- Last completed pull request: `#6`
-- Product status: pure standard federal property-carrying HOS core clocks and 30-minute interruption implementation complete, verified, and merged
+- Last completed implementation pull request: `#6`
+- Last completed ledger pull request: `#7`
+- Product status: Stage 05 pure standard federal property-carrying HOS core complete; Stage 06 cycle, recap, and restart implementation initialized
 - Completed sources: `01_REPOSITORY_AUDIT_AND_PLAN.md`, `02_PRODUCT_FOUNDATION_DOMAIN_UNITS_TIME.md`, `03_PERSISTENCE_REVISIONS_AUDITABILITY.md`, `04_DRIVER_HOS_INPUTS_AND_DUTY_EVENTS.md`, `05_HOS_CORE_CLOCKS_AND_INTERRUPTION.md`
 - Stage 01 status: COMPLETE
 - Stage 02 status: COMPLETE
 - Stage 03 status: COMPLETE
 - Stage 04 status: COMPLETE
 - Stage 05 status: COMPLETE
-- Next source: `06_HOS_CYCLE_RECAPS_AND_RESTART.md`
+- Stage 06 status: INITIALIZED
+- Current source: `06_HOS_CYCLE_RECAPS_AND_RESTART.md`
 - Application code: `@trip-route-calc/foundation` and `@trip-route-calc/persistence`
 - Database migrations: Stage 03 initial migration plus the verified Stage 04 append-only HOS evidence migration; Stage 05 added no migration
 - Production integrations: none
@@ -34,7 +36,7 @@
 - Added focused scenario tests and one-minute-before, exact, and one-minute-after boundary tests for every Stage 05 limit.
 - Exported the engine through `@trip-route-calc/foundation` and `@trip-route-calc/foundation/hos-core`.
 
-## Verification evidence
+## Stage 05 verification evidence
 
 GitHub Actions CI run 159 passed against a clean PostgreSQL 18 service on the final pull-request head `2369e8177fef72e05de58e0a9cc207ac47a83fd2`:
 
@@ -47,14 +49,34 @@ GitHub Actions CI run 159 passed against a clean PostgreSQL 18 service on the fi
 - `pnpm test:source`
 - `pnpm build:source`
 
-The verified Stage 05 pull request was squash-merged into `main` as commit `3ee806dfedbf853647b05e44270009a5c6d2c0a7`.
+The verified Stage 05 pull request was squash-merged into `main` as commit `3ee806dfedbf853647b05e44270009a5c6d2c0a7`. The ledger cleanup passed CI run 163 and merged as `b7a04b210b0ddf7b133a048c676feb8da157ec9f`.
 
 A strict isolated TypeScript 5.8.3 harness also passed on Node.js 22.16.0. Runtime probes verified the exact 480/481-minute interruption boundary and a 10-hour reset followed by resumed driving. Current FMCSA guidance was checked on 2026-07-20 against the official property-carrying 11-hour, 14-hour, and 30-minute-break summary before implementation.
 
+## Stage 06 initialization
+
+- Reopened and applied the protected Prime Directive.
+- Reopened and applied the required Error Recovery Protocol.
+- Reloaded the controlling master specification and active Stage 06 source.
+- Reloaded the Stage 05 completion record and reconciled it with merged `main`.
+- Confirmed the Stage 05 pure core engine passed its final CI gate.
+- Confirmed the historical HOS evidence contracts and timestamped duty-event model required by Stage 06 are available.
+- Confirmed no mandatory provider, credential, migration, deployment, or human product-decision blocker prevents Stage 06 from beginning.
+- Isolated Stage 06 work on `agent/stage-06-cycle-recaps-restart` from clean merged commit `b7a04b210b0ddf7b133a048c676feb8da157ec9f`.
+
+## Stage 06 active scope
+
+- Calculate rolling 60-hour/7-day and 70-hour/8-day cycle consumption from timestamped on-duty evidence.
+- Reconcile calculated availability with the independently entered cycle clock and report discrepancies without overwriting either value.
+- Calculate recap returns at an explicit home-terminal or configured regulatory-day boundary using UTC and IANA time-zone primitives.
+- Expose recap returns as timestamped availability events.
+- Block driving and on-duty planning when cycle availability is exhausted.
+- Apply a qualifying 34-consecutive-hour restart only when explicitly planned or operationally selected.
+- Select and explain the earliest legally sufficient continuation among recap availability, a normal 10-hour reset, and an explicitly selected restart.
+- Add historical-window, minute-boundary, time-zone, and DST coverage.
+
 ## Deferred decisions and limitations
 
-- Stage 05 treats the validated departure clocks as authoritative independent inputs. Stage 06 must reconcile cycle availability against timestamped historical duty evidence and report discrepancies without silently replacing entered values.
-- Cycle recaps, regulatory-day boundaries, and 34-hour restart selection are not implemented in Stage 05.
 - Carrier targets remain separate recorded planning constraints. Stage 07 owns carrier-policy enforcement.
 - Sleeper evidence remains candidate data only. Stage 07 owns split-sleeper validation.
 - Adverse conditions, personal conveyance, exceptions, exemptions, pilot programs, and emergency declarations are never activated automatically.
@@ -64,6 +86,6 @@ A strict isolated TypeScript 5.8.3 harness also passed on Node.js 22.16.0. Runti
 - Production hosting, secrets management, backup schedules, recovery objectives, retention periods, and database operations remain undecided.
 - No API, UI, map, export renderer, or production deployment exists yet.
 
-## Next source
+## Current action
 
-Stage 05 is complete, verified, and merged. Begin the next dedicated implementation stage with `06_HOS_CYCLE_RECAPS_AND_RESTART.md` after reopening the Prime Directive and Error Recovery Protocol and reinspecting the accepted Stage 04 evidence contracts and Stage 05 pure core engine on `main`.
+Inspect the accepted Stage 04 historical evidence and Stage 05 core transition contracts, define Stage 06 traceability entries and the smallest pure cycle-engine extension, then implement and verify the timestamped history and regulatory-boundary model before adding recap and restart behavior.
