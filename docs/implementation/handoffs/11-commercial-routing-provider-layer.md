@@ -60,6 +60,8 @@ Until that setup exists, the runtime returns a blocked result and no route may b
 
 ## Verification pending
 
+CI run `463` accepted the frozen workspace lock, generated and validated Prisma, and deployed every migration to clean PostgreSQL 18. It stopped at ESLint, so a bounded diagnostic captures only the remaining lint findings before behavior or strictness is changed.
+
 The complete repository gate must pass before the stage is marked complete:
 
 - frozen-lockfile install;
