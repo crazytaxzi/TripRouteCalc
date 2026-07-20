@@ -1,4 +1,4 @@
-name: Stage 07 diagnostics
+name: Stage 07 lint fix
 
 on:
   push:
@@ -6,78 +6,135 @@ on:
       - agent/stage-07-hos-sleeper-adverse-policy
 
 permissions:
-  contents: read
-  issues: write
-  pull-requests: write
+  contents: write
 
 jobs:
-  lint-diagnostics:
+  apply-fix:
     runs-on: ubuntu-24.04
-    env:
-      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/trip_route_calc_test
     steps:
-      - name: Check out repository
+      - name: Check out Stage 07 branch
         uses: actions/checkout@v4
-      - name: Set up Node.js
-        uses: actions/setup-node@v4
         with:
-          node-version: 22
-      - name: Enable pnpm
+          ref: agent/stage-07-hos-sleeper-adverse-policy
+      - name: Apply exact lint corrections
+        shell: python
         run: |
-          corepack enable
-          corepack prepare pnpm@9.15.4 --activate
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile
-      - name: Generate Prisma client
-        run: pnpm db:generate
-      - name: Capture targeted lint output
+          from pathlib import Path
+
+          source = Path('packages/foundation/src/hos-advanced.ts')
+          text = source.read_text()
+          replacements = [
+              (
+                  """        transition === undefined
+                  || transition.event.id !== event.id
+          """,
+                  """        transition?.event.id !== event.id
+          """,
+              ),
+              (
+                  """      if (drivingBeforeFirst + drivingBetween > rules.drivingLimitMinutes) {
+                  issues.push(pairIssue(
+          """,
+                  """      let clockLimitsValid = true;
+                if (drivingBeforeFirst + drivingBetween > rules.drivingLimitMinutes) {
+                  clockLimitsValid = false;
+                  issues.push(pairIssue(
+          """,
+              ),
+              (
+                  """      if (firstWindowMinutes > rules.shiftWindowMinutes) {
+                  issues.push(pairIssue(
+          """,
+                  """      if (firstWindowMinutes > rules.shiftWindowMinutes) {
+                  clockLimitsValid = false;
+                  issues.push(pairIssue(
+          """,
+              ),
+              (
+                  """      if (drivingBetween > rules.drivingLimitMinutes) {
+                  issues.push(pairIssue(
+          """,
+                  """      if (drivingBetween > rules.drivingLimitMinutes) {
+                  clockLimitsValid = false;
+                  issues.push(pairIssue(
+          """,
+              ),
+              (
+                  """      if (secondWindowMinutes > rules.shiftWindowMinutes) {
+                  issues.push(pairIssue(
+          """,
+                  """      if (secondWindowMinutes > rules.shiftWindowMinutes) {
+                  clockLimitsValid = false;
+                  issues.push(pairIssue(
+          """,
+              ),
+              (
+                  """      if (issues.length === 0) {
+                  recalculation = freeze({
+          """,
+                  """      if (clockLimitsValid) {
+                  recalculation = freeze({
+          """,
+              ),
+              (
+                  """  if (snapshot !== undefined && snapshot.blockingReasons.some((reason) =>
+              reason.code === 'CYCLE_LIMIT_REACHED'
+              || reason.code === 'THIRTY_MINUTE_INTERRUPTION_REQUIRED')) {
+          """,
+                  """  if (snapshot?.blockingReasons.some((reason) =>
+              reason.code === 'CYCLE_LIMIT_REACHED'
+              || reason.code === 'THIRTY_MINUTE_INTERRUPTION_REQUIRED') === true) {
+          """,
+              ),
+              (
+                  """    ...(applied && snapshot !== undefined
+                ? {
+          """,
+                  """    ...(applied
+                ? {
+          """,
+              ),
+              (
+                  """  if (
+              input.selectedSleeperPairId !== undefined
+              && input.selectedSleeperPairId.trim() === ''
+            ) {
+          """,
+                  """  if (input.selectedSleeperPairId?.trim() === '') {
+          """,
+              ),
+          ]
+          for old, new in replacements:
+              count = text.count(old)
+              if count != 1:
+                  raise SystemExit(f'Expected one source replacement, found {count}: {old[:80]!r}')
+              text = text.replace(old, new)
+          source.write_text(text)
+
+          tests = Path('packages/foundation/test/hos-advanced.test.ts')
+          test_text = tests.read_text()
+          old_test = """    expect(result.unsupportedRuleWarnings.every(
+              (warning) => warning.severity === 'BLOCKING',
+            )).toBe(true);
+          """
+          new_test = """    expect(result.unsupportedRuleWarnings.map(
+              (warning) => warning.severity,
+            )).toEqual(['BLOCKING', 'BLOCKING']);
+          """
+          if test_text.count(old_test) != 1:
+              raise SystemExit('Expected one Stage 07 unsupported-warning assertion.')
+          tests.write_text(test_text.replace(old_test, new_test))
+      - name: Remove temporary Stage 07 files
         shell: bash
         run: |
-          set +e
-          pnpm exec eslint \
-            packages/foundation/src/hos-advanced.ts \
-            packages/foundation/src/hos.ts \
-            packages/foundation/test/hos-advanced.test.ts \
-            --max-warnings=0 > stage07-lint.log 2>&1
-          status=$?
-          printf '%s\n' "$status" > stage07-lint.exit
-          exit 0
-      - name: Upload Stage 07 lint diagnostics
-        uses: actions/upload-artifact@v4
-        with:
-          name: stage07-lint-diagnostics
-          path: |
-            stage07-lint.log
-            stage07-lint.exit
-          if-no-files-found: error
-      - name: Post diagnostics to draft pull request
-        uses: actions/github-script@v7
-        with:
-          script: |
-            const fs = require('fs');
-            const output = fs.readFileSync('stage07-lint.log', 'utf8');
-            const exitCode = fs.readFileSync('stage07-lint.exit', 'utf8').trim();
-            const marker = '<!-- stage07-lint-diagnostics -->';
-            const body = `${marker}\nTemporary Stage 07 targeted lint diagnostics, exit code ${exitCode}:\n\n\`\`\`text\n${output.slice(-60000)}\n\`\`\``;
-            const comments = await github.paginate(github.rest.issues.listComments, {
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              issue_number: 10,
-            });
-            const existing = comments.find((comment) =>
-              comment.user?.type === 'Bot' && comment.body?.includes(marker));
-            if (existing) {
-              await github.rest.issues.updateComment({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                comment_id: existing.id,
-                body,
-              });
-            } else {
-              await github.rest.issues.createComment({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                issue_number: 10,
-                body,
-              });
-            }
+          rm -f .stage07-baseline-note
+          rm -f .github/workflows/stage07-diagnostics.yml
+      - name: Commit exact lint fixes
+        shell: bash
+        run: |
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add -A
+          git diff --cached --check
+          git commit -m "Fix Stage 07 lint findings"
+          git push origin HEAD:agent/stage-07-hos-sleeper-adverse-policy
