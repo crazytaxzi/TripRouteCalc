@@ -58,7 +58,15 @@ jobs:
         run: pnpm db:migrate:deploy
 
       - name: Lint
-        run: pnpm lint:source
+        run: pnpm exec eslint . --max-warnings=0 --format json --output-file lint-results.json
+
+      - name: Upload lint diagnostics
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: lint-diagnostics
+          path: lint-results.json
+          if-no-files-found: ignore
 
       - name: Type-check
         run: pnpm typecheck:source
