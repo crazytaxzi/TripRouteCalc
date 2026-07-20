@@ -5,6 +5,9 @@ on:
   push:
     branches: [agent/stage-12-regulatory-rules]
     paths: [.github/workflows/stage12-assemble.yml]
+  pull_request:
+    branches: [main]
+    paths: [.github/workflows/stage12-assemble.yml]
 
 permissions:
   contents: write
