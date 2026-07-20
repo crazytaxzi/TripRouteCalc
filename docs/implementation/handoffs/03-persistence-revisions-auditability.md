@@ -36,6 +36,7 @@ Stage 02 was verified from the canonical GitHub repository rather than from an u
 - Added route-provider evidence retention modes for licensed raw JSON, normalized snapshots, and provider references.
 - Added versioned, effective-dated, source-attributed regulatory rule sets, jurisdiction rules, and administrative change history.
 - Added export-generation history without storing generated document bodies.
+- Split persistence repositories by responsibility so later stages can extend trip revisions, provider evidence, regulatory history, and exports without growing one monolithic source file.
 - Added database-backed integration tests for tenant isolation, revision preservation, explicit stop order, immutability, rollback, provider-retention policy, and regulatory history.
 - Added a local PostgreSQL 18 Docker Compose service and documented migration, backup, restoration, retention, and provider-license implications.
 - Expanded GitHub Actions to install reproducibly, generate and validate Prisma, apply migrations to a clean PostgreSQL database, lint, type-check, test, and build.
@@ -53,10 +54,15 @@ Stage 02 was verified from the canonical GitHub repository rather than from an u
 - `packages/persistence/prisma/migrations/20260720000000_stage03_persistence/migration.sql`
 - `packages/persistence/src/client.ts`
 - `packages/persistence/src/errors.ts`
+- `packages/persistence/src/export-history-repository.ts`
 - `packages/persistence/src/index.ts`
 - `packages/persistence/src/json.ts`
+- `packages/persistence/src/regulatory-rule-repository.ts`
 - `packages/persistence/src/repositories.ts`
+- `packages/persistence/src/repository-shared.ts`
+- `packages/persistence/src/route-provider-response-repository.ts`
 - `packages/persistence/src/tenant.ts`
+- `packages/persistence/src/trip-revision-repository.ts`
 - `packages/persistence/test/persistence.integration.test.ts`
 - `packages/persistence/tsconfig.json`
 
@@ -78,9 +84,10 @@ Stage 02 was verified from the canonical GitHub repository rather than from an u
 
 ## Temporary files removed
 
-A temporary branch-only workflow generated the updated pnpm lockfile and initial Prisma migration from the validated schema, committed those generated artifacts, and was then deleted before completion:
+Temporary branch-only workflows were used to generate reviewed artifacts or capture verification diagnostics and were deleted before completion:
 
 - `.github/workflows/stage03-bootstrap.yml`
+- `.github/workflows/stage03-apply-fixes.yml`
 
 No specification, production source, migration, or evidence file was moved or discarded.
 
