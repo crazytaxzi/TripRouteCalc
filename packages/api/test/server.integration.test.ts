@@ -174,7 +174,7 @@ beforeAll(() => {
       client,
       publicIds,
       routingRuntime: createCommercialRoutingRuntime({}),
-      now: () => new Date('2026-07-21T17:00:00.000Z'),
+      now: (): Date => new Date('2026-07-21T17:00:00.000Z'),
     }),
     authenticator,
     rateLimiter: new FixedWindowRateLimiter({
