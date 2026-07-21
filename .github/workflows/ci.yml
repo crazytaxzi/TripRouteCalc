@@ -7,49 +7,9 @@ on:
     branches: [main]
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
-  stage14-type-repair:
-    runs-on: ubuntu-latest
-    timeout-minutes: 10
-    steps:
-      - name: Check out Stage 14 branch
-        uses: actions/checkout@v4
-        with:
-          ref: agent/stage-14-operational-events
-          fetch-depth: 0
-          show-progress: false
-
-      - name: Repair exact optional readonly contracts
-        run: |
-          python3 <<'PY'
-          from pathlib import Path
-
-          path = Path('packages/foundation/src/operational-events.ts')
-          text = path.read_text()
-          replacements = {
-              '    location?: OperationalLocation;': '    location?: OperationalLocation | undefined;',
-              '    planningBuffer?: OperationalPlanningBuffer;': '    planningBuffer?: OperationalPlanningBuffer | undefined;',
-              '    legalDutyStatusSupport?: LegalDutyStatusSupport;': '    legalDutyStatusSupport?: LegalDutyStatusSupport | undefined;',
-          }
-          for old, new in replacements.items():
-              if text.count(old) != 1:
-                  raise RuntimeError(f'Expected exactly one contract line: {old!r}')
-              text = text.replace(old, new, 1)
-          path.write_text(text)
-          PY
-
-      - name: Commit bounded type repair
-        run: |
-          set -euo pipefail
-          git diff --check
-          git config user.name github-actions[bot]
-          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
-          git add packages/foundation/src/operational-events.ts
-          git commit -m 'Correct Stage 14 optional readonly contracts'
-          git push origin HEAD:agent/stage-14-operational-events
-
   verification:
     runs-on: ubuntu-latest
     timeout-minutes: 15
