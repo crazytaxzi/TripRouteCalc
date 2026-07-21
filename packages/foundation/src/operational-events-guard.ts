@@ -11,7 +11,6 @@ import type {
   FuelPlan,
   FuelPlanningInput,
   OperationalEventPlan,
-  OperationalEventType,
   OperationalLocation,
   OperationalLocationCapability,
   OperationalLocationSelection,
@@ -28,21 +27,6 @@ import {
   volumeInUsGallons,
 } from './units.js';
 
-const EVENT_TO_CAPABILITY = Object.freeze({
-  FUEL: 'FUEL',
-  SCALE: 'SCALE',
-  CARGO_SECUREMENT_CHECK: 'CARGO_SECUREMENT_CHECK',
-  REEFER_CHECK: 'REEFER_CHECK',
-  MAINTENANCE: 'MAINTENANCE',
-  BORDER_OR_AGRICULTURAL_INSPECTION:
-    'BORDER_OR_AGRICULTURAL_INSPECTION',
-  PARKING_SEARCH: 'PARKING',
-  MEAL: 'MEAL',
-  SHOWER: 'SHOWER',
-}) satisfies Readonly<
-  Partial<Record<OperationalEventType, OperationalLocationCapability>>
->;
-
 function freeze<T extends object>(value: T): Readonly<T> {
   return Object.freeze(value);
 }
@@ -51,13 +35,41 @@ function freezeArray<T>(values: readonly T[]): readonly T[] {
   return Object.freeze([...values]);
 }
 
+function defaultCapability(
+  type: OperationalEventPlan['type'],
+): OperationalLocationCapability | undefined {
+  switch (type) {
+    case 'FUEL':
+      return 'FUEL';
+    case 'SCALE':
+      return 'SCALE';
+    case 'CARGO_SECUREMENT_CHECK':
+      return 'CARGO_SECUREMENT_CHECK';
+    case 'REEFER_CHECK':
+      return 'REEFER_CHECK';
+    case 'MAINTENANCE':
+      return 'MAINTENANCE';
+    case 'BORDER_OR_AGRICULTURAL_INSPECTION':
+      return 'BORDER_OR_AGRICULTURAL_INSPECTION';
+    case 'PARKING_SEARCH':
+      return 'PARKING';
+    case 'MEAL':
+      return 'MEAL';
+    case 'SHOWER':
+      return 'SHOWER';
+    case 'PRE_TRIP_INSPECTION':
+    case 'POST_TRIP_INSPECTION':
+      return undefined;
+  }
+}
+
 function explicitLocationProblems(
   plan: OperationalEventPlan,
   location: OperationalLocation,
 ): readonly string[] {
   const problems: string[] = [];
-  const capability =
-    plan.placement.requiredCapability ?? EVENT_TO_CAPABILITY[plan.type];
+  const capability: OperationalLocationCapability | undefined =
+    plan.placement.requiredCapability ?? defaultCapability(plan.type);
 
   if (!location.truckCompatible) {
     problems.push(
