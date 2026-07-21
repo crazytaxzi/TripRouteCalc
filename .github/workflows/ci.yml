@@ -21,58 +21,58 @@ jobs:
           ref: agent/stage-16-confidence-data-quality
           fetch-depth: 0
 
-      - name: Repair exact fixture contracts
+      - name: Repair fixture contracts semantically
         shell: bash
         run: |
           python - <<'PY'
+          import re
           from pathlib import Path
 
           eta_path = Path('packages/foundation/test/eta-simulator.test.ts')
           eta = eta_path.read_text(encoding='utf-8')
-          old = """          ...(segment.unavailableTravelTime
-            ? {}
-            : { travelDuration: durationInMinutes(segment.minutes) }),
-          """
-          new = "          travelDuration: durationInMinutes(segment.minutes),\n"
-          if eta.count(old) != 1:
-              raise SystemExit(f'Expected one conditional duration block, found {eta.count(old)}')
-          eta_path.write_text(eta.replace(old, new), encoding='utf-8')
+          eta, count = re.subn(
+              r"\s*\.\.\.\(segment\.unavailableTravelTime\s*\? \{\}\s*:\s*\{ travelDuration: durationInMinutes\(segment\.minutes\) \}\),",
+              "\n          travelDuration: durationInMinutes(segment.minutes),",
+              eta,
+              count=1,
+          )
+          if count != 1:
+              raise SystemExit(f'Expected one conditional duration block, found {count}')
+          eta_path.write_text(eta, encoding='utf-8')
 
           persistence_path = Path('packages/persistence/test/persistence.integration.test.ts')
           persistence = persistence_path.read_text(encoding='utf-8')
-          old_import = """import {
-            durationInMinutes,
-            ianaTimeZone,
-          """.replace('          ', '')
-          new_import = """import {
-            dataQualityReason,
-            durationInMinutes,
-            ianaTimeZone,
-            publicEvidenceReference,
-          """.replace('          ', '')
-          if persistence.count(old_import) != 1:
-              raise SystemExit(f'Expected one foundation import block, found {persistence.count(old_import)}')
-          persistence = persistence.replace(old_import, new_import, 1)
-          old_reason = "      confidenceReasons: ['No commercial route provider is configured.'],"
-          new_reason = """      confidenceReasons: [
-            dataQualityReason(
-              'PROVIDER_RESTRICTIONS_UNAVAILABLE',
-              [
-                publicEvidenceReference(
-                  'PROVIDER',
-                  'commercial-route-provider',
-                  'Commercial-route provider evidence',
-                ),
-              ],
-              'No commercial route provider is configured.',
-              'This persistence fixture intentionally lacks commercial-route provider evidence.',
+          if 'dataQualityReason,' not in persistence:
+              persistence = persistence.replace(
+                  "import {\n  durationInMinutes,",
+                  "import {\n  dataQualityReason,\n  durationInMinutes,",
+                  1,
+              )
+          if 'publicEvidenceReference,' not in persistence:
+              persistence = persistence.replace(
+                  "  localDateTime,\n  utcInstant,",
+                  "  localDateTime,\n  publicEvidenceReference,\n  utcInstant,",
+                  1,
+              )
+          old = "confidenceReasons: ['No commercial route provider is configured.'],"
+          if old not in persistence:
+              raise SystemExit('Legacy string confidence reason was not found.')
+          new = """confidenceReasons: [
+        dataQualityReason(
+          'PROVIDER_RESTRICTIONS_UNAVAILABLE',
+          [
+            publicEvidenceReference(
+              'PROVIDER',
+              'commercial-route-provider',
+              'Commercial-route provider evidence',
             ),
           ],
-          """.rstrip()
-          if persistence.count(old_reason) != 1:
-              raise SystemExit(f'Expected one legacy string confidence reason, found {persistence.count(old_reason)}')
+          'No commercial route provider is configured.',
+          'This persistence fixture intentionally lacks commercial-route provider evidence.',
+        ),
+      ],"""
           persistence_path.write_text(
-              persistence.replace(old_reason, new_reason, 1),
+              persistence.replace(old, new, 1),
               encoding='utf-8',
           )
           PY
