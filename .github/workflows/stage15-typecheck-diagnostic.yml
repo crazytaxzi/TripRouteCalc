@@ -1,0 +1,58 @@
+name: stage15-typecheck-diagnostic
+
+on:
+  push:
+    branches:
+      - agent/stage-15-eta-simulator
+    paths:
+      - .github/workflows/stage15-typecheck-diagnostic.yml
+
+permissions:
+  contents: write
+
+jobs:
+  diagnose:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Check out branch
+        uses: actions/checkout@v4
+        with:
+          ref: agent/stage-15-eta-simulator
+          fetch-depth: 0
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - name: Enable pnpm
+        run: corepack enable
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Generate Prisma client
+        run: pnpm db:generate
+
+      - name: Capture typecheck output
+        shell: bash
+        run: |
+          mkdir -p .diagnostics
+          set +e
+          pnpm typecheck:source > .diagnostics/stage15-typecheck.txt 2>&1
+          status=$?
+          echo >> .diagnostics/stage15-typecheck.txt
+          echo "EXIT_STATUS=$status" >> .diagnostics/stage15-typecheck.txt
+          exit 0
+
+      - name: Commit diagnostic and remove one-shot workflow
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git rm .github/workflows/stage15-typecheck-diagnostic.yml
+          git add .diagnostics/stage15-typecheck.txt
+          git commit -m "Capture Stage 15 typecheck diagnostic"
+          git push origin HEAD:agent/stage-15-eta-simulator
