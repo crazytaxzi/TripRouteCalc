@@ -5,10 +5,10 @@
 - Canonical repository: `crazytaxzi/TripRouteCalc`
 - Repository visibility: private
 - Default branch: `main`
-- Active implementation branch: `agent/close-stage-15`
-- Active pull request: pending ledger-closure pull request
-- Last completed pull request: `#27`
-- Product status: Stage 15 ETA simulator, speed model, and time-zone handling complete, verified, and merged; ledger closure is in progress, live commercial-routing and live condition verification remain blocked by B-002, production regulatory data remains blocked by B-003, and live traffic, weather, closure, and facility providers remain unselected
+- Active implementation branch: none
+- Active pull request: none
+- Last completed pull request: `#28`
+- Product status: Stage 15 ETA simulator, speed model, and time-zone handling complete, verified, merged, and ledger-closed; live commercial-routing and live condition verification remain blocked by B-002, production regulatory data remains blocked by B-003, and live traffic, weather, closure, and facility providers remain unselected
 - Completed sources: `01_REPOSITORY_AUDIT_AND_PLAN.md` through `15_ETA_SIMULATOR_SPEEDS_TIME_ZONES.md`
 - Stage 01 status: COMPLETE
 - Stage 02 status: COMPLETE
@@ -24,7 +24,7 @@
 - Stage 12 status: COMPLETE; PRODUCTION REGULATORY DATA BLOCKED BY B-003
 - Stage 13 status: COMPLETE; PRODUCTION CALIFORNIA LEGAL EVALUATION BLOCKED BY B-003
 - Stage 14 status: COMPLETE; LIVE OPERATIONAL-LOCATION VERIFICATION BLOCKED BY B-002 AND UNSELECTED FACILITY PROVIDERS
-- Stage 15 status: COMPLETE, VERIFIED, AND MERGED; LIVE ROUTE, TRAFFIC, WEATHER, CLOSURE, AND FACILITY CONFIDENCE REMAINS CONSTRAINED BY B-002, B-003, AND UNSELECTED PROVIDERS
+- Stage 15 status: COMPLETE, VERIFIED, MERGED, AND LEDGER-CLOSED; LIVE ROUTE, TRAFFIC, WEATHER, CLOSURE, AND FACILITY CONFIDENCE REMAINS CONSTRAINED BY B-002, B-003, AND UNSELECTED PROVIDERS
 - Next source: `16_CONFIDENCE_EXPLANATIONS_DATA_QUALITY.md`
 - Application code: `@trip-route-calc/foundation`, `@trip-route-calc/persistence`, `@trip-route-calc/routing`, and `@trip-route-calc/compliance`
 - Database migrations: Stage 03 initial migration, Stage 04 append-only HOS evidence migration, Stage 09 additive equipment-profile migration, and Stage 10 additive stop-detail migration
@@ -63,7 +63,7 @@ They passed:
 - complete `pnpm test:source`
 - `pnpm build:source`
 
-Pull request `#27` was squash-merged into `main` as `8e3fca9f747ba9e98cb607943cf91235a54a99ea`.
+Pull request `#27` was squash-merged into `main` as `8e3fca9f747ba9e98cb607943cf91235a54a99ea`. Pull request `#28` closes the Stage 15 repository ledger and advances the exact next source to Stage 16.
 
 The local environment did not provide a usable private-repository checkout, pnpm, PostgreSQL, Docker, GitHub CLI, or working DNS for `github.com`. That environment limitation was handled under `ERROR_RECOVERY_PROTOCOL.md`; source changes and authoritative validation used the connected GitHub API and GitHub Actions without representing unavailable local checks as successful.
 
@@ -78,6 +78,7 @@ The local environment did not provide a usable private-repository checkout, pnpm
 - Persistence replay diagnostics exposed exact optional-property misuse, a wrong relation field name, and a verified fixture without `verifiedAt`; only the test and evidence contracts were corrected.
 - Reopened the changed-file inventory and confirmed no temporary workflow, trigger, artifact, migration, consumer fallback, or fabricated provider remained in the implementation pull request.
 - Confirmed no unresolved review threads or submitted review objections remained on pull request `#27`.
+- Ledger closure changes only status, gap, blocker, README, and handoff documentation.
 
 ## Deferred decisions and limitations
 
@@ -90,4 +91,4 @@ The local environment did not provide a usable private-repository checkout, pnpm
 
 ## Next action
 
-Complete the Stage 15 ledger-closure pull request, verify and merge it, then reopen the protected Prime Directive and Error Recovery Protocol and begin `docs/specification/16_CONFIDENCE_EXPLANATIONS_DATA_QUALITY.md` from the accepted HOS, stop-order, equipment, route, compliance, operational-event, time-zone, ETA, tenant, immutable-revision, and audit boundaries.
+Reopen the protected Prime Directive and Error Recovery Protocol, then begin `docs/specification/16_CONFIDENCE_EXPLANATIONS_DATA_QUALITY.md` from the accepted HOS, stop-order, equipment, route, compliance, operational-event, time-zone, ETA, tenant, immutable-revision, and audit boundaries.
