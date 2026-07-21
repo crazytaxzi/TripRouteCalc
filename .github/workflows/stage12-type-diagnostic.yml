@@ -30,6 +30,14 @@ jobs:
               line[10:] if line.startswith('          ') else line
               for line in lines
           ) + '\n'
+          patch_start = script.index('old = """')
+          patch_end = script.index('\n\nstart = text.index', patch_start)
+          structural_patch = '''old = "\\n    ]),\\n);\\n\\nexport const RegulatoryConditionSchema"
+          new = "\\n    ]) as unknown as z.ZodType<RegulatoryCondition>,\\n);\\n\\nexport const RegulatoryConditionSchema"
+          if text.count(old) != 1:
+              raise RuntimeError('condition schema structural marker was not found exactly once')
+          text = text.replace(old, new, 1)'''
+          script = script[:patch_start] + structural_patch + script[patch_end:]
           Path('/tmp/stage12-optional-repair.py').write_text(script)
           PYEXTRACT
       - name: Apply exact optional repair
