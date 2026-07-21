@@ -170,9 +170,15 @@ export const OperationalLocationSchema = z
       });
     }
   });
-export type OperationalLocation = Readonly<
-  z.infer<typeof OperationalLocationSchema>
->;
+type ParsedOperationalLocation = z.infer<typeof OperationalLocationSchema>;
+export type OperationalLocation = Omit<
+  Readonly<ParsedOperationalLocation>,
+  'capabilities' | 'source'
+> &
+  Readonly<{
+    capabilities: readonly OperationalLocationCapability[];
+    source: OperationalEventSource;
+  }>;
 
 const PositiveOperationalDurationSchema = DurationSchema.refine(
   (value) => value.value > 0,
@@ -372,9 +378,22 @@ export const OperationalEventPlanSchema = z
       });
     }
   });
-export type OperationalEventPlan = Readonly<
-  z.infer<typeof OperationalEventPlanSchema>
->;
+type ParsedOperationalEventPlan = z.infer<typeof OperationalEventPlanSchema>;
+export type OperationalEventPlan = Omit<
+  Readonly<ParsedOperationalEventPlan>,
+  | 'source'
+  | 'location'
+  | 'placement'
+  | 'planningBuffer'
+  | 'legalDutyStatusSupport'
+> &
+  Readonly<{
+    source: OperationalEventSource;
+    location?: OperationalLocation;
+    placement: OperationalPlacementConstraint;
+    planningBuffer?: OperationalPlanningBuffer;
+    legalDutyStatusSupport?: LegalDutyStatusSupport;
+  }>;
 
 export interface OperationalTimelineEvent {
   readonly status: OperationalEventStatus;
