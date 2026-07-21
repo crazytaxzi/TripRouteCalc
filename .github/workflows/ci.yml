@@ -28,19 +28,16 @@ jobs:
 
           path = Path('packages/foundation/src/eta-simulator.ts')
           text = path.read_text()
-          old = '''    const destination = input.stops[legIndex + 1];
-              if (destination === undefined) {
-                throw new EtaSimulationError(
-                  'ROUTE_STOP_MISMATCH',
-                  `Missing destination stop for leg ${leg.legId}.`,
-                );
-              }
-          '''
-          new = '''    const destination = input.stops[legIndex + 1];
+          old = '''    if (destination === undefined) {
+              throw new EtaSimulationError(
+                'ROUTE_STOP_MISMATCH',
+                `Missing destination stop for leg ${leg.legId}.`,
+              );
+            }
           '''
           if text.count(old) != 1:
               raise RuntimeError(f'Expected one redundant destination guard; found {text.count(old)}')
-          path.write_text(text.replace(old, new, 1))
+          path.write_text(text.replace(old, '', 1))
           PY
 
       - name: Commit bounded lint repair
