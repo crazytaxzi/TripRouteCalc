@@ -12,10 +12,11 @@ import {
 import type {
   ConfidenceReason,
   ConfidenceReasonCode,
+  PublicEvidenceReference,
   TripDataQualityInput,
 } from '../src/index.js';
 
-function inputReference(reference: string) {
+function inputReference(reference: string): PublicEvidenceReference {
   return publicEvidenceReference('INPUT', reference, reference);
 }
 
