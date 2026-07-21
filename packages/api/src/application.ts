@@ -354,7 +354,7 @@ export class Stage17ApplicationService {
     this.#client = dependencies.client;
     this.#publicIds = dependencies.publicIds;
     this.#routingRuntime = dependencies.routingRuntime;
-    this.#now = dependencies.now ?? (() => new Date());
+    this.#now = dependencies.now ?? ((): Date => new Date());
   }
 
   public async createDriver(
