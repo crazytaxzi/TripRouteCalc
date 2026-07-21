@@ -213,8 +213,8 @@ function evaluateCondition(
         return freeze({ status: 'unknown', facts });
       }
       const actualValues: readonly string[] =
-      typeof actual === 'string' ? [actual] : actual;
-    const expectedValues: readonly string[] =
+        typeof actual === 'string' ? [actual] : actual;
+      const expectedValues: readonly string[] =
       typeof condition.value === 'string' ? [condition.value] : condition.value;
       const overlaps = actualValues.some((value) => expectedValues.includes(value));
       const matched =
