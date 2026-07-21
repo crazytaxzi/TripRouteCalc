@@ -1355,7 +1355,22 @@ function applyOperationalPlan(
       state.blocked = true;
       return false;
     }
-    state.confidenceReasons.push(...result.explanations);
+    for (const explanation of result.explanations) {
+      state.confidenceReasons.push(
+        dataQualityReason(
+          'OPTIONAL_OPERATIONAL_EVENT_UNPLACED',
+          [
+            publicEvidenceReference(
+    'EVENT',
+    plan.eventId,
+    'Optional operational event',
+            ),
+          ],
+          'An optional operational event could not be placed, so the projection omits it.',
+          explanation,
+        ),
+      );
+    }
     return true;
   }
   appendDutyEvent(state, result.dutyEvent, {

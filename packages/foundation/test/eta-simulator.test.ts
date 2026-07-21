@@ -175,6 +175,7 @@ function route(
                 {
                   path: 'legs[].segments[].travelDuration',
                   reason: 'Provider travel time was unavailable in this fixture.',
+                  impact: 'lowers-confidence' as const,
                 },
               ]
             : [],
