@@ -1,46 +1,70 @@
-name: Stage 12 Final Lint Repair
+name: CI
 
 on:
   push:
-    branches: [agent/stage-12-regulatory-rules]
+    branches: [main, 'agent/**']
   pull_request:
     branches: [main]
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
-  repair:
+  verification:
     runs-on: ubuntu-latest
-    timeout-minutes: 5
+    timeout-minutes: 15
+    env:
+      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/trip_route_calc_test?schema=public
+
+    services:
+      postgres:
+        image: postgres:18-alpine
+        env:
+          POSTGRES_DB: trip_route_calc_test
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d trip_route_calc_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 12
+
     steps:
-      - uses: actions/checkout@v4
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
         with:
-          ref: agent/stage-12-regulatory-rules
-          fetch-depth: 0
-      - name: Normalize string collection indentation
+          node-version: 22
+
+      - name: Enable pnpm
         run: |
-          python3 <<'PY'
-          from pathlib import Path
-          path = Path('packages/compliance/src/regulatory-engine.ts')
-          lines = path.read_text().splitlines()
-          target = "typeof condition.value === 'string' ? [condition.value] : condition.value;"
-          matches = [index for index, line in enumerate(lines) if line.strip() == target]
-          if len(matches) != 1:
-              raise RuntimeError(f'Expected one condition-value line, found {len(matches)}.')
-          lines[matches[0]] = f'        {target}'
-          path.write_text('\n'.join(lines) + '\n')
-          PY
-      - name: Commit repair when needed
-        run: |
-          set -euo pipefail
-          git diff --check
-          if git diff --quiet -- packages/compliance/src/regulatory-engine.ts; then
-            echo 'String collection indentation is already normalized.'
-            exit 0
-          fi
-          git config user.name github-actions[bot]
-          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
-          git add packages/compliance/src/regulatory-engine.ts
-          git commit -m 'Format Stage 12 string condition collections'
-          git push origin HEAD:agent/stage-12-regulatory-rules
+          corepack enable
+          corepack prepare pnpm@9.15.4 --activate
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Generate Prisma client
+        run: pnpm db:generate
+
+      - name: Validate Prisma schema
+        run: pnpm db:validate
+
+      - name: Apply migrations to clean PostgreSQL database
+        run: pnpm db:migrate:deploy
+
+      - name: Lint
+        run: pnpm lint:source
+
+      - name: Type-check
+        run: pnpm typecheck:source
+
+      - name: Test
+        run: pnpm test:source
+
+      - name: Build
+        run: pnpm build:source
