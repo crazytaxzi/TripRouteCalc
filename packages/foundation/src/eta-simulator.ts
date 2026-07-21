@@ -110,6 +110,18 @@ function currentTime(context: SimulationHosContext): UtcInstant {
   return context.phaseDutyEvents.at(-1)?.endAt ?? context.departureState.departureAt;
 }
 
+function requiredItem<T>(
+  values: readonly T[],
+  index: number,
+  message: string,
+): T {
+  const value = values[index];
+  if (value === undefined) {
+    throw new EtaSimulationError('ROUTE_STOP_MISMATCH', message);
+  }
+  return value;
+}
+
 export const ETA_PROJECTIONS = [
   'EARLIEST_LEGAL',
   'EXPECTED',
@@ -1823,13 +1835,13 @@ function simulateProjection(
 
   let cumulativeMeters = 0;
   for (let legIndex = 0; legIndex < input.route.legs.length; legIndex += 1) {
-    const leg = input.route.legs[legIndex];
+    const leg = requiredItem(input.route.legs, legIndex, `Missing route leg ${String(legIndex + 1)}.`);
     for (const segment of leg.segments) {
       if (!processSegment(state, leg, segment, cumulativeMeters)) break;
       cumulativeMeters += segment.distance.value;
     }
     if (state.blocked) break;
-    const destination = input.stops[legIndex + 1];
+    const destination = requiredItem(input.stops, legIndex + 1, `Missing destination stop for leg ${leg.legId}.`);
     if (legIndex === input.route.legs.length - 1) {
       if (
         !applyPointActions(
