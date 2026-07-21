@@ -301,7 +301,11 @@ export class TripPlanningClient {
     let publicStops: readonly StopForm[] = [];
     for (const [index, sourceStop] of savedDraft.stops.entries()) {
       const plan = stopPlan(sourceStop, index + 1);
-      const { id: _id, sequence: _sequence, ...stop } = plan;
+      const stop = Object.fromEntries(
+        Object.entries(plan).filter(
+          ([key]) => key !== 'id' && key !== 'sequence',
+        ),
+      );
       const stopPayload = { expectedRevisionNumber: revisionNumber, stop };
       const updatedTrip = await this.#request(`/api/trips/${tripId}/stops`, {
         method: 'POST',
@@ -315,7 +319,14 @@ export class TripPlanningClient {
         object(updatedTrip.currentRevision, 'currentRevision').revisionNumber,
         'currentRevision.revisionNumber',
       );
-      publicStops = publicStopsFromTrip(updatedTrip, savedDraft.stops);
+      const persisted = publicStopsFromTrip(
+        updatedTrip,
+        savedDraft.stops.slice(0, index + 1),
+      );
+      publicStops = [
+        ...persisted,
+        ...savedDraft.stops.slice(index + 1),
+      ];
     }
 
     const persistedDraft: TripDraft = { ...savedDraft, stops: publicStops };
@@ -338,8 +349,8 @@ export class TripPlanningClient {
       method: 'POST',
       payload: routeInput.request,
     });
-    const rawRoute = object(routeResponse.route, 'route');
-    const { assessment: _assessment, ...routePayload } = rawRoute;
+    const routePayload = { ...object(routeResponse.route, 'route') };
+    delete routePayload.assessment;
     const route = assessCommercialRoute(routePayload);
     if (route.assessment.commercialPlanningStatus === 'blocked') {
       return {
@@ -395,8 +406,9 @@ export class TripPlanningClient {
           calculatedRevision.revisionNumber,
           'currentRevision.revisionNumber',
         ),
-        confidence:
-          typeof expected.confidence === 'string' ? expected.confidence : undefined,
+        ...(typeof expected.confidence === 'string'
+          ? { confidence: expected.confidence }
+          : {}),
         warnings: explanations,
       },
     };
