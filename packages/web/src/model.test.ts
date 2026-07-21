@@ -34,9 +34,11 @@ describe('Stage 18 trip draft model', () => {
     expect(moved.stops.at(-1)?.type).toBe('final-consignee');
     expect(moved.stops[2]?.localId).toBe(firstIntermediate.localId);
 
+    const lockedStart = moved.stops[0];
+    if (lockedStart === undefined) throw new Error('Missing locked start stop.');
     const attemptedLockedMove = draftReducer(moved, {
       type: 'move-stop',
-      localId: moved.stops[0]!.localId,
+      localId: lockedStart.localId,
       direction: 1,
     });
     expect(attemptedLockedMove).toBe(moved);
