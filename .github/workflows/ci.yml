@@ -7,11 +7,10 @@ on:
     branches: [main]
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
   verification:
-    if: github.actor != 'github-actions[bot]'
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
@@ -21,7 +20,7 @@ jobs:
           ref: agent/stage-16-confidence-data-quality
           fetch-depth: 0
 
-      - name: Execute final Stage 16 ETA integration patch
+      - name: Capture final Stage 16 integration output
         shell: bash
         run: |
           git show 1656e255a1f0a606d0b2c6613ad2e8ea054a6963:.github/workflows/stage16-eta-integration.yml > /tmp/stage16-workflow.yml
@@ -86,13 +85,17 @@ jobs:
               raise SystemExit('Could not isolate the already-applied confidence factor edit.')
           path.write_text(text[:tail_index] + '\n', encoding='utf-8')
           PATCHFIX
-          python /tmp/stage16-patch.py
+          set +e
+          python /tmp/stage16-patch.py > stage16-patch-output-3.txt 2>&1
+          status=$?
+          echo >> stage16-patch-output-3.txt
+          echo "EXIT_STATUS=$status" >> stage16-patch-output-3.txt
+          exit 0
 
-      - name: Commit Stage 16 ETA integration
-        shell: bash
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add packages/foundation/src/eta-simulator.ts
-          git commit -m "Integrate confidence and explanations into ETA projections"
-          git push origin HEAD:agent/stage-16-confidence-data-quality
+      - name: Upload final integration output
+        uses: actions/upload-artifact@v4
+        with:
+          name: stage16-patch-output-3
+          path: stage16-patch-output-3.txt
+          if-no-files-found: error
+          retention-days: 1
