@@ -1,0 +1,51 @@
+name: stage15-explicit-return-repair
+
+on:
+  push:
+    branches:
+      - agent/stage-15-eta-simulator
+    paths:
+      - .github/workflows/stage15-explicit-return-repair.yml
+
+permissions:
+  contents: write
+
+jobs:
+  repair:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Check out branch
+        uses: actions/checkout@v4
+        with:
+          ref: agent/stage-15-eta-simulator
+          fetch-depth: 0
+
+      - name: Add explicit helper return type
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          path = Path('packages/foundation/test/eta-simulator.test.ts')
+          text = path.read_text(encoding='utf-8')
+          old = "function drivingEvents(result: ReturnType<typeof simulateEtaTrip>['earliestLegal']) {\n"
+          new = (
+              "function drivingEvents(\n"
+              "  result: ReturnType<typeof simulateEtaTrip>['earliestLegal'],\n"
+              "): ReturnType<typeof simulateEtaTrip>['earliestLegal']['timeline'] {\n"
+          )
+          if text.count(old) != 1:
+              raise SystemExit('Expected exactly one untyped drivingEvents helper.')
+          path.write_text(text.replace(old, new), encoding='utf-8')
+          PY
+
+      - name: Commit repair and remove one-shot workflow
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git rm .github/workflows/stage15-explicit-return-repair.yml
+          git add packages/foundation/test/eta-simulator.test.ts
+          git commit -m "Fix Stage 15 test helper return type"
+          git push origin HEAD:agent/stage-15-eta-simulator
