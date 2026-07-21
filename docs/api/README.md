@@ -25,4 +25,15 @@ Stage 17 exposes the accepted domain, routing, compliance, ETA, confidence, and 
 
 Write routes require one `idempotency-key` header. A completed equivalent retry replays the original status and body. A reused key with different request content returns `409 IDEMPOTENCY_CONFLICT`. A stale expected revision returns `409 REVISION_CONFLICT` with the current revision reference.
 
+## Acceptance coverage
+
+The PostgreSQL-backed Fastify acceptance suite verifies:
+
+- public OpenAPI access and authenticated API enforcement;
+- persistent idempotent replay, request-mismatch conflicts, and tenant scoping;
+- trip creation and cross-carrier object isolation;
+- immutable stop revisions, stale-write conflicts, and locked-stop reorder protection;
+- rejection of ambiguous equipment measurements; and
+- explicit provider-setup failure without consumer-route fallback.
+
 The in-memory fixed-window limiter is suitable for tests and a single process. A distributed store remains deployment-stage work.
