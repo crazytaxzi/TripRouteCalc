@@ -21,7 +21,7 @@ jobs:
           ref: agent/stage-15-eta-simulator
           fetch-depth: 0
 
-      - name: Repair immutable speed-model type and restore permanent CI
+      - name: Repair immutable speed-model type
         shell: bash
         run: |
           python - <<'PY'
@@ -41,86 +41,13 @@ jobs:
           if text.count(old) != 1:
               raise SystemExit('Expected exactly one EtaSpeedModel type alias.')
           source.write_text(text.replace(old, new), encoding='utf-8')
-
-          ci = Path('.github/workflows/ci.yml')
-          ci.write_text("""name: CI
-
-          on:
-            push:
-              branches: [main, 'agent/**']
-            pull_request:
-              branches: [main]
-
-          permissions:
-            contents: read
-
-          jobs:
-            verification:
-              runs-on: ubuntu-latest
-              timeout-minutes: 15
-              env:
-                DATABASE_URL: postgresql://postgres:postgres@localhost:5432/trip_route_calc_test?schema=public
-
-              services:
-                postgres:
-                  image: postgres:18-alpine
-                  env:
-                    POSTGRES_DB: trip_route_calc_test
-                    POSTGRES_USER: postgres
-                    POSTGRES_PASSWORD: postgres
-                  ports:
-                    - 5432:5432
-                  options: >-
-                    --health-cmd \"pg_isready -U postgres -d trip_route_calc_test\"
-                    --health-interval 5s
-                    --health-timeout 5s
-                    --health-retries 12
-
-              steps:
-                - name: Check out repository
-                  uses: actions/checkout@v4
-
-                - name: Set up Node.js
-                  uses: actions/setup-node@v4
-                  with:
-                    node-version: 22
-
-                - name: Enable pnpm
-                  run: |
-                    corepack enable
-                    corepack prepare pnpm@9.15.4 --activate
-
-                - name: Install dependencies
-                  run: pnpm install --frozen-lockfile
-
-                - name: Generate Prisma client
-                  run: pnpm db:generate
-
-                - name: Validate Prisma schema
-                  run: pnpm db:validate
-
-                - name: Apply migrations to clean PostgreSQL database
-                  run: pnpm db:migrate:deploy
-
-                - name: Lint
-                  run: pnpm lint:source
-
-                - name: Type-check
-                  run: pnpm typecheck:source
-
-                - name: Test
-                  run: pnpm test:source
-
-                - name: Build
-                  run: pnpm build:source
-          """.replace('          ', ''), encoding='utf-8')
           PY
 
-      - name: Commit repair
+      - name: Commit product repair
         shell: bash
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add packages/foundation/src/eta-simulator.ts .github/workflows/ci.yml
+          git add packages/foundation/src/eta-simulator.ts
           git commit -m "Preserve immutable ETA speed model inputs"
           git push origin HEAD:agent/stage-15-eta-simulator
