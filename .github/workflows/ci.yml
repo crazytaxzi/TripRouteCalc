@@ -7,29 +7,64 @@ on:
     branches: [main]
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
   verification:
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    env:
+      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/trip_route_calc_test?schema=public
+
+    services:
+      postgres:
+        image: postgres:18-alpine
+        env:
+          POSTGRES_DB: trip_route_calc_test
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d trip_route_calc_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 12
+
     steps:
-      - name: Check out implementation branch
+      - name: Check out repository
         uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
         with:
-          ref: agent/stage-16-confidence-data-quality
-          fetch-depth: 0
+          node-version: 22
 
-      - name: Add explicit helper return type
-        shell: bash
-        run: >-
-          python -c "from pathlib import Path; p=Path('packages/foundation/test/confidence.test.ts'); t=p.read_text(encoding='utf-8'); t=t.replace('  ConfidenceReasonCode,\n  TripDataQualityInput,', '  ConfidenceReasonCode,\n  PublicEvidenceReference,\n  TripDataQualityInput,', 1); t=t.replace('function inputReference(reference: string) {', 'function inputReference(reference: string): PublicEvidenceReference {', 1); p.write_text(t, encoding='utf-8')"
-
-      - name: Commit helper type
-        shell: bash
+      - name: Enable pnpm
         run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add packages/foundation/test/confidence.test.ts
-          git commit -m "Type Stage 16 confidence test helper"
-          git push origin HEAD:agent/stage-16-confidence-data-quality
+          corepack enable
+          corepack prepare pnpm@9.15.4 --activate
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Generate Prisma client
+        run: pnpm db:generate
+
+      - name: Validate Prisma schema
+        run: pnpm db:validate
+
+      - name: Apply migrations to clean PostgreSQL database
+        run: pnpm db:migrate:deploy
+
+      - name: Lint
+        run: pnpm lint:source
+
+      - name: Type-check
+        run: pnpm typecheck:source
+
+      - name: Test
+        run: pnpm test:source
+
+      - name: Build
+        run: pnpm build:source
