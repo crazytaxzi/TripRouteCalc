@@ -4,7 +4,9 @@
 - Date: 2026-07-20
 - Implementation branch: `agent/stage-13-california-kpra-axle`
 - Pull request: `#22 Implement Stage 13 California KPRA and axle compliance`
-- Completion status: IMPLEMENTATION COMPLETE; FINAL DOCUMENTED-HEAD VERIFICATION PENDING; PRODUCTION REGULATORY DATA BLOCKED BY B-003
+- Verified clean implementation head: `84d8a405e094e8b81cb8e07d58ddbdd57fbb410b`
+- Verification run: `711` (`29794566014`)
+- Completion status: IMPLEMENTATION COMPLETE AND VERIFIED; MERGE PENDING; PRODUCTION REGULATORY DATA BLOCKED BY B-003
 
 ## Protected governance
 
@@ -55,7 +57,7 @@ Stage 13 is being executed under `PRIME_DIRECTIVE.md` and `ERROR_RECOVERY_PROTOC
 - `packages/persistence/src/repositories.ts`
 - `packages/persistence/test/kpra-adjustment.integration.test.ts`
 
-No file was moved. Temporary diagnostic and repair workflows were removed before final documented-head verification.
+No file was moved. All temporary diagnostic, annotation-repair, and test-evidence workflows were removed before clean-head verification.
 
 ## Database and data changes
 
@@ -70,26 +72,28 @@ The audit snapshot links the original and recalculation revisions and preserves 
 
 No production legal data was inserted.
 
-## Verification evidence to date
+## Verification evidence
 
-Product-only CI run `701` (`29794063608`) passed on head `7bfbee0072eb4f6a96fdeac06febaf146215a7a4`:
+The complete permanent repository gate passed on clean implementation head `84d8a405e094e8b81cb8e07d58ddbdd57fbb410b` in CI run `711` (`29794566014`):
 
-- frozen-lockfile installation;
-- Prisma generation and schema validation;
-- clean PostgreSQL 18 migration deployment;
-- ESLint;
-- strict TypeScript;
-- complete unit and PostgreSQL integration tests; and
-- production build.
+- `pnpm install --frozen-lockfile`;
+- `pnpm db:generate`;
+- `pnpm db:validate`;
+- clean PostgreSQL 18 `pnpm db:migrate:deploy`;
+- `pnpm lint:source`;
+- `pnpm typecheck:source`;
+- complete `pnpm test:source`; and
+- `pnpm build:source`.
 
-A final permanent gate will be recorded after this documentation is committed.
+The separately captured full test evidence passed with 29 test files and 187 tests. A final documentation-only permanent gate is required after this evidence stamp and before merge.
 
 ## Recovery summary
 
 - Initial lint diagnostics omitted `DATABASE_URL`, causing a Prisma type-resolution cascade unrelated to Stage 13 source.
 - The corrected diagnostic isolated five missing explicit test return annotations.
-- Added only those annotations, confirmed strict lint success, and removed all temporary workflow files.
-- Repeated the complete permanent gate on the clean product-only branch before documentation.
+- Added only those annotations, confirmed strict lint success, and removed the temporary repair workflow.
+- Captured the clipped test summary through a one-use evidence workflow, confirmed 29 test files and 187 passing tests, then removed that workflow.
+- Repeated the complete permanent gate on the clean product and documentation branch.
 
 ## Production data blocker
 
