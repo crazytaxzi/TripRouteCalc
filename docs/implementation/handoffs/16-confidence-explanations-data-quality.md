@@ -4,9 +4,13 @@
 - Date: 2026-07-21
 - Implementation branch: `agent/stage-16-confidence-data-quality`
 - Implementation pull request: `#29 Implement Stage 16 confidence explanations and data quality`
+- Ledger-closure pull request: `#30 Close Stage 16 implementation ledger`
 - Verified implementation head: `53ecc0e160d73b9b418309d2de1a80a43f2ea75f`
 - Clean implementation CI: run `1047` (`29844738381`)
-- Completion status: COMPLETE, VERIFIED, AND READY TO MERGE
+- Verified completion-handoff head: `d924aa143cccaa9eb38636a54b00bf312c78abf0`
+- Clean completion-handoff CI: run `1051` (`29845445142`)
+- Implementation merge commit: `19f0621a6075db1a2f37a1c6d2cdc6143be7a7b3`
+- Completion status: COMPLETE, VERIFIED, MERGED, AND LEDGER-CLOSED
 
 ## Protected governance
 
@@ -83,14 +87,17 @@ Persistence and tests:
 - `packages/persistence/test/eta-simulator.integration.test.ts`
 - `packages/persistence/test/persistence.integration.test.ts`
 
-Documentation:
+Documentation and ledger:
 
 - `docs/confidence/README.md`
 - `docs/implementation/decisions/16-confidence-explanations-data-quality.md`
 - `docs/implementation/handoffs/16-confidence-explanations-data-quality.md`
+- `docs/implementation/STATUS.md`
+- `docs/implementation/GAP_MATRIX.md`
+- `docs/implementation/BLOCKERS.md`
 - `README.md`
 
-No consumer-route fallback, production legal threshold, fake provider, live-data claim, API controller, UI component, or unrelated schema redesign was introduced.
+No consumer-route fallback, production legal threshold, fake provider, live-data claim, API controller, UI component, or unrelated schema redesign was introduced. Ledger closure changes documentation only.
 
 ## Database and data changes
 
@@ -107,7 +114,9 @@ Calculation result confidence reasons remain JSON evidence and now contain struc
 
 ## Verification evidence
 
-Permanent CI run `1047` (`29844738381`) passed on implementation head `53ecc0e160d73b9b418309d2de1a80a43f2ea75f`:
+Permanent CI run `1047` (`29844738381`) passed on implementation head `53ecc0e160d73b9b418309d2de1a80a43f2ea75f`. Permanent completion-handoff CI run `1051` (`29845445142`) passed on head `d924aa143cccaa9eb38636a54b00bf312c78abf0`.
+
+Both passed:
 
 - `pnpm install --frozen-lockfile`
 - `pnpm db:generate`
@@ -118,7 +127,7 @@ Permanent CI run `1047` (`29844738381`) passed on implementation head `53ecc0e16
 - complete `pnpm test:source`, 37 files and 245 tests
 - `pnpm build:source`
 
-Focused diagnostic runs also verified the classifier and ETA explanation suites independently. Temporary diagnostic workflows and trigger files were removed before the clean permanent gate.
+Focused diagnostics also verified the classifier and ETA explanation suites independently. Temporary diagnostic workflows and trigger files were removed before the clean permanent gate. Pull request `#29` was squash-merged only after both permanent gates passed. Pull request `#30` changes documentation only and closes the ledger.
 
 ## Recovery and adversarial review summary
 
@@ -130,11 +139,13 @@ Focused diagnostic runs also verified the classifier and ETA explanation suites 
 - GitHub sometimes hid bot-authored product commits while follow-up repair workflows retried stale edits. Recovery verified live branch files before every restoration of permanent CI.
 - YAML and exact-whitespace failures were treated as tooling-layer failures. Diagnostics switched to artifact capture, semantic/token-bounded edits, and base64-encoded scripts rather than guessing at clipped logs.
 - The permanent migration, lint, type-check, complete runtime suite, and build gates were never disabled or weakened.
+- The completion audit found exactly 17 expected implementation files, no temporary workflow or trigger files, no unresolved review threads, and no submitted review objections.
 
 ## Remaining blockers and limitations
 
 - B-002 remains open. No licensed commercial-routing provider, entitlement, coverage statement, retention agreement, server-only credential, or live adapter exists.
 - B-003 remains open. No reviewed production regulatory corpus, licensed restriction feed, legal-research ownership, or official production acceptance corpus exists.
+- B-004 remains deferred. Production hosting, secrets management, backup automation, recovery objectives, retention policy, and production database infrastructure remain undecided.
 - No live traffic, weather, closure, fuel, parking, scale, maintenance, border, meal, shower, or facility provider is configured.
 - Confidence classification explains supplied evidence. It does not manufacture missing evidence or convert fixture coverage into production legality.
 - Public evidence references reject credential-like text, but broader authentication, authorization, privacy, rate limiting, and API redaction remain later stages.
