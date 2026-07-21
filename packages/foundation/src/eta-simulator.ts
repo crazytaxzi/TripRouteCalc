@@ -1830,12 +1830,6 @@ function simulateProjection(
     }
     if (state.blocked) break;
     const destination = input.stops[legIndex + 1];
-    if (destination === undefined) {
-      throw new EtaSimulationError(
-        'ROUTE_STOP_MISMATCH',
-        `Missing destination stop for leg ${leg.legId}.`,
-      );
-    }
     if (legIndex === input.route.legs.length - 1) {
       if (
         !applyPointActions(
