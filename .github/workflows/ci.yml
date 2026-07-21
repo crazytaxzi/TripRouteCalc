@@ -13,89 +13,58 @@ jobs:
   verification:
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    env:
+      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/trip_route_calc_test?schema=public
+
+    services:
+      postgres:
+        image: postgres:18-alpine
+        env:
+          POSTGRES_DB: trip_route_calc_test
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d trip_route_calc_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 12
+
     steps:
-      - name: Check out implementation branch
+      - name: Check out repository
         uses: actions/checkout@v4
-        with:
-          ref: agent/stage-16-confidence-data-quality
-          fetch-depth: 0
 
-      - name: Capture final Stage 16 integration output
-        shell: bash
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Enable pnpm
         run: |
-          git show 1656e255a1f0a606d0b2c6613ad2e8ea054a6963:.github/workflows/stage16-eta-integration.yml > /tmp/stage16-workflow.yml
-          sed -n "/python - <<'PY'/,/^          PY$/p" /tmp/stage16-workflow.yml \
-            | sed '1d;$d;s/^          //' > /tmp/stage16-patch.py
-          python - <<'PATCHFIX'
-          from pathlib import Path
+          corepack enable
+          corepack prepare pnpm@9.15.4 --activate
 
-          path = Path('/tmp/stage16-patch.py')
-          text = path.read_text(encoding='utf-8')
-          old_function = '''def replace_once(old: str, new: str, label: str) -> None:
-              global text
-              count = text.count(old)
-              if count != 1:
-                  raise SystemExit(f'{label}: expected one match, found {count}')
-              text = text.replace(old, new)'''
-          new_function = '''def replace_once(old: str, new: str, label: str) -> None:
-              global text
-              count = text.count(old)
-              if count == 1:
-                  text = text.replace(old, new)
-                  return
-              import re
-              pieces = re.split(r'(\\s+)', old)
-              pattern = ''.join(r'\\s+' if piece.isspace() else re.escape(piece) for piece in pieces if piece != '')
-              matches = list(re.finditer(pattern, text, flags=re.MULTILINE))
-              if len(matches) != 1:
-                  raise SystemExit(
-                      f'{label}: expected one semantic match, found exact={count}, flexible={len(matches)}'
-                  )
-              match = matches[0]
-              text = text[:match.start()] + new + text[match.end():]'''
-          if text.count(old_function) != 1:
-              raise SystemExit('Could not replace Stage 16 patch guard.')
-          text = text.replace(old_function, new_function)
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
 
-          old_speed = '''replace_once(
-              "readonly confidenceReasons: readonly string[];",
-              "readonly confidenceReasons: readonly ConfidenceReason[];",
-              'speed decision confidence reasons',
-          )'''
-          new_speed = '''replace_once(
-              """  readonly source: 'VERIFIED_PROVIDER_TIME' | 'FALLBACK_AVERAGE';
-            readonly limitingFactors: readonly string[];
-            readonly confidenceReasons: readonly string[];
-            readonly explanation: string;
-          """.replace('          ', ''),
-              """  readonly source: 'VERIFIED_PROVIDER_TIME' | 'FALLBACK_AVERAGE';
-            readonly limitingFactors: readonly string[];
-            readonly confidenceReasons: readonly ConfidenceReason[];
-            readonly explanation: string;
-          """.replace('          ', ''),
-              'speed decision confidence reasons',
-          )'''
-          if text.count(old_speed) != 1:
-              raise SystemExit('Could not narrow speed-decision confidence replacement.')
-          text = text.replace(old_speed, new_speed)
+      - name: Generate Prisma client
+        run: pnpm db:generate
 
-          confidence_tail = "\nconfidence = Path('packages/foundation/src/confidence.ts')"
-          tail_index = text.find(confidence_tail)
-          if tail_index < 0:
-              raise SystemExit('Could not isolate the already-applied confidence factor edit.')
-          path.write_text(text[:tail_index] + '\n', encoding='utf-8')
-          PATCHFIX
-          set +e
-          python /tmp/stage16-patch.py > stage16-patch-output-3.txt 2>&1
-          status=$?
-          echo >> stage16-patch-output-3.txt
-          echo "EXIT_STATUS=$status" >> stage16-patch-output-3.txt
-          exit 0
+      - name: Validate Prisma schema
+        run: pnpm db:validate
 
-      - name: Upload final integration output
-        uses: actions/upload-artifact@v4
-        with:
-          name: stage16-patch-output-3
-          path: stage16-patch-output-3.txt
-          if-no-files-found: error
-          retention-days: 1
+      - name: Apply migrations to clean PostgreSQL database
+        run: pnpm db:migrate:deploy
+
+      - name: Lint
+        run: pnpm lint:source
+
+      - name: Type-check
+        run: pnpm typecheck:source
+
+      - name: Test
+        run: pnpm test:source
+
+      - name: Build
+        run: pnpm build:source
