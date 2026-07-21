@@ -4,6 +4,10 @@ import {
   weightInPounds,
 } from '@trip-route-calc/foundation';
 import { validateJurisdictionRule } from '@trip-route-calc/foundation/regulatory';
+import type {
+  JurisdictionRule,
+  RegulatoryEvaluationInput,
+} from '@trip-route-calc/foundation/regulatory';
 import { describe, expect, it } from 'vitest';
 
 import {
@@ -28,7 +32,7 @@ const source = {
   lastVerifiedAt: utcInstant('2026-07-20T00:00:00Z'),
 };
 
-function axleRule(maximumDriveWeight: number) {
+function axleRule(maximumDriveWeight: number): JurisdictionRule {
   return validateJurisdictionRule({
     ruleId: 'CA-AXLE-TEST',
     jurisdictionCode: 'US-CA',
@@ -66,7 +70,9 @@ function axleRule(maximumDriveWeight: number) {
   });
 }
 
-function excessiveInput(rules = [kpraRule('CA-KPRA-40', 40)]) {
+function excessiveInput(
+  rules = [kpraRule('CA-KPRA-40', 40)],
+): RegulatoryEvaluationInput {
   return input(rules, { equipment: equipment(42) });
 }
 

@@ -8,6 +8,8 @@ import {
   validateKpraAdjustmentAction,
   validateKpraAdjustmentEvidence,
   weightInPounds,
+  type KpraAdjustmentAction,
+  type KpraAdjustmentEvidence,
 } from '@trip-route-calc/foundation';
 import { validateRegulatoryComplianceResult } from '@trip-route-calc/foundation/regulatory';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
@@ -126,7 +128,7 @@ function revisionInput(
   };
 }
 
-function action(originalTripRevisionId: string) {
+function action(originalTripRevisionId: string): KpraAdjustmentAction {
   return validateKpraAdjustmentAction({
     actionId: `kpra:${originalTripRevisionId}:finding-1`,
     originalTripRevisionId,
@@ -159,7 +161,7 @@ function action(originalTripRevisionId: string) {
 function evidence(
   originalTripRevisionId: string,
   recalculationTripRevisionId: string,
-) {
+): KpraAdjustmentEvidence {
   const actionValue = action(originalTripRevisionId);
   return validateKpraAdjustmentEvidence({
     originalTripRevisionId,

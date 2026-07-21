@@ -6,6 +6,7 @@ import {
   validateKpraAdjustmentAction,
   validateKpraAdjustmentEvidence,
   weightInPounds,
+  type KpraAdjustmentAction,
 } from '../src/index.js';
 import { describe, expect, it } from 'vitest';
 
@@ -19,7 +20,7 @@ const source = {
   lastVerifiedAt: utcInstant('2026-07-20T00:00:00Z'),
 };
 
-function action() {
+function action(): KpraAdjustmentAction {
   return validateKpraAdjustmentAction({
     actionId: 'kpra:revision-1:finding-1',
     originalTripRevisionId: 'revision-1',
