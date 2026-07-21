@@ -144,6 +144,7 @@ export interface StopForm {
 }
 
 export interface RouteForm {
+  readonly ruleSetVersion: string;
   readonly policy:
     | 'fastest-compliant'
     | 'shortest-compliant'
