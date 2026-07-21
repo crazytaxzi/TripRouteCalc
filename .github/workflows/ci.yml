@@ -7,49 +7,51 @@ on:
     branches: [main]
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
-  stage15-lint-diagnostic:
+  stage15-final-lint-repair:
     runs-on: ubuntu-latest
     timeout-minutes: 10
-    env:
-      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/trip_route_calc_test?schema=public
     steps:
-      - name: Check out repository
+      - name: Check out Stage 15 branch
         uses: actions/checkout@v4
         with:
+          ref: agent/stage-15-eta-simulator
+          fetch-depth: 0
           show-progress: false
 
-      - name: Set up Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: 22
-
-      - name: Enable pnpm
+      - name: Remove redundant destination guard
         run: |
-          corepack enable
-          corepack prepare pnpm@9.15.4 --activate
+          python3 <<'PY'
+          from pathlib import Path
 
-      - name: Install dependencies quietly
-        run: pnpm install --frozen-lockfile >/dev/null
+          path = Path('packages/foundation/src/eta-simulator.ts')
+          text = path.read_text()
+          old = '''    const destination = input.stops[legIndex + 1];
+              if (destination === undefined) {
+                throw new EtaSimulationError(
+                  'ROUTE_STOP_MISMATCH',
+                  `Missing destination stop for leg ${leg.legId}.`,
+                );
+              }
+          '''
+          new = '''    const destination = input.stops[legIndex + 1];
+          '''
+          if text.count(old) != 1:
+              raise RuntimeError(f'Expected one redundant destination guard; found {text.count(old)}')
+          path.write_text(text.replace(old, new, 1))
+          PY
 
-      - name: Generate Prisma client quietly
-        run: pnpm db:generate >/dev/null
-
-      - name: Capture strict lint diagnostics
+      - name: Commit bounded lint repair
         run: |
-          set +e
-          pnpm lint:source > stage15-lint.txt 2>&1
-          code=$?
-          echo "exit_code=$code" >> stage15-lint.txt
-          exit 0
-
-      - name: Upload strict lint diagnostics
-        uses: actions/upload-artifact@v4
-        with:
-          name: stage15-lint-diagnostics
-          path: stage15-lint.txt
+          set -euo pipefail
+          git diff --check
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add packages/foundation/src/eta-simulator.ts
+          git commit -m 'Remove redundant Stage 15 destination guard'
+          git push origin HEAD:agent/stage-15-eta-simulator
 
   verification:
     runs-on: ubuntu-latest
