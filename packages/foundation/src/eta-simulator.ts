@@ -1,6 +1,20 @@
 import { Temporal } from '@js-temporal/polyfill';
 import { z } from 'zod';
 
+import {
+  CONFIDENCE_LEVELS,
+  assessConfidence,
+  dataQualityReason,
+  publicEvidenceReference,
+  resultExplanation,
+} from './confidence.js';
+import type {
+  ConfidenceAssessment,
+  ConfidenceLevel,
+  ConfidenceReason,
+  ResultExplanation,
+} from './confidence.js';
+
 import type {
   CommercialRouteLeg,
   CommercialRouteSegment,
@@ -140,8 +154,8 @@ export const ETA_ROAD_CLASSES = [
 ] as const;
 export type EtaRoadClass = (typeof ETA_ROAD_CLASSES)[number];
 
-export const ETA_CONFIDENCE_LEVELS = ['HIGH', 'MEDIUM', 'LOW', 'BLOCKED'] as const;
-export type EtaConfidenceLevel = (typeof ETA_CONFIDENCE_LEVELS)[number];
+export const ETA_CONFIDENCE_LEVELS = CONFIDENCE_LEVELS;
+export type EtaConfidenceLevel = ConfidenceLevel;
 
 export const ETA_TIMELINE_EVENT_TYPES = [
   'STOP_ARRIVAL',
@@ -278,7 +292,7 @@ const EtaAvailableAdjustmentSchema = z
     duration: EtaProjectedDurationSchema,
     sourceName: nonEmptyText,
     reference: nonEmptyText.optional(),
-    confidence: z.enum(['HIGH', 'MEDIUM', 'LOW', 'UNKNOWN']),
+    confidence: z.enum(CONFIDENCE_LEVELS),
     explanation: nonEmptyText,
   })
   .strict();
@@ -393,6 +407,8 @@ export interface EtaSimulationInput {
   readonly availableOperationalLocations: readonly OperationalLocation[];
   readonly complianceActions: readonly EtaComplianceAction[];
   readonly hosAvailabilityActions: readonly EtaHosAvailabilityAction[];
+  readonly dataQualityReasons?: readonly ConfidenceReason[] | undefined;
+  readonly revisionReference?: string | undefined;
   readonly homeTerminalTimeZone?: IanaTimeZone | undefined;
 }
 
@@ -406,7 +422,7 @@ export interface EtaSpeedDecision {
   readonly weatherDelay: Duration;
   readonly source: 'VERIFIED_PROVIDER_TIME' | 'FALLBACK_AVERAGE';
   readonly limitingFactors: readonly string[];
-  readonly confidenceReasons: readonly string[];
+  readonly confidenceReasons: readonly ConfidenceReason[];
   readonly explanation: string;
 }
 
@@ -440,13 +456,15 @@ export interface EtaProjectionResult {
   readonly speedDecisions: readonly EtaSpeedDecision[];
   readonly finalHosClocks: HosCoreClockSnapshot;
   readonly confidence: EtaConfidenceLevel;
-  readonly confidenceReasons: readonly string[];
+  readonly confidenceAssessment: ConfidenceAssessment;
+  readonly confidenceReasons: readonly ConfidenceReason[];
   readonly blockingReasons: readonly string[];
+  readonly constraintExplanations: readonly ResultExplanation[];
   readonly explanations: readonly string[];
 }
 
 export interface EtaSimulationResult {
-  readonly simulatorVersion: 'stage-15-v1';
+  readonly simulatorVersion: 'stage-16-v1';
   readonly routeId: string;
   readonly earliestLegal: EtaProjectionResult;
   readonly expected: EtaProjectionResult;
@@ -489,13 +507,14 @@ interface MutableProjectionState {
   readonly operationalEvents: readonly OperationalEventPlan[];
   readonly complianceActions: readonly EtaComplianceAction[];
   readonly hosAvailabilityActions: readonly EtaHosAvailabilityAction[];
+  readonly revisionReference?: string | undefined;
   readonly usedOperationalEventIds: Set<string>;
   readonly usedComplianceActionIds: Set<string>;
   readonly usedHosActionIds: Set<string>;
   readonly timeline: EtaTimelineEvent[];
   readonly stopResults: StopProcessingResult[];
   readonly speedDecisions: EtaSpeedDecision[];
-  readonly confidenceReasons: string[];
+  readonly confidenceReasons: ConfidenceReason[];
   readonly blockingReasons: string[];
   readonly explanations: string[];
   readonly hos: SimulationHosContext;
@@ -786,15 +805,34 @@ function projectedAdjustmentMinutes(
   adjustment: EtaExternalAdjustment,
   projection: EtaProjection,
   label: string,
-  confidenceReasons: string[],
+  unavailableCode:
+    | 'LIVE_TRAFFIC_UNAVAILABLE'
+    | 'WEATHER_DATA_UNAVAILABLE',
+  reference: ReturnType<typeof publicEvidenceReference>,
+  confidenceReasons: ConfidenceReason[],
 ): number {
   if (adjustment.status === 'UNAVAILABLE') {
-    confidenceReasons.push(`${label} unavailable: ${adjustment.reason}`);
+    confidenceReasons.push(
+      dataQualityReason(
+        unavailableCode,
+        [reference],
+        `${label} is unavailable; this projection excludes that live adjustment.`,
+        adjustment.reason,
+      ),
+    );
     return 0;
   }
   if (adjustment.confidence !== 'HIGH') {
     confidenceReasons.push(
-      `${label} confidence is ${adjustment.confidence.toLowerCase()}: ${adjustment.explanation}`,
+      dataQualityReason(
+        'EXTERNAL_ADJUSTMENT_REDUCED_CONFIDENCE',
+        [reference],
+        `${label} has ${adjustment.confidence.toLowerCase()} confidence.`,
+        adjustment.explanation,
+        adjustment.confidence === 'UNVERIFIED'
+? 'UNVERIFIED'
+: adjustment.confidence,
+      ),
     );
   }
   return projectionDuration(adjustment.duration, projection).value;
@@ -849,7 +887,7 @@ export function calculateEtaSegmentSpeed(
     segment.verificationStatus === 'verified' &&
     segment.travelDuration.value > 0 &&
     !unavailableProviderTime;
-  const confidenceReasons: string[] = [];
+  const confidenceReasons: ConfidenceReason[] = [];
   let source: EtaSpeedDecision['source'];
   if (providerTimeAvailable) {
     const providerSpeedValue =
@@ -862,11 +900,21 @@ export function calculateEtaSegmentSpeed(
     );
     source = 'VERIFIED_PROVIDER_TIME';
   } else {
-    factors.push(freeze({ name: 'fallback average', speed: model.fallbackAverageSpeed }));
-    confidenceReasons.push(
-      `Segment ${segment.segmentId} uses the labeled fallback average because verified provider travel time is unavailable.`,
-    );
-    source = 'FALLBACK_AVERAGE';
+    factors.push(freeze({ name: 'fallback average', speed: model.fallbackAverageSpeed }));    confidenceReasons.push(
+        dataQualityReason(
+'AVERAGE_SPEED_FALLBACK',
+[
+  publicEvidenceReference(
+    'ROUTE_SEGMENT',
+    `segment-${String(segment.sequence)}`,
+    `Route segment ${String(segment.sequence)}`,
+  ),
+],
+`Route segment ${String(segment.sequence)} uses an average-speed fallback because verified provider travel time is unavailable.`,
+'The Stage 15 speed model selected the documented fallback average.',
+        ),
+      );
+source = 'FALLBACK_AVERAGE';
   }
 
   const factor = factorBasisPoints(model, projection);
@@ -877,20 +925,28 @@ export function calculateEtaSegmentSpeed(
   const selectedSpeed = speed({
     value: (limiting.speed.value * factor) / 10_000,
     unit: 'meter-per-second',
-  });
-  const trafficMinutes = projectedAdjustmentMinutes(
-    condition.traffic,
-    projection,
-    `Traffic for segment ${segment.segmentId}`,
-    confidenceReasons,
-  );
-  const weatherMinutes = projectedAdjustmentMinutes(
-    condition.weather,
-    projection,
-    `Weather for segment ${segment.segmentId}`,
-    confidenceReasons,
-  );
-  const baseMinutes = durationFromDistanceAndSpeed(segment.distance, selectedSpeed);
+  });  const segmentReference = publicEvidenceReference(
+      'ROUTE_SEGMENT',
+      `segment-${String(segment.sequence)}`,
+      `Route segment ${String(segment.sequence)}`,
+    );
+    const trafficMinutes = projectedAdjustmentMinutes(
+      condition.traffic,
+      projection,
+      `Traffic for route segment ${String(segment.sequence)}`,
+      'LIVE_TRAFFIC_UNAVAILABLE',
+      segmentReference,
+      confidenceReasons,
+    );
+    const weatherMinutes = projectedAdjustmentMinutes(
+      condition.weather,
+      projection,
+      `Weather for route segment ${String(segment.sequence)}`,
+      'WEATHER_DATA_UNAVAILABLE',
+      segmentReference,
+      confidenceReasons,
+    );
+const baseMinutes = durationFromDistanceAndSpeed(segment.distance, selectedSpeed);
   const totalMinutes = baseMinutes + trafficMinutes + weatherMinutes;
 
   return freeze({
@@ -1039,11 +1095,22 @@ function validateSimulationInput(input: EtaSimulationInput): EtaSimulationInput 
     speedModel,
     segmentConditions: freezeArray(segmentConditions),
     operationalEvents: freezeArray(operationalEvents),
-    availableOperationalLocations: freezeArray(availableOperationalLocations),
-    complianceActions: freezeArray(complianceActions),
-    hosAvailabilityActions: freezeArray(hosAvailabilityActions),
-    ...(input.homeTerminalTimeZone === undefined
-      ? {}
+    availableOperationalLocations: freezeArray(availableOperationalLocations),    complianceActions: freezeArray(complianceActions),
+      hosAvailabilityActions: freezeArray(hosAvailabilityActions),
+      ...(input.dataQualityReasons === undefined
+        ? {}
+        : { dataQualityReasons: freezeArray(input.dataQualityReasons) }),
+      ...(input.revisionReference === undefined
+        ? {}
+        : {
+  revisionReference: publicEvidenceReference(
+    'REVISION',
+    input.revisionReference,
+    `Trip revision ${input.revisionReference}`,
+  ).reference,
+}),
+      ...(input.homeTerminalTimeZone === undefined
+? {}
       : { homeTerminalTimeZone: IanaTimeZoneSchema.parse(input.homeTerminalTimeZone) }),
   });
 }
@@ -1769,11 +1836,23 @@ function unresolvedPlacements(state: MutableProjectionState): void {
     const explanation = `Operational event ${plan.eventId} could not be placed from ${plan.placement.kind}.`;
     if (plan.required) {
       state.blockingReasons.push(explanation);
-      state.blocked = true;
-    } else {
-      state.confidenceReasons.push(explanation);
-    }
-  }
+      state.blocked = true;    } else {
+        state.confidenceReasons.push(
+dataQualityReason(
+  'OPTIONAL_OPERATIONAL_EVENT_UNPLACED',
+  [
+    publicEvidenceReference(
+      'EVENT',
+      `optional-operational-${String(state.usedOperationalEventIds.size + 1)}`,
+      'Optional operational event',
+    ),
+  ],
+  'An optional operational event could not be placed, so the projection omits it.',
+  explanation,
+),
+        );
+      }
+}
   for (const action of state.complianceActions) {
     if (state.usedComplianceActionIds.has(action.actionId)) continue;
     state.blockingReasons.push(
@@ -1783,15 +1862,363 @@ function unresolvedPlacements(state: MutableProjectionState): void {
   }
 }
 
-function confidenceLevel(state: MutableProjectionState): EtaConfidenceLevel {
-  if (state.blocked) return 'BLOCKED';
-  if (
-    state.speedDecisions.some((decision) => decision.source === 'FALLBACK_AVERAGE')
-  ) {
-    return 'LOW';
+function minutesLabel(minutes: number): string {
+  const hours = Math.floor(minutes / 60);
+  const remainder = minutes % 60;
+  if (hours === 0) return `${String(remainder)} minutes`;
+  if (remainder === 0) return `${String(hours)} hours`;
+  return `${String(hours)} hours ${String(remainder)} minutes`;
+}
+
+function eventReference(
+  event: EtaTimelineEvent,
+  eventIndex: number,
+): ReturnType<typeof publicEvidenceReference> {
+  return publicEvidenceReference(
+    'EVENT',
+    `event-${String(eventIndex + 1)}`,
+    `Event ${String(eventIndex + 1)}: ${event.type}`,
+  );
+}
+
+function stopReference(
+  state: MutableProjectionState,
+  stopId: string,
+): ReturnType<typeof publicEvidenceReference> {
+  const index = state.stops.findIndex((stop) => stop.id === stopId);
+  const stop = state.stops[index];
+  return publicEvidenceReference(
+    'STOP',
+    `stop-${String(index + 1)}`,
+    stop === undefined
+      ? `Stop ${String(index + 1)}`
+      : `Stop ${String(index + 1)}: ${stop.location.description}`,
+  );
+}
+
+function segmentReferenceForState(
+  state: MutableProjectionState,
+  segmentId: string,
+): ReturnType<typeof publicEvidenceReference> {
+  for (const [legIndex, leg] of state.route.legs.entries()) {
+    const segmentIndex = leg.segments.findIndex(
+      (segment) => segment.segmentId === segmentId,
+    );
+    if (segmentIndex >= 0) {
+      return publicEvidenceReference(
+        'ROUTE_SEGMENT',
+        `leg-${String(legIndex + 1)}-segment-${String(segmentIndex + 1)}`,
+        `Leg ${String(legIndex + 1)}, segment ${String(segmentIndex + 1)}`,
+      );
+    }
   }
-  if (state.confidenceReasons.length > 0) return 'MEDIUM';
-  return 'HIGH';
+  return publicEvidenceReference(
+    'ROUTE_SEGMENT',
+    'route-segment-unresolved',
+    'Unresolved route segment reference',
+  );
+}
+
+function revisionReferences(
+  state: MutableProjectionState,
+): readonly ReturnType<typeof publicEvidenceReference>[] {
+  const reference = state.revisionReference;
+  return reference === undefined
+    ? []
+    : [
+        publicEvidenceReference(
+'REVISION',
+reference,
+`Trip revision ${reference}`,
+        ),
+      ];
+}
+
+function projectionConstraintExplanations(
+  state: MutableProjectionState,
+): readonly ResultExplanation[] {
+  const explanations: ResultExplanation[] = [];
+  for (const [eventIndex, event] of state.timeline.entries()) {
+    const references = [
+      ...revisionReferences(state),
+      eventReference(event, eventIndex),
+    ];
+    if (event.stopId !== undefined) {
+      references.push(stopReference(state, event.stopId));
+    }
+    if (event.segmentId !== undefined) {
+      references.push(segmentReferenceForState(state, event.segmentId));
+    }
+    if (event.type === 'DRIVING') {
+      const clocks = [
+        ['11-hour driving allowance', event.hosBefore.drivingTimeRemaining.value],
+        ['14-hour shift window', event.hosBefore.shiftTimeRemaining.value],
+        ['cycle availability', event.hosBefore.cycleTimeRemaining.value],
+      ] as const;
+      const limiting = [...clocks].sort((left, right) => left[1] - right[1])[0];
+      if (limiting !== undefined) {
+        explanations.push(
+resultExplanation(
+  `HOS-CONSTRAINT-${String(eventIndex + 1)}`,
+  'HOS_CONSTRAINT',
+  [
+    ...references,
+    publicEvidenceReference(
+      'RULE',
+      'us-federal-property-carrying-standard',
+      'Standard federal property-carrying HOS rule set',
+    ),
+  ],
+  `Before this drive, the driver had ${minutesLabel(event.hosBefore.drivingTimeRemaining.value)} of driving time, ${minutesLabel(event.hosBefore.shiftTimeRemaining.value)} in the shift window, and ${minutesLabel(event.hosBefore.cycleTimeRemaining.value)} of cycle availability. The ${limiting[0]} was the nearest HOS limit.`,
+  `Driving event ${String(eventIndex + 1)} consumed ${String(event.duration.value)} whole minutes under the Stage 05 HOS engine.`,
+),
+        );
+      }
+    }
+    if (
+      event.type === 'STOP_WAIT' ||
+      event.type === 'STOP_CHECK_IN' ||
+      event.type === 'STOP_SERVICE'
+    ) {
+      const status = event.dutyStatus ?? 'OFF_DUTY';
+      const clockEffect =
+        status === 'ON_DUTY_NOT_DRIVING'
+? 'It consumes shift-window and cycle time but not driving allowance.'
+: status === 'OFF_DUTY' || status === 'SLEEPER_BERTH'
+  ? 'It does not consume driving allowance or cycle time, although the shift window may continue under the selected rule.'
+  : 'It consumes driving, shift-window, and cycle time.';
+      explanations.push(
+        resultExplanation(
+`STOP-CLOCK-${String(eventIndex + 1)}`,
+event.type === 'STOP_WAIT'
+  ? 'APPOINTMENT_WAIT'
+  : 'STOP_CLOCK_EFFECT',
+references,
+`${event.type === 'STOP_WAIT' ? 'Appointment or facility waiting' : 'Stop activity'} lasts ${minutesLabel(event.duration.value)} in ${status}. ${clockEffect}`,
+`The stop processor recorded ${event.type} with duty status ${status}.`,
+        ),
+      );
+    }
+    if (
+      event.hosBefore.drivenSinceLastQualifyingInterruption.value >= 480 &&
+      event.hosAfter.drivenSinceLastQualifyingInterruption.value === 0
+    ) {
+      explanations.push(
+        resultExplanation(
+`QUALIFYING-INTERRUPTION-${String(eventIndex + 1)}`,
+'QUALIFYING_INTERRUPTION',
+[
+  ...references,
+  publicEvidenceReference(
+    'RULE',
+    'thirty-minute-interruption',
+    'Thirty-minute interruption rule',
+  ),
+],
+`This ${minutesLabel(event.duration.value)} non-driving period satisfies the required qualifying interruption.`,
+'The Stage 05 HOS transition reset driven-since-interruption to zero.',
+        ),
+      );
+    }
+    if (
+      event.duration.value >= 600 &&
+      event.hosAfter.drivingTimeRemaining.value >
+        event.hosBefore.drivingTimeRemaining.value
+    ) {
+      explanations.push(
+        resultExplanation(
+`TEN-HOUR-REST-${String(eventIndex + 1)}`,
+'REST',
+[
+  ...references,
+  publicEvidenceReference(
+    'RULE',
+    'ten-consecutive-hours-off-duty',
+    'Ten-consecutive-hour rest rule',
+  ),
+],
+`This ${minutesLabel(event.duration.value)} qualifying rest restores the standard driving and shift clocks.`,
+'The Stage 05 HOS transition increased available driving time after consecutive reset-qualifying time.',
+        ),
+      );
+    }
+    if (
+      event.type === 'COMPLIANCE_CLEARED' ||
+      event.type === 'COMPLIANCE_BLOCK'
+    ) {
+      explanations.push(
+        resultExplanation(
+`COMPLIANCE-${String(eventIndex + 1)}`,
+'COMPLIANCE_ACTION',
+references,
+event.explanation,
+`Compliance timeline event ${event.type} was preserved without changing legal assumptions.`,
+        ),
+      );
+    }
+    if (event.type === 'ROUTE_BLOCK') {
+      explanations.push(
+        resultExplanation(
+`ROUTE-BLOCK-${String(eventIndex + 1)}`,
+'ROUTE_CONSTRAINT',
+references,
+event.explanation,
+'Commercial planning stopped at a route-evidence boundary.',
+        ),
+      );
+    }
+    if (
+      event.type === 'OPERATIONAL_EVENT' ||
+      event.type === 'PLANNING_BUFFER'
+    ) {
+      explanations.push(
+        resultExplanation(
+`OPERATIONAL-${String(eventIndex + 1)}`,
+'OPERATIONAL_EVENT',
+references,
+event.explanation,
+`The event adds ${String(event.duration.value)} whole minutes to this projection.`,
+        ),
+      );
+    }
+  }
+
+  for (const decision of state.speedDecisions) {
+    if (decision.source !== 'FALLBACK_AVERAGE') continue;
+    explanations.push(
+      resultExplanation(
+        `SPEED-FALLBACK-${decision.projection}-${String(explanations.length + 1)}`,
+        'SPEED_FALLBACK',
+        [
+...revisionReferences(state),
+segmentReferenceForState(state, decision.segmentId),
+        ],
+        'Verified provider travel time was unavailable for this segment, so the documented average-speed fallback was used.',
+        decision.explanation,
+      ),
+    );
+  }
+
+  const finalEvent = state.timeline.at(-1);
+  if (finalEvent !== undefined && !state.blocked) {
+    explanations.push(
+      resultExplanation(
+        `FINAL-LOCAL-TIME-${state.projection}`,
+        'FINAL_LOCAL_TIME',
+        [
+...revisionReferences(state),
+eventReference(finalEvent, state.timeline.length - 1),
+        ],
+        `The ${state.projection.toLowerCase().replaceAll('_', ' ')} projection finishes at ${finalEvent.endLocal.localDateTime} in ${finalEvent.endLocal.timeZone}.`,
+        `UTC completion instant ${finalEvent.endAt} is rendered in the final event's explicit IANA time zone.`,
+      ),
+    );
+  }
+  return freezeArray(explanations);
+}
+
+function projectionInputConfidenceReasons(
+  input: EtaSimulationInput,
+): readonly ConfidenceReason[] {
+  const reasons: ConfidenceReason[] = [...(input.dataQualityReasons ?? [])];
+  const providerReference = publicEvidenceReference(
+    'PROVIDER',
+    'commercial-route-provider',
+    'Commercial-route provider evidence',
+  );
+  for (const field of input.route.unavailableFields) {
+    const lower = `${field.path} ${field.reason}`.toLowerCase();
+    const code = lower.includes('restriction')
+      ? 'PROVIDER_RESTRICTIONS_UNAVAILABLE'
+      : lower.includes('access')
+        ? 'LOCAL_TRUCK_ACCESS_UNVERIFIED'
+        : lower.includes('address')
+? 'ADDRESS_NOT_FULLY_RESOLVED'
+: 'PROVIDER_CONFIDENCE_REDUCED';
+    reasons.push(
+      dataQualityReason(
+        code,
+        [providerReference],
+        field.reason,
+        `${field.path}: ${field.reason}`,
+      ),
+    );
+  }
+  for (const [legIndex, leg] of input.route.legs.entries()) {
+    for (const [segmentIndex, segment] of leg.segments.entries()) {
+      const reference = publicEvidenceReference(
+        'ROUTE_SEGMENT',
+        `leg-${String(legIndex + 1)}-segment-${String(segmentIndex + 1)}`,
+        `Leg ${String(legIndex + 1)}, segment ${String(segmentIndex + 1)}`,
+      );
+      if (segment.verificationStatus === 'unverified') {
+        reasons.push(
+dataQualityReason(
+  'ROUTE_SEGMENT_MANUAL_VERIFICATION',
+  [reference],
+  `${reference.label} is not commercially verified.`,
+  'The normalized commercial-route segment verification status is unverified.',
+),
+        );
+      }
+      if (
+        segment.restrictions.some(
+(restriction) =>
+  restriction.severity === 'manual-verification-required' ||
+  restriction.severity === 'route-restricted',
+        )
+      ) {
+        reasons.push(
+dataQualityReason(
+  'ROUTE_SEGMENT_MANUAL_VERIFICATION',
+  [reference],
+  `${reference.label} requires manual verification before a legal conclusion is available.`,
+  'A normalized provider restriction requires manual verification or rerouting.',
+),
+        );
+      }
+    }
+  }
+  if (input.route.provider.confidence !== 'high') {
+    const level =
+      input.route.provider.confidence === 'unknown'
+        ? 'UNVERIFIED'
+        : input.route.provider.confidence === 'low'
+? 'LOW'
+: 'MODERATE';
+    reasons.push(
+      dataQualityReason(
+        'PROVIDER_CONFIDENCE_REDUCED',
+        [providerReference],
+        `Commercial-route provider confidence is ${input.route.provider.confidence}.`,
+        'The normalized provider metadata reports reduced confidence.',
+        level,
+      ),
+    );
+  }
+  for (const [stopIndex, stop] of input.stops.entries()) {
+    if (
+      stopIndex > 0 &&
+      stop.required &&
+      stop.appointment.mode === 'none'
+    ) {
+      reasons.push(
+        dataQualityReason(
+'MISSING_APPOINTMENT_WINDOW',
+[
+  publicEvidenceReference(
+    'STOP',
+    `stop-${String(stopIndex + 1)}`,
+    `Stop ${String(stopIndex + 1)}: ${stop.location.description}`,
+  ),
+],
+`${stop.location.description} has no appointment window, so appointment feasibility is unknown.`,
+`Required stop ${String(stopIndex + 1)} uses appointment mode none.`,
+        ),
+      );
+    }
+  }
+  return freezeArray(reasons);
 }
 
 function simulateProjection(
@@ -1809,15 +2236,17 @@ function simulateProjection(
     segmentConditions,
     availableOperationalLocations: input.availableOperationalLocations,
     operationalEvents: input.operationalEvents,
-    complianceActions: input.complianceActions,
-    hosAvailabilityActions: input.hosAvailabilityActions,
-    usedOperationalEventIds: new Set<string>(),
-    usedComplianceActionIds: new Set<string>(),
+    complianceActions: input.complianceActions,    hosAvailabilityActions: input.hosAvailabilityActions,
+      ...(input.revisionReference === undefined
+        ? {}
+        : { revisionReference: input.revisionReference }),
+      usedOperationalEventIds: new Set<string>(),
+usedComplianceActionIds: new Set<string>(),
     usedHosActionIds: new Set<string>(),
     timeline: [],
     stopResults: [],
     speedDecisions: [],
-    confidenceReasons: [],
+    confidenceReasons: [...projectionInputConfidenceReasons(input)],
     blockingReasons: [],
     explanations: [
       `${projection} simulation advances chronologically in UTC whole minutes and renders each transition in an explicit IANA zone.`,
@@ -1834,15 +2263,7 @@ function simulateProjection(
   if (input.route.assessment.commercialPlanningStatus !== 'usable') {
     state.blockingReasons.push(...input.route.assessment.blockingReasons);
     state.blocked = true;
-  }
-  state.confidenceReasons.push(...input.route.assessment.confidenceReasons);
-  if (input.route.provider.confidence !== 'high') {
-    state.confidenceReasons.push(
-      `Commercial-route provider confidence is ${input.route.provider.confidence}.`,
-    );
-  }
-
-  const firstStop = input.stops[0];
+  }const firstStop = input.stops[0];
   if (!state.blocked && firstStop !== undefined && !processTripStop(state, firstStop)) {
     state.blocked = true;
   }
@@ -1881,30 +2302,38 @@ function simulateProjection(
     if (!processTripStop(state, destination)) break;
   }
 
-  if (!state.blocked) unresolvedPlacements(state);
-  const final = calculateContext(state.hos).final;
-  const finalStop = state.stopResults.at(-1)?.stop.id;
-  return freeze({
-    projection,
+  if (!state.blocked) unresolvedPlacements(state);  const final = calculateContext(state.hos).final;
+    const finalStop = state.stopResults.at(-1)?.stop.id;
+    const confidenceAssessment = assessConfidence(state.confidenceReasons);
+    const constraintExplanations = projectionConstraintExplanations(state);
+    return freeze({
+projection,
     status: state.blocked ? ('BLOCKED' as const) : ('COMPLETE' as const),
     startedAt: input.initialHosContext.departureState.departureAt,
     ...(state.blocked ? {} : { completedAt: currentTime(state.hos) }),
     ...(finalStop === undefined ? {} : { finalStopId: finalStop }),
     timeline: freezeArray(state.timeline),
     stopResults: freezeArray(state.stopResults),
-    speedDecisions: freezeArray(state.speedDecisions),
-    finalHosClocks: final,
-    confidence: confidenceLevel(state),
-    confidenceReasons: freezeArray([...new Set(state.confidenceReasons)]),
-    blockingReasons: freezeArray([...new Set(state.blockingReasons)]),
-    explanations: freezeArray(state.explanations),
-  });
+    speedDecisions: freezeArray(state.speedDecisions),    finalHosClocks: final,
+      confidence: confidenceAssessment.level,
+      confidenceAssessment,
+      confidenceReasons: confidenceAssessment.reasons,
+      blockingReasons: freezeArray([...new Set(state.blockingReasons)]),
+      constraintExplanations,
+      explanations: freezeArray([
+        ...state.explanations,
+        confidenceAssessment.userExplanation,
+        ...constraintExplanations.map(
+(explanation) => explanation.userExplanation,
+        ),
+      ]),
+});
 }
 
 export function simulateEtaTrip(inputRaw: EtaSimulationInput): EtaSimulationResult {
   const input = validateSimulationInput(inputRaw);
   return freeze({
-    simulatorVersion: 'stage-15-v1' as const,
+    simulatorVersion: 'stage-16-v1' as const,
     routeId: input.route.routeId,
     earliestLegal: simulateProjection(input, 'EARLIEST_LEGAL'),
     expected: simulateProjection(input, 'EXPECTED'),
