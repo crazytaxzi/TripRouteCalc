@@ -1,12 +1,12 @@
 # Regulatory Rules and Update Workflow
 
-Stage 12 provides the versioned regulatory model and deterministic compliance evaluator. It does not contain production legal rules and does not claim that any route is legal without verified commercial-route evidence and an active, effective, reviewed rule-set version.
+Stage 12 provides the versioned regulatory model and deterministic compliance evaluator. Stage 13 adds the California KPRA and axle revalidation workflow over those accepted boundaries. Neither stage contains production legal rules or claims that a route is legal without verified commercial-route evidence and an active, effective, reviewed rule-set version.
 
 ## Separation of concerns
 
-- `@trip-route-calc/foundation` defines regulatory source, rule-set, road-scope, machine-condition, finding, and result contracts.
-- `@trip-route-calc/compliance` evaluates exact route-segment and vehicle facts. It has no provider credentials, persistence access, HOS arithmetic, API, or UI behavior.
-- `@trip-route-calc/persistence` manages draft review, activation, deactivation, supersession history, tenant isolation, trip-revision rule evidence, warnings, and immutable audit records.
+- `@trip-route-calc/foundation` defines regulatory source, rule-set, road-scope, machine-condition, finding, result, KPRA action, confirmation, and evidence contracts.
+- `@trip-route-calc/compliance` evaluates exact route-segment and vehicle facts, then performs KPRA adjustment assessment and full post-adjustment revalidation. It has no provider credentials, persistence access, HOS arithmetic, API, or UI behavior.
+- `@trip-route-calc/persistence` manages draft review, activation, deactivation, supersession history, tenant isolation, trip-revision rule evidence, warnings, KPRA acknowledgements, and immutable audit records.
 - Commercial-routing providers supply route geometry and restrictions. They do not decide legal compliance.
 - HOS engines remain separate and do not activate regulatory exceptions or exemptions.
 
@@ -48,13 +48,21 @@ Provider gaps, prohibited segments, incomplete regulatory coverage, encoded geom
 5. Evaluations capture the exact persisted rule versions, structured findings, warnings, and audit snapshot against the trip revision.
 6. Prior rule versions and prior trip calculations remain reproducible.
 
+## California KPRA and axle workflow
+
+Stage 13 reads the physical KPRA, exact selected-segment rules, equipment adjustment range, and axle-weight evidence. It selects the strictest applicable sourced KPRA maximum, identifies the affected segment and last reasonable adjustment point, and offers adjustment only when the trailer can physically reach the limit. Tandem movement never establishes compliance by itself.
+
+A new immutable revision must confirm physical KPRA, drive and trailer axle weights, total gross combination weight, load distribution, and measurement source. The complete regulatory evaluator then runs again. Legal finalization remains blocked unless the KPRA action and every axle, gross, bridge, route, and other regulatory finding are resolved.
+
+Operational details are in `docs/regulatory/california-kpra-workflow.md`.
+
 ## Production data boundary
 
 B-003 remains open. No production regulatory, permit, restriction, or official route-map data source has been selected or licensed. All automated tests use clearly labeled fixtures. Before production legal evaluation, the project must select authoritative sources, document licensing and retention terms, establish review ownership and cadence, load reviewed rules, and validate them against official examples.
 
 ## Test coverage
 
-The Stage 12 suite covers:
+The Stage 12 and Stage 13 suites cover:
 
 - multi-jurisdiction routes without state-wide over-application;
 - California-style KPRA action timing using test-only fixtures;
@@ -63,4 +71,11 @@ The Stage 12 suite covers:
 - provider and local-access gaps;
 - draft rule-set blocking;
 - deterministic replay;
+- compliant Oregon-to-California KPRA planning;
+- excessive entered KPRA;
+- stricter exact-road fixture precedence;
+- physically impossible adjustment and reroute selection;
+- mandatory post-adjustment KPRA, axle, gross-weight, and load-distribution confirmation;
+- axle blocking after a successful KPRA movement;
+- immutable revision linkage, tenant isolation, acknowledgement, and audit evidence; and
 - typed administrative creation, revision, activation, supersession, tenant isolation, evidence capture, and audit history.
