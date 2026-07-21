@@ -11,6 +11,18 @@ export default defineConfig({
       '@trip-route-calc/foundation': fileURLToPath(
         new URL('./packages/foundation/src/index.ts', import.meta.url),
       ),
+      '@trip-route-calc/persistence': fileURLToPath(
+        new URL('./packages/persistence/src/index.ts', import.meta.url),
+      ),
+      '@trip-route-calc/routing': fileURLToPath(
+        new URL('./packages/routing/src/index.ts', import.meta.url),
+      ),
+      '@trip-route-calc/compliance': fileURLToPath(
+        new URL('./packages/compliance/src/index.ts', import.meta.url),
+      ),
+      '@trip-route-calc/api': fileURLToPath(
+        new URL('./packages/api/src/index.ts', import.meta.url),
+      ),
     },
   },
   test: {
