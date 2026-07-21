@@ -116,3 +116,15 @@ Stage 14 required structured operational events, explicit HOS effects, determini
 B-002 remains open for live commercial-route and route-aware operational-location evidence. No live fuel, parking, scale, maintenance, border, meal, shower, traffic, closure, or facility provider is configured. Supplied fixture locations are test evidence only. The planner blocks missing or unreachable availability and never fabricates an operational stop.
 
 B-003 remains open for production legal-route evaluation, but Stage 14 added no legal threshold and did not require production regulatory data. B-004 remains deferred and did not block the Stage 14 domain, persistence, or CI exit gate.
+
+## Stage 15 blocker review
+
+**Status:** No active Stage 15 implementation blocker
+
+Stage 15 required a deterministic event simulator, constrained commercial speed model, three projections, UTC/IANA chronology, DST and time-zone behavior, route/HOS/stop/compliance/operational composition, explicit overlap handling, complete timeline evidence, and immutable persisted replay. Those mandatory requirements are implemented and verified.
+
+B-002 remains open for live commercial-route timing, traffic, weather, closure, and route-aware facility evidence. The Stage 15 simulator consumes supplied verified provider and condition evidence, labels conservative fallback timing, lowers confidence, or blocks when required evidence is unusable. It never replaces missing commercial evidence with a consumer route or fabricated live conditions.
+
+B-003 remains open for production legal-route and restriction evaluation. Test-only sourced rules and normalized route fixtures prove deterministic behavior, not production legality. Stage 15 does not invent regulatory authority, speed limits, route restrictions, permits, recap timing, restart completion, or sleeper qualification.
+
+B-004 remains deferred and did not block the pure simulator, immutable revision replay, PostgreSQL integration test, or permanent CI exit gate. No new Stage 15 blocker was created.

@@ -6,7 +6,7 @@ The product is intended to produce transparent, defensible planning estimates fo
 
 ## Current state
 
-The canonical private repository is established on `main`. Stages 01 through 15 are complete and verified; Stage 15 remains on its implementation pull request until merge and ledger closure.
+The canonical private repository is established on `main`. Stages 01 through 15 are complete, verified, merged, and ledger-closed. Stage 16 is the exact next source.
 
 - `@trip-route-calc/foundation` provides product terminology, first-release scope boundaries, explicit measurement primitives, UTC and IANA time-zone handling, DST-safe local appointment and regulatory-boundary resolution, provider-neutral domain contracts, validated driver HOS departure-state and duty-event contracts, the pure Stage 05 core clock engine, the pure Stage 06 rolling cycle engine, the pure Stage 07 advanced-rule evaluator, the Stage 09 equipment/load physical-validation domain, the Stage 10 ordered stop-processing domain, Stage 11 commercial-routing request and normalized-result contracts, Stage 12 regulatory source, scope, condition, rule-set, finding, and compliance-result contracts, Stage 13 KPRA action and revalidation contracts, Stage 14 structured operational-event and fuel-planning contracts, and the Stage 15 deterministic three-projection ETA simulator.
 - Stage 05 covers the standard 10-hour reset, 11-hour driving allowance, 14-hour window, cycle-availability blocking, and 30-minute interruption.
@@ -77,7 +77,7 @@ PostgreSQL 18 uses the named volume mounted at `/var/lib/postgresql`.
 - Stage 12: Regulatory Rules Engine and Update Workflow, COMPLETE; production regulatory data blocked by B-003
 - Stage 13: California KPRA and Axle Compliance, COMPLETE; production California legal evaluation blocked by B-003
 - Stage 14: Fuel, Inspections, and Operational Events, COMPLETE; live operational-location verification blocked by B-002 and unselected facility providers
-- Stage 15: ETA Simulator, Speeds, and Time Zones, COMPLETE and verified on the implementation branch; live route, traffic, weather, closure, and facility confidence remains constrained by B-002, B-003, and unselected providers
+- Stage 15: ETA Simulator, Speeds, and Time Zones, COMPLETE, VERIFIED, MERGED, AND LEDGER-CLOSED; live route, traffic, weather, closure, and facility confidence remains constrained by B-002, B-003, and unselected providers
 
 See:
 

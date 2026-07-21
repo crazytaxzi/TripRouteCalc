@@ -4,9 +4,13 @@
 - Date: 2026-07-21
 - Implementation branch: `agent/stage-15-eta-simulator`
 - Implementation pull request: `#27 Implement Stage 15 ETA simulator speeds and time zones`
+- Ledger-closure pull request: `#28 Close Stage 15 implementation ledger`
 - Verified implementation head: `50684e7d7909ce190556cc910d69a08b0873d54e`
 - Clean implementation CI: run `893` (`29828350875`)
-- Completion status: COMPLETE, VERIFIED, AND READY TO MERGE
+- Verified completion-handoff head: `57317b95b9fc55d4d14d60acf8f624a0db18afb5`
+- Clean completion-handoff CI: run `895` (`29828570575`)
+- Implementation merge commit: `8e3fca9f747ba9e98cb607943cf91235a54a99ea`
+- Completion status: COMPLETE, VERIFIED, MERGED, AND LEDGER-CLOSED
 
 ## Protected governance
 
@@ -93,8 +97,11 @@ Documentation and handoff:
 - `docs/implementation/decisions/15-eta-simulator-speeds-time-zones.md`
 - `docs/implementation/handoffs/15-eta-simulator-speeds-time-zones.md`
 - `README.md`
+- `docs/implementation/STATUS.md`
+- `docs/implementation/GAP_MATRIX.md`
+- `docs/implementation/BLOCKERS.md`
 
-No product file was moved or deleted. Temporary diagnostics and trigger files were removed before the clean permanent gate. The pull request changed-file inventory contains only the files listed above.
+No product file was moved or deleted. Temporary diagnostics and trigger files were removed before the clean permanent gate. The implementation pull request changed-file inventory contained only the expected Stage 15 product, test, and documentation files. Ledger closure changes documentation only.
 
 ## Database and data changes
 
@@ -109,7 +116,7 @@ The PostgreSQL integration test stores the complete simulator input and result, 
 
 ## Commands and verification actually run
 
-The authoritative permanent GitHub Actions gate passed on implementation head `50684e7d7909ce190556cc910d69a08b0873d54e`, run `893` (`29828350875`). It ran:
+The authoritative permanent GitHub Actions gate passed on implementation head `50684e7d7909ce190556cc910d69a08b0873d54e`, run `893` (`29828350875`), and completion-handoff head `57317b95b9fc55d4d14d60acf8f624a0db18afb5`, run `895` (`29828570575`). They ran:
 
 - `pnpm install --frozen-lockfile`
 - `pnpm db:generate`
@@ -120,7 +127,7 @@ The authoritative permanent GitHub Actions gate passed on implementation head `5
 - complete `pnpm test:source`
 - `pnpm build:source`
 
-Focused GitHub Actions diagnostics also ran the Stage 15 type-check, acceptance, and persistence-replay suites while recovering clipped log output. No temporary diagnostic workflow remains in the pull request.
+Focused GitHub Actions diagnostics also ran the Stage 15 type-check, acceptance, and persistence-replay suites while recovering clipped log output. No temporary diagnostic workflow remains in the repository.
 
 ## Recovery and adversarial review summary
 
@@ -132,6 +139,8 @@ Focused GitHub Actions diagnostics also ran the Stage 15 type-check, acceptance,
 - Persistence diagnostics exposed exact optional-property misuse, a wrong relation field name, and a fixture marked verified without `verifiedAt`. Only the test and evidence contracts were corrected.
 - The completion audit found no unresolved PR review threads, no temporary files, no new migration, and no consumer-route or fabricated-provider fallback.
 - Strict lint, type-check, tests, migration validation, and build gates were preserved throughout.
+- Pull request `#27` was squash-merged only after the implementation and handoff heads both passed the permanent gate.
+- Pull request `#28` updates only the repository status, gap, blocker, README, and handoff ledger surfaces and advances the exact next source to Stage 16.
 
 ## Remaining blockers and limitations
 
