@@ -1,4 +1,5 @@
 export * from './domain.js';
+export * from './confidence.js';
 export * from './hos-core.js';
 export * from './hos-cycle.js';
 export * from './hos-advanced.js';
