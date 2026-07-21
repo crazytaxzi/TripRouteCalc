@@ -1822,7 +1822,7 @@ function simulateProjection(
   }
 
   let cumulativeMeters = 0;
-  for (let legIndex = 0; legIndex < input.route.legs.length && !state.blocked; legIndex += 1) {
+  for (let legIndex = 0; legIndex < input.route.legs.length; legIndex += 1) {
     const leg = input.route.legs[legIndex];
     for (const segment of leg.segments) {
       if (!processSegment(state, leg, segment, cumulativeMeters)) break;
