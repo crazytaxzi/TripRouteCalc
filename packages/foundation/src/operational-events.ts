@@ -389,10 +389,10 @@ export type OperationalEventPlan = Omit<
 > &
   Readonly<{
     source: OperationalEventSource;
-    location?: OperationalLocation;
+    location?: OperationalLocation | undefined;
     placement: OperationalPlacementConstraint;
-    planningBuffer?: OperationalPlanningBuffer;
-    legalDutyStatusSupport?: LegalDutyStatusSupport;
+    planningBuffer?: OperationalPlanningBuffer | undefined;
+    legalDutyStatusSupport?: LegalDutyStatusSupport | undefined;
   }>;
 
 export interface OperationalTimelineEvent {
