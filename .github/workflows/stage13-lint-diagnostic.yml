@@ -12,6 +12,8 @@ jobs:
   diagnose:
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    env:
+      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/trip_route_calc_test?schema=public
     steps:
       - uses: actions/checkout@v4
         with:
