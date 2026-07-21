@@ -7,43 +7,67 @@ on:
     branches: [main]
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
-  stage15-type-diagnostic:
+  stage15-type-repair:
     runs-on: ubuntu-latest
     timeout-minutes: 10
-    env:
-      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/trip_route_calc_test?schema=public
     steps:
-      - name: Check out repository
+      - name: Check out Stage 15 branch
         uses: actions/checkout@v4
         with:
+          ref: agent/stage-15-eta-simulator
+          fetch-depth: 0
           show-progress: false
-      - name: Set up Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: 22
-      - name: Enable pnpm
+      - name: Add explicit array-bound helper
         run: |
-          corepack enable
-          corepack prepare pnpm@9.15.4 --activate
-      - name: Install dependencies quietly
-        run: pnpm install --frozen-lockfile >/dev/null
-      - name: Generate Prisma client quietly
-        run: pnpm db:generate >/dev/null
-      - name: Capture strict TypeScript diagnostics
+          python3 <<'PY'
+          from pathlib import Path
+
+          path = Path('packages/foundation/src/eta-simulator.ts')
+          text = path.read_text()
+          anchor = '''function currentTime(context: SimulationHosContext): UtcInstant {
+            return context.phaseDutyEvents.at(-1)?.endAt ?? context.departureState.departureAt;
+          }
+          '''
+          helper = '''function currentTime(context: SimulationHosContext): UtcInstant {
+            return context.phaseDutyEvents.at(-1)?.endAt ?? context.departureState.departureAt;
+          }
+
+          function requiredItem<T>(
+            values: readonly T[],
+            index: number,
+            message: string,
+          ): T {
+            const value = values[index];
+            if (value === undefined) {
+              throw new EtaSimulationError('ROUTE_STOP_MISMATCH', message);
+            }
+            return value;
+          }
+          '''
+          replacements = {
+              anchor: helper,
+              '    const leg = input.route.legs[legIndex];': "    const leg = requiredItem(input.route.legs, legIndex, `Missing route leg ${String(legIndex + 1)}.`);",
+              '    const destination = input.stops[legIndex + 1];': "    const destination = requiredItem(input.stops, legIndex + 1, `Missing destination stop for leg ${leg.legId}.`);",
+          }
+          for old, new in replacements.items():
+              count = text.count(old)
+              if count != 1:
+                  raise RuntimeError(f'Expected one Stage 15 type repair target; found {count}: {old!r}')
+              text = text.replace(old, new, 1)
+          path.write_text(text)
+          PY
+      - name: Commit bounded type repair
         run: |
-          set +e
-          pnpm typecheck:source > stage15-type.txt 2>&1
-          code=$?
-          echo "exit_code=$code" >> stage15-type.txt
-          exit 0
-      - name: Upload strict TypeScript diagnostics
-        uses: actions/upload-artifact@v4
-        with:
-          name: stage15-type-diagnostics
-          path: stage15-type.txt
+          set -euo pipefail
+          git diff --check
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add packages/foundation/src/eta-simulator.ts
+          git commit -m 'Add explicit Stage 15 route bounds'
+          git push origin HEAD:agent/stage-15-eta-simulator
 
   verification:
     runs-on: ubuntu-latest
