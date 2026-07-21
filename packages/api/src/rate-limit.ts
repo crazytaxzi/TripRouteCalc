@@ -107,7 +107,7 @@ export class FixedWindowRateLimiter implements RateLimiter {
       }
     }
     while (this.#records.size >= this.#maximumTrackedPrincipals) {
-      const oldest = this.#records.keys().next().value as string | undefined;
+      const oldest = this.#records.keys().next().value;
       if (oldest === undefined) break;
       this.#records.delete(oldest);
     }
