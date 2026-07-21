@@ -35,5 +35,24 @@ jobs:
       - name: Generate Prisma client quietly
         run: pnpm db:generate >/dev/null
 
-      - name: Type-check
-        run: pnpm typecheck:source
+      - name: Capture type-check output
+        id: typecheck
+        shell: bash
+        run: |
+          set +e
+          pnpm typecheck:source > stage15-typecheck.txt 2>&1
+          status=$?
+          echo "status=$status" >> "$GITHUB_OUTPUT"
+          exit 0
+
+      - name: Upload type-check diagnostic
+        uses: actions/upload-artifact@v4
+        with:
+          name: stage15-typecheck
+          path: stage15-typecheck.txt
+          if-no-files-found: error
+          retention-days: 1
+
+      - name: Preserve failing result
+        if: steps.typecheck.outputs.status != '0'
+        run: exit 1
