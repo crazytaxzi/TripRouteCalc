@@ -4,12 +4,9 @@
 
 ```text
 TripRouteCalc/
-├── .env.example
 ├── .github/workflows/ci.yml
-├── .gitignore
 ├── README.md
 ├── compose.yaml
-├── eslint.config.mjs
 ├── package.json
 ├── pnpm-lock.yaml
 ├── pnpm-workspace.yaml
@@ -18,138 +15,163 @@ TripRouteCalc/
 ├── tsconfig.typecheck.json
 ├── vitest.config.ts
 ├── docs/
-│   ├── domain/
-│   │   └── product-foundation.md
+│   ├── api/README.md
+│   ├── confidence/README.md
+│   ├── domain/product-foundation.md
+│   ├── equipment/README.md
+│   ├── eta-simulator/README.md
 │   ├── hos/
-│   │   ├── README.md
-│   │   └── test-fixtures.md
-│   ├── persistence/
-│   │   └── README.md
+│   ├── implementation/
+│   │   ├── ARCHITECTURE_MAP.md
+│   │   ├── BLOCKERS.md
+│   │   ├── DECISIONS.md
+│   │   ├── GAP_MATRIX.md
+│   │   ├── RISK_REGISTER.md
+│   │   ├── STAGE_PLAN.md
+│   │   ├── STATUS.md
+│   │   ├── decisions/
+│   │   ├── evidence/
+│   │   └── handoffs/
+│   ├── operations/README.md
+│   ├── persistence/README.md
+│   ├── regulatory/
+│   ├── routing/README.md
 │   ├── specification/
-│   │   ├── 00_*.md
-│   │   ├── 01_*.md through 24_*.md
-│   │   ├── 99_ORIGINAL_MASTER_SPEC.md
-│   │   └── MANIFEST.txt
-│   └── implementation/
-│       ├── ARCHITECTURE_MAP.md
-│       ├── BASELINE_EVIDENCE.md
-│       ├── BLOCKERS.md
-│       ├── DECISIONS.md
-│       ├── GAP_MATRIX.md
-│       ├── RISK_REGISTER.md
-│       ├── STAGE_PLAN.md
-│       ├── STATUS.md
-│       ├── evidence/
-│       └── handoffs/
-│           ├── 01-repository-audit-and-plan.md
-│           ├── 02-product-foundation-domain-units-time.md
-│           ├── 03-persistence-revisions-auditability.md
-│           ├── 04-driver-hos-inputs-duty-events.md
-│           ├── 05-hos-core-clocks-interruption.md
-│           ├── 06-hos-cycle-recaps-restart.md
-│           ├── 07-hos-sleeper-adverse-and-carrier-policy.md
-│           └── 08-hos-automated-test-suite.md
+│   └── stops/README.md
 └── packages/
-    ├── foundation/
-    │   ├── package.json
-    │   ├── tsconfig.json
+    ├── api/
     │   ├── src/
-    │   │   ├── domain.ts
-    │   │   ├── hos-advanced.ts
-    │   │   ├── hos-core.ts
-    │   │   ├── hos-cycle.ts
-    │   │   ├── hos.ts
-    │   │   ├── index.ts
-    │   │   ├── scope.ts
-    │   │   ├── terminology.ts
-    │   │   ├── time.ts
-    │   │   └── units.ts
     │   └── test/
-    │       ├── domain.test.ts
-    │       ├── hos-acceptance.test.ts
-│       ├── hos-advanced.test.ts
-│       ├── hos-engine-isolation.test.ts
-│       ├── hos-test-fixtures.ts
-    │       ├── hos-core-boundaries.test.ts
-    │       ├── hos-core.test.ts
-    │       ├── hos-cycle.test.ts
-    │       ├── hos.test.ts
-    │       ├── time.test.ts
-    │       └── units.test.ts
-    └── persistence/
-        ├── package.json
-        ├── prisma.config.ts
-        ├── tsconfig.json
-        ├── prisma/
-        │   ├── schema.prisma
-        │   └── migrations/
-        │       ├── migration_lock.toml
-        │       ├── 20260720000000_stage03_persistence/
-        │       │   └── migration.sql
-        │       └── 20260720050000_stage04_driver_hos_inputs/
-        │           └── migration.sql
+    ├── compliance/
+    │   ├── src/
+    │   └── test/
+    ├── foundation/
+    │   ├── src/
+    │   └── test/
+    ├── persistence/
+    │   ├── prisma/
+    │   ├── src/
+    │   └── test/
+    └── routing/
         ├── src/
-        │   ├── client.ts
-        │   ├── driver-hos-repository.ts
-        │   ├── errors.ts
-        │   ├── export-history-repository.ts
-        │   ├── index.ts
-        │   ├── json.ts
-        │   ├── regulatory-rule-repository.ts
-        │   ├── repositories.ts
-        │   ├── repository-shared.ts
-        │   ├── route-provider-response-repository.ts
-        │   ├── tenant.ts
-        │   └── trip-revision-repository.ts
         └── test/
-            ├── driver-hos.integration.test.ts
-│           ├── hos-domain-mapping.integration.test.ts
-            └── persistence.integration.test.ts
 ```
 
 The Prisma-generated client is created under `packages/persistence/src/generated/` during checks and builds and is intentionally ignored by Git.
 
-## Verified systems
+## Package responsibilities
 
-- Node.js 22 and pnpm 9 TypeScript workspace
-- Stable shared foundation package
-- Validated HOS departure-state and timestamped duty-event contracts
-- Pure Stage 05 standard property-carrying HOS core with immutable snapshots and transitions
-- Integer-minute 10-hour reset, 11-hour driving, 14-hour window, cycle blocking, and 30-minute interruption behavior
-- Pure Stage 06 rolling cycle engine with regulatory-day history, reconciliation, recaps, cycle blocking, and explicitly selected 34-hour restart behavior
-- Pure Stage 07 advanced HOS composition with explicit sleeper-pair validation, adverse-driving-condition selection, carrier caps, preferred-rest conflicts, and unsupported-rule warnings
-- Stage 08 master-scenario, boundary, deterministic-replay, pure-engine-isolation, and PostgreSQL HOS mapping acceptance coverage
-- Explicit carrier-designated home-terminal boundaries with UTC, IANA time zones, and DST gap and repeated-time resolution
-- PostgreSQL 18 local and CI service configuration
-- Prisma 7 schema, generated client, and committed migrations
-- Carrier-scoped tenant repositories
-- Immutable calculation and HOS evidence revisions
-- Versioned regulatory persistence and change history
-- Strict ESLint, TypeScript, Vitest, and GitHub Actions verification
+### `@trip-route-calc/foundation`
 
-## Current HOS boundaries
+Owns provider-neutral product and calculation contracts:
 
-- `hos.ts` owns validated departure facts, duty-event evidence, API-shaped mapping, serialization, and candidate sleeper-pair status rules.
-- `hos-core.ts` owns pure Stage 05 daily clock, shift-window, interruption, and 10-hour-reset arithmetic.
-- `hos-cycle.ts` owns pure Stage 06 rolling 60-hour/7-day and 70-hour/8-day history, recap timing, reconciliation, cycle blocking, and explicitly selected 34-hour restart behavior.
-- `hos-advanced.ts` owns pure Stage 07 validation and explanation for selected sleeper pairs, adverse-driving-condition extensions, stricter carrier caps, rest preferences, and unsupported special-rule selections.
-- Stage 07 consumes and verifies a matching Stage 05 result rather than recreating Stage 05 transitions.
-- Stage 07 leaves Stage 06 cycle availability unchanged and does not reimplement cycle history.
-- Persistence stores immutable HOS inputs and event history but does not yet store Stage 05 through Stage 07 derived results.
-- Stage 08 owns the broader automated HOS acceptance suite across the accepted modules.
+- terminology, release scope, explicit units, UTC instants, IANA time zones, and DST-safe local-time resolution;
+- driver HOS inputs, duty events, standard clocks, rolling cycles, sleeper and adverse-condition evaluation, and carrier policy;
+- equipment, load, dimension, axle, KPRA, and physical-consistency validation;
+- ordered stops, appointments, facility hours, service behavior, and stop processing;
+- commercial-route request and normalized route evidence contracts;
+- regulatory sources, rules, findings, required actions, and compliance results;
+- operational events and deterministic fuel planning;
+- deterministic ETA projections, confidence, evidence references, and explanations.
+
+Foundation calculations are pure and do not depend on HTTP, provider adapters, or persistence.
+
+### `@trip-route-calc/routing`
+
+Owns the external commercial-routing boundary:
+
+- provider capability and licensing contracts;
+- server-only credential wrappers and redaction;
+- commercial-route execution, timeout, bounded retry, and provider error mapping;
+- explicit blocked runtime when no licensed provider is selected;
+- strict separation between commercial routes and consumer comparisons.
+
+B-002 remains open. Test providers are acceptance fixtures only and are not production evidence.
+
+### `@trip-route-calc/compliance`
+
+Owns pure regulatory and KPRA evaluation:
+
+- versioned rule evaluation against normalized route and equipment evidence;
+- structured findings, blockers, required actions, and references;
+- California KPRA adjustment and complete post-adjustment revalidation;
+- no embedded unsourced production threshold fallback.
+
+B-003 remains open. Production legal conclusions require reviewed authoritative data.
+
+### `@trip-route-calc/persistence`
+
+Owns PostgreSQL and Prisma persistence:
+
+- tenant membership and carrier-scoped object access;
+- immutable trips, revisions, stops, HOS inputs, equipment, route evidence, compliance evidence, operational plans, ETA inputs, ETA results, confidence, explanations, audit, and export history;
+- regulatory source and rule lifecycle, review, supersession, and change history;
+- additive Stage 17 idempotency records storing hashed keys, request hashes, response snapshots, and expiry;
+- compare-and-swap revision creation and tenant-safe not-found behavior.
+
+Persistence validates ownership and data integrity independently of API authentication.
+
+### `@trip-route-calc/api`
+
+Owns the Stage 17 HTTP boundary:
+
+- Fastify 5 server construction;
+- strict Zod validation for headers, parameters, queries, bodies, authentication claims, and public identifiers;
+- signed bearer authentication carrying carrier and actor context;
+- typed deterministic authenticated encryption for public resource identifiers;
+- fixed-window per-principal rate limiting;
+- persistent write idempotency and expected-revision conflicts;
+- trip, stop, revision, calculation, timeline, compliance, driver, equipment, load, route-validation, and regulatory-version endpoints;
+- deterministic OpenAPI 3.1 output at `/openapi.json`;
+- structured authentication, validation, conflict, legal-blocking, manual-verification, provider, rate-limit, and internal errors.
+
+API handlers authenticate, parse, delegate, and serialize. They do not recalculate HOS, routing, compliance, stops, ETA, confidence, or explanations.
+
+## Verified cross-package flow
+
+```text
+HTTP request
+  -> API authentication and Zod validation
+  -> typed public-ID decoding
+  -> application service
+  -> tenant-scoped persistence and accepted domain services
+  -> routing/compliance/ETA evaluation where requested
+  -> immutable persistence snapshot
+  -> public-ID encoding and structured HTTP response
+```
+
+Write retries pass through persistent idempotency. Trip and stop mutations require an expected revision and create a new immutable revision. Cross-carrier object access is rejected by persistence even when authentication succeeds.
+
+## Validation and build boundary
+
+The permanent repository gate uses Node.js 22, pnpm 9.15.4, PostgreSQL 18, Prisma generation and validation, ESLint, strict TypeScript, Vitest unit and integration suites, and the production TypeScript build.
+
+Stage 17 acceptance coverage includes:
+
+- public OpenAPI and authenticated API enforcement;
+- public-ID opacity, tamper rejection, and entity-type isolation;
+- tenant isolation and membership checks;
+- persistent idempotent replay and mismatch conflicts;
+- immutable trip and stop revisions, stale writes, and locked reorder protection;
+- invalid and ambiguous measurement rejection;
+- provider setup failure without consumer fallback;
+- successful calculation persistence and retrieval;
+- structured prohibited-route blocking.
 
 ## Boundaries not yet created
 
-There is no frontend, backend application, REST API, authentication system, commercial-routing adapter, regulatory evaluation engine, ETA simulator, map UI, export renderer, or production deployment configuration.
+- mobile trip-setup UI;
+- results and timeline UI;
+- map UI;
+- PDF and other export renderers;
+- complete login, session, identity-provider, token rotation, and revocation lifecycle;
+- production commercial-routing adapter and credentials;
+- reviewed production regulatory corpus;
+- distributed rate-limit storage;
+- production hosting, secret management, backup automation, recovery objectives, and deployment configuration.
 
-Unsupported personal conveyance, yard move, exceptions, exemptions, emergency rules, team-driver behavior, and pilot programs remain manual/blocking boundaries rather than automatic fallbacks.
+Unsupported personal conveyance, yard move, exemptions, emergency rules, team-driver behavior, and pilot programs remain manual or blocking boundaries rather than automatic fallbacks.
 
-Future packages and applications must import `@trip-route-calc/foundation` and `@trip-route-calc/persistence` rather than duplicating unit, time, domain, HOS input, HOS core, HOS cycle, advanced HOS, tenant, revision, or audit contracts.
-## Stage 09 equipment boundary
+## Next architectural source
 
-- `packages/foundation/src/equipment.ts`: provider-neutral tractor, trailer, load, provenance, validation, and physical route-input contracts.
-- `packages/foundation/test/equipment.test.ts`: physical invariants, missing-data behavior, and no-legality-claim acceptance tests.
-- `packages/persistence/prisma/equipment.prisma`: additive Stage 09 profile detail models.
-- `packages/persistence/src/equipment-profile-repository.ts`: tenant-scoped audited profile CRUD.
-- `packages/persistence/test/equipment-profile.integration.test.ts`: PostgreSQL CRUD, isolation, rollback, and constraint evidence.
-- `docs/equipment/README.md`: units, provenance, validation categories, persistence, and legality boundary.
+After Stage 17 merge and ledger closure, the next source is `docs/specification/18_MOBILE_TRIP_SETUP_UI.md`. The UI must consume `@trip-route-calc/api` and must not duplicate unit, time, HOS, equipment, stop, route, compliance, ETA, confidence, tenant, revision, or audit logic.
