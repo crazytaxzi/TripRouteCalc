@@ -16,7 +16,7 @@ Route handlers authenticate, parse Zod contracts, map opaque identifiers, invoke
 
 **Status:** Accepted
 
-Public identifiers are typed opaque tokens signed with HMAC-SHA256. The token carries an entity type and internal UUID but does not reveal the UUID. Type prefixes prevent using a stop identifier as a trip, driver, equipment, revision, or rule-set identifier. Tampering or cross-type use is rejected before repository access.
+Public identifiers are typed opaque tokens protected with deterministic authenticated encryption using a server-only key. The encrypted payload carries a version, entity type, and internal UUID. Type prefixes and authenticated payload validation prevent using a stop identifier as a trip, driver, equipment, revision, or rule-set identifier. Tampering or cross-type use is rejected before repository access. A signed but merely encoded payload is insufficient because it would reveal the internal UUID.
 
 ## D17-004: Require authenticated tenant context
 
