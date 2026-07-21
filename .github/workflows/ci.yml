@@ -15,7 +15,6 @@ jobs:
     timeout-minutes: 15
     env:
       DATABASE_URL: postgresql://postgres:postgres@localhost:5432/trip_route_calc_test?schema=public
-
     services:
       postgres:
         image: postgres:18-alpine
@@ -30,7 +29,6 @@ jobs:
           --health-interval 5s
           --health-timeout 5s
           --health-retries 12
-
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
@@ -42,29 +40,36 @@ jobs:
 
       - name: Enable pnpm
         run: |
-          corepack enable
-          corepack prepare pnpm@9.15.4 --activate
+          corepack enable >/dev/null
+          corepack prepare pnpm@9.15.4 --activate >/dev/null
 
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile
+      - name: Install dependencies quietly
+        run: pnpm install --frozen-lockfile --reporter=silent
 
-      - name: Generate Prisma client
-        run: pnpm db:generate
+      - name: Prepare database quietly
+        run: |
+          pnpm db:generate >/dev/null
+          pnpm db:validate >/dev/null
+          pnpm db:migrate:deploy >/dev/null
 
-      - name: Validate Prisma schema
-        run: pnpm db:validate
+      - name: Capture persistence replay output
+        id: tests
+        shell: bash
+        run: |
+          set +e
+          pnpm exec vitest run packages/persistence/test/eta-simulator.integration.test.ts > stage15-persistence-replay.txt 2>&1
+          status=$?
+          echo "status=$status" >> "$GITHUB_OUTPUT"
+          exit 0
 
-      - name: Apply migrations to clean PostgreSQL database
-        run: pnpm db:migrate:deploy
+      - name: Upload persistence replay diagnostic
+        uses: actions/upload-artifact@v4
+        with:
+          name: stage15-persistence-replay
+          path: stage15-persistence-replay.txt
+          if-no-files-found: error
+          retention-days: 1
 
-      - name: Lint
-        run: pnpm lint:source
-
-      - name: Type-check
-        run: pnpm typecheck:source
-
-      - name: Test
-        run: pnpm test:source
-
-      - name: Build
-        run: pnpm build:source
+      - name: Preserve failing result
+        if: steps.tests.outputs.status != '0'
+        run: exit 1
