@@ -7,6 +7,7 @@ import {
   buildStage18CommercialRouteRequest,
   buildStage18HosDepartureState,
   buildStage18SpeedModel,
+  distanceInMiles,
   durationInMinutes,
   lengthInFeet,
   lengthInInches,
@@ -19,7 +20,6 @@ import {
   validateEquipmentCombination,
   volumeInUsGallons,
   weightInPounds,
-  distanceInMiles,
 } from '@trip-route-calc/foundation';
 import type {
   DriverHosDepartureState,
@@ -48,8 +48,189 @@ import type {
   ValidationIssue,
 } from './types.js';
 
-export const DRAFT_STORAGE_KEY = 'trip-route-calc.stage18.draft.v1';
-const savedDraftSchema = z.object({ version: z.literal(1) }).passthrough();
+export const DRAFT_STORAGE_KEY = 'trip-route-calc.stage18.draft.v2';
+const LEGACY_DRAFT_STORAGE_KEY = 'trip-route-calc.stage18.draft.v1';
+
+const dutyStatusSchema = z.enum([
+  'OFF_DUTY',
+  'SLEEPER_BERTH',
+  'DRIVING',
+  'ON_DUTY_NOT_DRIVING',
+]);
+const stopTypeSchema = z.enum([
+  'start-location',
+  'tractor-pickup',
+  'trailer-pickup',
+  'shipper',
+  'intermediate-pickup',
+  'intermediate-delivery',
+  'final-consignee',
+  'fuel',
+  'scale',
+  'inspection',
+  'maintenance',
+  'food',
+  'driver-break',
+  'sleeper-rest',
+  'terminal',
+  'border-crossing',
+  'other',
+]);
+const finiteNumber = z.number().finite();
+const optionalId = z.string().trim().min(1).optional();
+const driverFormSchema = z.object({
+  id: optionalId,
+  displayName: z.string(),
+});
+const hosFormSchema = z.object({
+  departureLocal: z.string(),
+  departureTimeZone: z.string(),
+  currentDutyStatus: dutyStatusSchema,
+  currentDutyStatusStartedLocal: z.string(),
+  drivingMinutesRemaining: finiteNumber,
+  shiftMinutesRemaining: finiteNumber,
+  cycleMinutesRemaining: finiteNumber,
+  cycleType: z.enum(['SIXTY_HOURS_SEVEN_DAYS', 'SEVENTY_HOURS_EIGHT_DAYS']),
+  drivenMinutesSinceInterruption: finiteNumber,
+  onDutyMinutesCurrentShift: finiteNumber,
+  offDutyMinutesBeforeDeparture: finiteNumber,
+  qualifyingTenHourBreakCompleted: z.boolean(),
+  priorDutyMinutes: z.array(finiteNumber),
+  sleeperBerthEligible: z.boolean(),
+  splitSleeperEnabled: z.boolean(),
+  restart34HourPlanned: z.boolean(),
+  adverseConditionSelected: z.boolean(),
+  carrierMaxDailyDrivingMinutes: finiteNumber,
+  carrierMaxDutyMinutes: finiteNumber,
+  nightlyRestEnabled: z.boolean(),
+  nightlyRestStart: z.string(),
+  nightlyRestEnd: z.string(),
+});
+const tractorFormSchema = z.object({
+  id: optionalId,
+  unitNumber: z.string(),
+  tractorType: z.enum(['day-cab', 'sleeper', 'cabover', 'other']),
+  axleCount: finiteNumber,
+  overallLengthFeet: finiteNumber,
+  heightFeet: finiteNumber,
+  widthInches: finiteNumber,
+  emptyWeightPounds: finiteNumber,
+  registeredGrossWeightPounds: finiteNumber,
+  fuelCapacityGallons: finiteNumber,
+  estimatedFuelRangeMiles: finiteNumber,
+  governedSpeedMph: finiteNumber,
+  planningSpeedMph: finiteNumber,
+  fallbackSpeedMph: finiteNumber,
+  hazmatEquipped: z.boolean(),
+  apuAvailable: z.boolean(),
+  idleAllowed: z.boolean(),
+});
+const trailerFormSchema = z.object({
+  id: optionalId,
+  unitNumber: z.string(),
+  trailerType: z.enum([
+    'dry-van',
+    'refrigerated',
+    'flatbed',
+    'similar-general-freight',
+  ]),
+  axleCount: finiteNumber,
+  axleConfiguration: z.enum(['fixed', 'sliding']),
+  slidingTandemCapability: z.boolean(),
+  lengthFeet: finiteNumber,
+  heightFeet: finiteNumber,
+  widthInches: finiteNumber,
+  currentKpraFeet: finiteNumber,
+  minimumKpraFeet: finiteNumber,
+  maximumKpraFeet: finiteNumber,
+  emptyWeightPounds: finiteNumber,
+  maximumPayloadPounds: finiteNumber,
+  reefer: z.boolean(),
+});
+const loadFormSchema = z.object({
+  id: optionalId,
+  referenceNumber: z.string(),
+  commodityDescription: z.string(),
+  hazmat: z.boolean(),
+  hazmatClass: z.string(),
+  cargoWeightPounds: finiteNumber,
+  steerAxleWeightPounds: finiteNumber,
+  driveAxleWeightPounds: finiteNumber,
+  trailerAxleWeightPounds: finiteNumber,
+  totalGrossWeightPounds: finiteNumber,
+  lengthFeet: finiteNumber,
+  heightFeet: finiteNumber,
+  widthFeet: finiteNumber,
+  permitRequirement: z.enum(['not-required', 'required', 'unknown']),
+  permitIdentifiers: z.array(z.string()),
+});
+const stopFormSchema = z.object({
+  localId: z.string().trim().min(1),
+  publicId: optionalId,
+  type: stopTypeSchema,
+  required: z.boolean(),
+  lockedPosition: z.boolean(),
+  locationDescription: z.string(),
+  addressText: z.string(),
+  latitude: finiteNumber.nullable(),
+  longitude: finiteNumber.nullable(),
+  timeZone: z.string(),
+  appointmentMode: z.enum([
+    'none',
+    'earliest',
+    'latest',
+    'fixed',
+    'window',
+    'open-window',
+  ]),
+  appointmentStartLocal: z.string(),
+  appointmentEndLocal: z.string(),
+  lateToleranceMinutes: finiteNumber,
+  facilityOpenLocal: z.string(),
+  facilityCloseLocal: z.string(),
+  checkInMinutes: finiteNumber,
+  serviceMode: z.enum(['exact', 'expected', 'range', 'historical-average']),
+  serviceMinutes: finiteNumber,
+  serviceMinimumMinutes: finiteNumber,
+  serviceMaximumMinutes: finiteNumber,
+  historicalSourceName: z.string(),
+  historicalSampleSize: finiteNumber.nullable(),
+  waitingDutyStatus: dutyStatusSchema,
+  checkInDutyStatus: dutyStatusSchema,
+  serviceDutyStatus: dutyStatusSchema,
+  earlyParkingAllowed: z.boolean(),
+  overnightParkingAllowed: z.boolean(),
+  notes: z.string(),
+  instructions: z.string(),
+});
+const routeFormSchema = z.object({
+  ruleSetVersion: z.string(),
+  policy: z.enum([
+    'fastest-compliant',
+    'shortest-compliant',
+    'balanced-compliant',
+  ]),
+  avoidTolls: z.boolean(),
+  avoidFerries: z.boolean(),
+  avoidTunnels: z.boolean(),
+  autoCalculate: z.boolean(),
+});
+const tripDraftSchema = z.object({
+  version: z.literal(2),
+  draftId: z.string().trim().min(1),
+  apiBaseUrl: z.string(),
+  driver: driverFormSchema,
+  hos: hosFormSchema,
+  tractor: tractorFormSchema,
+  trailer: trailerFormSchema,
+  load: loadFormSchema,
+  stops: z.array(stopFormSchema).min(2),
+  route: routeFormSchema,
+  savedAt: z.string().optional(),
+});
+const savedDraftEnvelopeSchema = z
+  .object({ version: z.union([z.literal(1), z.literal(2)]) })
+  .passthrough();
 
 export type DraftAction =
   | Readonly<{ type: 'replace'; draft: TripDraft }>
@@ -61,6 +242,8 @@ export type DraftAction =
   | Readonly<{ type: 'route'; value: RouteForm }>
   | Readonly<{ type: 'stop'; stop: StopForm }>
   | Readonly<{ type: 'add-stop'; stopType: StopType }>
+  | Readonly<{ type: 'insert-stop'; afterLocalId: string }>
+  | Readonly<{ type: 'duplicate-stop'; localId: string }>
   | Readonly<{ type: 'remove-stop'; localId: string }>
   | Readonly<{ type: 'move-stop'; localId: string; direction: -1 | 1 }>;
 
@@ -77,11 +260,26 @@ function browserTimeZone(): string {
   return Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC';
 }
 
-function stopDefaults(
+function record(value: unknown): Record<string, unknown> {
+  return value !== null && !Array.isArray(value) && typeof value === 'object'
+    ? (value as Record<string, unknown>)
+    : {};
+}
+
+export function createStopForm(
   type: StopType,
-  lockedPosition: boolean,
+  lockedPosition = false,
   required = true,
 ): StopForm {
+  const rangeService = [
+    'shipper',
+    'intermediate-pickup',
+    'intermediate-delivery',
+    'final-consignee',
+  ].includes(type);
+  const exactService = type === 'fuel' || type === 'scale';
+  const serviceMinutes =
+    type === 'start-location' ? 0 : type === 'fuel' ? 30 : type === 'scale' ? 15 : 45;
   return {
     localId: identifier('stop'),
     type,
@@ -99,7 +297,12 @@ function stopDefaults(
     facilityOpenLocal: '',
     facilityCloseLocal: '',
     checkInMinutes: type === 'start-location' ? 30 : 0,
-    serviceMinutes: type === 'start-location' ? 0 : 45,
+    serviceMode: rangeService ? 'range' : exactService ? 'exact' : 'expected',
+    serviceMinutes,
+    serviceMinimumMinutes: rangeService ? 30 : serviceMinutes,
+    serviceMaximumMinutes: rangeService ? 60 : serviceMinutes,
+    historicalSourceName: '',
+    historicalSampleSize: null,
     waitingDutyStatus: 'OFF_DUTY',
     checkInDutyStatus: 'ON_DUTY_NOT_DRIVING',
     serviceDutyStatus: 'ON_DUTY_NOT_DRIVING',
@@ -115,7 +318,8 @@ export function defaultTripDraft(): TripDraft {
   const departureLocal = localInputValue(departure);
   const priorDutyMinutes = Object.freeze(Array.from({ length: 8 }, () => 0));
   return {
-    version: 1,
+    version: 2,
+    draftId: identifier('draft'),
     apiBaseUrl: '',
     driver: { displayName: '' },
     hos: {
@@ -193,8 +397,8 @@ export function defaultTripDraft(): TripDraft {
       permitIdentifiers: Object.freeze([]),
     },
     stops: Object.freeze([
-      stopDefaults('start-location', true),
-      stopDefaults('final-consignee', true),
+      createStopForm('start-location', true),
+      createStopForm('final-consignee', true),
     ]),
     route: {
       ruleSetVersion: '',
@@ -205,6 +409,61 @@ export function defaultTripDraft(): TripDraft {
       autoCalculate: false,
     },
   };
+}
+
+function normalizedSavedDraft(value: unknown): TripDraft {
+  const envelope = savedDraftEnvelopeSchema.parse(value);
+  const source = record(envelope);
+  const base = defaultTripDraft();
+  const sourceStops = Array.isArray(source.stops) ? source.stops : [];
+  const stops =
+    sourceStops.length < 2
+      ? base.stops
+      : sourceStops.map((rawStop, index) => {
+          const endpointType: StopType =
+            index === 0
+              ? 'start-location'
+              : index === sourceStops.length - 1
+                ? 'final-consignee'
+                : 'other';
+          const merged = {
+            ...createStopForm(endpointType, index === 0 || index === sourceStops.length - 1),
+            ...record(rawStop),
+          };
+          if (index === 0) {
+            return {
+              ...merged,
+              type: 'start-location' as const,
+              required: true,
+              lockedPosition: true,
+            };
+          }
+          if (index === sourceStops.length - 1) {
+            return {
+              ...merged,
+              type: 'final-consignee' as const,
+              required: true,
+              lockedPosition: true,
+            };
+          }
+          return merged;
+        });
+  return tripDraftSchema.parse({
+    ...base,
+    ...source,
+    version: 2,
+    draftId:
+      typeof source.draftId === 'string' && source.draftId.trim() !== ''
+        ? source.draftId
+        : base.draftId,
+    driver: { ...base.driver, ...record(source.driver) },
+    hos: { ...base.hos, ...record(source.hos) },
+    tractor: { ...base.tractor, ...record(source.tractor) },
+    trailer: { ...base.trailer, ...record(source.trailer) },
+    load: { ...base.load, ...record(source.load) },
+    stops,
+    route: { ...base.route, ...record(source.route) },
+  });
 }
 
 export function draftReducer(draft: TripDraft, action: DraftAction): TripDraft {
@@ -231,10 +490,46 @@ export function draftReducer(draft: TripDraft, action: DraftAction): TripDraft {
         ),
       };
     case 'add-stop': {
-      const insertion = stopDefaults(action.stopType, false);
+      const insertion = createStopForm(action.stopType);
       return {
         ...draft,
         stops: [...draft.stops.slice(0, -1), insertion, draft.stops.at(-1)!],
+      };
+    }
+    case 'insert-stop': {
+      const index = draft.stops.findIndex(
+        (stop) => stop.localId === action.afterLocalId,
+      );
+      if (index < 0 || index >= draft.stops.length - 1) return draft;
+      const insertion = createStopForm('other');
+      return {
+        ...draft,
+        stops: [
+          ...draft.stops.slice(0, index + 1),
+          insertion,
+          ...draft.stops.slice(index + 1),
+        ],
+      };
+    }
+    case 'duplicate-stop': {
+      const index = draft.stops.findIndex(
+        (stop) => stop.localId === action.localId,
+      );
+      const source = draft.stops[index];
+      if (source === undefined || source.lockedPosition) return draft;
+      const duplicate: StopForm = {
+        ...source,
+        localId: identifier('stop'),
+        publicId: undefined,
+        lockedPosition: false,
+      };
+      return {
+        ...draft,
+        stops: [
+          ...draft.stops.slice(0, index + 1),
+          duplicate,
+          ...draft.stops.slice(index + 1),
+        ],
       };
     }
     case 'remove-stop':
@@ -270,22 +565,29 @@ export function draftReducer(draft: TripDraft, action: DraftAction): TripDraft {
 export function saveDraft(draft: TripDraft): void {
   const saved: TripDraft = { ...draft, savedAt: new Date().toISOString() };
   localStorage.setItem(DRAFT_STORAGE_KEY, JSON.stringify(saved));
+  localStorage.removeItem(LEGACY_DRAFT_STORAGE_KEY);
 }
 
 export function loadDraft(): TripDraft | undefined {
-  const raw = localStorage.getItem(DRAFT_STORAGE_KEY);
+  const raw =
+    localStorage.getItem(DRAFT_STORAGE_KEY) ??
+    localStorage.getItem(LEGACY_DRAFT_STORAGE_KEY);
   if (raw === null) return undefined;
   try {
-    const parsed = savedDraftSchema.parse(JSON.parse(raw));
-    return parsed as TripDraft;
+    const parsed = normalizedSavedDraft(JSON.parse(raw));
+    localStorage.setItem(DRAFT_STORAGE_KEY, JSON.stringify(parsed));
+    localStorage.removeItem(LEGACY_DRAFT_STORAGE_KEY);
+    return parsed;
   } catch {
     localStorage.removeItem(DRAFT_STORAGE_KEY);
+    localStorage.removeItem(LEGACY_DRAFT_STORAGE_KEY);
     return undefined;
   }
 }
 
 export function clearDraft(): void {
   localStorage.removeItem(DRAFT_STORAGE_KEY);
+  localStorage.removeItem(LEGACY_DRAFT_STORAGE_KEY);
 }
 
 export function localToInstant(local: string, timeZone: string): UtcInstant {
@@ -384,31 +686,71 @@ export function equipmentFromDraft(draft: TripDraft): EquipmentCombination {
 }
 
 function appointment(stop: StopForm): Readonly<Record<string, unknown>> {
-  if (stop.appointmentMode === 'none') return { mode: 'none' };
-  if (stop.appointmentMode === 'fixed') {
-    return {
-      mode: 'fixed',
-      at: {
-        localDateTime: localDateTime(stop.appointmentStartLocal),
-        timeZone: stop.timeZone,
-      },
-      lateTolerance: durationInMinutes(stop.lateToleranceMinutes),
-    };
+  switch (stop.appointmentMode) {
+    case 'none':
+      return { mode: 'none' };
+    case 'earliest':
+      return {
+        mode: 'earliest',
+        at: {
+          localDateTime: localDateTime(stop.appointmentStartLocal),
+          timeZone: stop.timeZone,
+        },
+      };
+    case 'latest':
+    case 'fixed':
+      return {
+        mode: stop.appointmentMode,
+        at: {
+          localDateTime: localDateTime(stop.appointmentStartLocal),
+          timeZone: stop.timeZone,
+        },
+        lateTolerance: durationInMinutes(stop.lateToleranceMinutes),
+      };
+    case 'window':
+    case 'open-window':
+      return {
+        mode: stop.appointmentMode,
+        window: {
+          start: {
+            localDateTime: localDateTime(stop.appointmentStartLocal),
+            timeZone: stop.timeZone,
+          },
+          end: {
+            localDateTime: localDateTime(stop.appointmentEndLocal),
+            timeZone: stop.timeZone,
+          },
+        },
+        lateTolerance: durationInMinutes(stop.lateToleranceMinutes),
+      };
   }
-  return {
-    mode: 'window',
-    window: {
-      start: {
-        localDateTime: localDateTime(stop.appointmentStartLocal),
-        timeZone: stop.timeZone,
-      },
-      end: {
-        localDateTime: localDateTime(stop.appointmentEndLocal),
-        timeZone: stop.timeZone,
-      },
-    },
-    lateTolerance: durationInMinutes(stop.lateToleranceMinutes),
-  };
+}
+
+function serviceDuration(stop: StopForm): Readonly<Record<string, unknown>> {
+  switch (stop.serviceMode) {
+    case 'exact':
+    case 'expected':
+      return {
+        mode: stop.serviceMode,
+        duration: durationInMinutes(stop.serviceMinutes),
+      };
+    case 'range':
+      return {
+        mode: 'range',
+        minimum: durationInMinutes(stop.serviceMinimumMinutes),
+        expected: durationInMinutes(stop.serviceMinutes),
+        maximum: durationInMinutes(stop.serviceMaximumMinutes),
+      };
+    case 'historical-average':
+      return {
+        mode: 'historical-average',
+        duration: durationInMinutes(stop.serviceMinutes),
+        sourceName: stop.historicalSourceName,
+        ...(stop.historicalSampleSize === null
+          ? {}
+          : { sampleSize: stop.historicalSampleSize }),
+      };
+  }
 }
 
 function facilityHours(stop: StopForm): Readonly<Record<string, unknown>> {
@@ -450,10 +792,7 @@ export function stopPlan(stop: StopForm, sequence: number): TripStopPlan {
     appointment: appointment(stop),
     facilityHours: facilityHours(stop),
     checkInDuration: durationInMinutes(stop.checkInMinutes),
-    serviceDuration: {
-      mode: 'expected',
-      duration: durationInMinutes(stop.serviceMinutes),
-    },
+    serviceDuration: serviceDuration(stop),
     waitingDutyStatus: stop.waitingDutyStatus,
     checkInDutyStatus: stop.checkInDutyStatus,
     serviceDutyStatus: stop.serviceDutyStatus,
@@ -544,6 +883,12 @@ export function validateDraft(draft: TripDraft): readonly ValidationIssue[] {
   }
   if (draft.stops.length < 2) {
     issues.push({ severity: 'error', path: 'stops', message: 'A trip needs a start and final stop.' });
+  }
+  if (draft.stops[0]?.type !== 'start-location') {
+    issues.push({ severity: 'error', path: 'stops.0.type', message: 'The first stop must remain the start location.' });
+  }
+  if (draft.stops.at(-1)?.type !== 'final-consignee') {
+    issues.push({ severity: 'error', path: `stops.${String(Math.max(0, draft.stops.length - 1))}.type`, message: 'The final stop must remain the final consignee.' });
   }
   draft.stops.forEach((stop, index) => {
     const path = `stops.${String(index)}`;
