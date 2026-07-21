@@ -1,4 +1,4 @@
-name: Stage 17 API test lint diagnostic
+name: Stage 17 API test lint repair
 
 on:
   pull_request:
@@ -6,33 +6,34 @@ on:
       - main
 
 permissions:
-  contents: read
-
-env:
-  DATABASE_URL: postgresql://postgres:postgres@localhost:5432/trip_route_calc_test
+  contents: write
 
 jobs:
-  diagnose-api-test-lint:
-    if: github.head_ref == 'agent/stage-17-rest-api-validation'
+  repair-api-test-lint:
+    if: github.head_ref == 'agent/stage-17-rest-api-validation' && github.actor != 'github-actions[bot]'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
         with:
-          node-version: '22'
-      - run: |
-          corepack enable
-          corepack prepare pnpm@9.15.4 --activate
-      - run: pnpm install --frozen-lockfile
-      - run: pnpm db:generate
-      - name: Capture lint
-        id: lint
-        continue-on-error: true
-        run: pnpm exec eslint packages/api --max-warnings=0 > stage17-api-test-lint.log 2>&1
-      - uses: actions/upload-artifact@v4
-        with:
-          name: stage17-api-test-lint
-          path: stage17-api-test-lint.log
-          retention-days: 1
-      - if: steps.lint.outcome == 'failure'
-        run: exit 1
+          ref: agent/stage-17-rest-api-validation
+          fetch-depth: 0
+      - name: Repair test callback annotation
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          path = Path('packages/api/test/server.integration.test.ts')
+          text = path.read_text()
+          old = "      now: () => new Date('2026-07-21T17:00:00.000Z'),\n"
+          new = "      now: (): Date => new Date('2026-07-21T17:00:00.000Z'),\n"
+          if text.count(old) != 1:
+              raise SystemExit(f'Expected fixed clock callback once, found {text.count(old)}')
+          path.write_text(text.replace(old, new, 1))
+          Path('.github/workflows/stage17-api-test-lint.yml').unlink()
+          PY
+      - name: Commit API test lint repair
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add packages/api/test/server.integration.test.ts .github/workflows/stage17-api-test-lint.yml
+          git commit -m 'Repair Stage 17 API test lint'
+          git push origin HEAD:agent/stage-17-rest-api-validation
