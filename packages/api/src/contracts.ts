@@ -30,7 +30,6 @@ export const CreateTripBodySchema = z
 export const PatchTripBodySchema = z
   .object({
     expectedRevisionNumber,
-    driverId: publicIdentifier.optional(),
     tractorId: publicIdentifier.nullable().optional(),
     trailerId: publicIdentifier.nullable().optional(),
     loadId: publicIdentifier.nullable().optional(),
@@ -40,7 +39,6 @@ export const PatchTripBodySchema = z
   .strict()
   .refine(
     (value) =>
-      value.driverId !== undefined ||
       value.tractorId !== undefined ||
       value.trailerId !== undefined ||
       value.loadId !== undefined ||
