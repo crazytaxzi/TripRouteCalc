@@ -187,6 +187,7 @@ export function createStage17Api(
 ): FastifyInstance {
   const app = Fastify({
     logger: dependencies.logger ?? false,
+    routerOptions: { maxParamLength: 512 },
     ajv: { customOptions: { removeAdditional: false } },
   });
 
