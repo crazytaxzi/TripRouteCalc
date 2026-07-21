@@ -264,7 +264,13 @@ export const EtaSpeedModelSchema = z
       });
     }
   });
-export type EtaSpeedModel = Readonly<z.infer<typeof EtaSpeedModelSchema>>;
+export type EtaSpeedModel = Readonly<
+  Omit<z.infer<typeof EtaSpeedModelSchema>, 'roadClassSpeeds'> & {
+    readonly roadClassSpeeds: readonly Readonly<
+      z.infer<typeof EtaRoadClassSpeedSchema>
+    >[];
+  }
+>;
 
 const EtaAvailableAdjustmentSchema = z
   .object({
