@@ -1,4 +1,4 @@
-name: Stage 12 Lint Diagnostic
+name: Stage 12 Repair Diagnostic
 
 on:
   pull_request:
@@ -11,28 +11,34 @@ permissions:
 jobs:
   diagnose:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
-    env:
-      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/trip_route_calc_test?schema=public
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
         with:
           ref: agent/stage-12-regulatory-rules
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 22
-      - run: |
-          corepack enable
-          corepack prepare pnpm@9.15.4 --activate
-      - name: Capture lint output
+      - name: Extract repair script
+        run: |
+          python3 <<'PYEXTRACT'
+          from pathlib import Path
+          source = Path('.github/workflows/stage12-optional-repair.yml').read_text()
+          marker = "          python3 <<'PY'\n"
+          start = source.index(marker) + len(marker)
+          end = source.index("\n          PY", start)
+          lines = source[start:end].splitlines()
+          Path('stage12-extracted-repair.py').write_text('\n'.join(
+              line[10:] if line.startswith('          ') else line
+              for line in lines
+          ) + '\n')
+          PYEXTRACT
+      - name: Capture repair result
         run: |
           set +e
-          pnpm install --frozen-lockfile > stage12-lint.txt 2>&1
-          pnpm db:generate >> stage12-lint.txt 2>&1
-          pnpm lint:source >> stage12-lint.txt 2>&1
-          echo "exit_code=$?" >> stage12-lint.txt
+          python3 stage12-extracted-repair.py > stage12-repair-trace.txt 2>&1
+          echo "exit_code=$?" >> stage12-repair-trace.txt
           exit 0
       - uses: actions/upload-artifact@v4
         with:
-          name: stage12-lint-repaired
-          path: stage12-lint.txt
+          name: stage12-repair-diagnostic
+          path: |
+            stage12-extracted-repair.py
+            stage12-repair-trace.txt
