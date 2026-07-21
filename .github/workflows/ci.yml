@@ -7,30 +7,64 @@ on:
     branches: [main]
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
   verification:
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    env:
+      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/trip_route_calc_test?schema=public
+
+    services:
+      postgres:
+        image: postgres:18-alpine
+        env:
+          POSTGRES_DB: trip_route_calc_test
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d trip_route_calc_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 12
+
     steps:
-      - name: Check out implementation branch
+      - name: Check out repository
         uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
         with:
-          ref: agent/stage-16-confidence-data-quality
-          fetch-depth: 0
+          node-version: 22
 
-      - name: Decode and apply narrowed runtime test alignment
-        shell: bash
+      - name: Enable pnpm
         run: |
-          echo 'ZnJvbSBwYXRobGliIGltcG9ydCBQYXRoCgpldGFfcGF0aCA9IFBhdGgoJ3BhY2thZ2VzL2ZvdW5kYXRpb24vdGVzdC9ldGEtc2ltdWxhdG9yLnRlc3QudHMnKQpldGEgPSBldGFfcGF0aC5yZWFkX3RleHQoZW5jb2Rpbmc9J3V0Zi04JykKb2xkX3NwZWVkID0gIiAgICBleHBlY3QoZGVjaXNpb24/LnNlbGVjdGVkU3BlZWQudmFsdWUpLnRvQmUoNDIpOyIKbmV3X3NwZWVkID0gIiAgICBleHBlY3QoZGVjaXNpb24/LnNlbGVjdGVkU3BlZWQudmFsdWUpLnRvQmUoc3BlZWRJbk1pbGVzUGVySG91cig0MikudmFsdWUpOyIKaWYgZXRhLmNvdW50KG9sZF9zcGVlZCkgIT0gMToKICAgIHJhaXNlIFN5c3RlbUV4aXQoZidFeHBlY3RlZCBvbmUgcmF3IHNwZWVkIGFzc2VydGlvbiwgZm91bmQge2V0YS5jb3VudChvbGRfc3BlZWQpfScpCmV0YV9wYXRoLndyaXRlX3RleHQoZXRhLnJlcGxhY2Uob2xkX3NwZWVkLCBuZXdfc3BlZWQsIDEpLCBlbmNvZGluZz0ndXRmLTgnKQoKcGVyc2lzdGVuY2VfcGF0aCA9IFBhdGgoJ3BhY2thZ2VzL3BlcnNpc3RlbmNlL3Rlc3QvZXRhLXNpbXVsYXRvci5pbnRlZ3JhdGlvbi50ZXN0LnRzJykKcGVyc2lzdGVuY2UgPSBwZXJzaXN0ZW5jZV9wYXRoLnJlYWRfdGV4dChlbmNvZGluZz0ndXRmLTgnKQpjaGFuZ2VzID0gWwogICAgKCIgIGV4cGVjdChyZXN1bHQuZXhwZWN0ZWQuY29uZmlkZW5jZSkudG9CZSgnSElHSCcpOyIsICIgIGV4cGVjdChyZXN1bHQuZXhwZWN0ZWQuY29uZmlkZW5jZSkudG9CZSgnTU9ERVJBVEUnKTsiKSwKICAgICgiICAgIHJ1bGVTZXRWZXJzaW9uOiAnc3RhZ2UtMTUtdjEnLCIsICIgICAgcnVsZVNldFZlcnNpb246ICdzdGFnZS0xNi12MScsIiksCiAgICAoIiAgICByZXN1bHQ6IHtcbiAgICAgIGNvbmZpZGVuY2U6ICdoaWdoJywiLCAiICAgIHJlc3VsdDoge1xuICAgICAgY29uZmlkZW5jZTogJ21vZGVyYXRlJywiKSwKXQpmb3Igb2xkLCBuZXcgaW4gY2hhbmdlczoKICAgIGlmIHBlcnNpc3RlbmNlLmNvdW50KG9sZCkgIT0gMToKICAgICAgICByYWlzZSBTeXN0ZW1FeGl0KGYnRXhwZWN0ZWQgb25lIG9jY3VycmVuY2Ugb2Yge29sZCFyfSwgZm91bmQge3BlcnNpc3RlbmNlLmNvdW50KG9sZCl9JykKICAgIHBlcnNpc3RlbmNlID0gcGVyc2lzdGVuY2UucmVwbGFjZShvbGQsIG5ldywgMSkKcGVyc2lzdGVuY2VfcGF0aC53cml0ZV90ZXh0KHBlcnNpc3RlbmNlLCBlbmNvZGluZz0ndXRmLTgnKQo=' | base64 -d > /tmp/stage16-runtime-test-patch.py
-          python /tmp/stage16-runtime-test-patch.py
+          corepack enable
+          corepack prepare pnpm@9.15.4 --activate
 
-      - name: Commit runtime test alignment
-        shell: bash
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add packages/foundation/test/eta-simulator.test.ts packages/persistence/test/eta-simulator.integration.test.ts
-          git commit -m "Align Stage 16 runtime expectations"
-          git push origin HEAD:agent/stage-16-confidence-data-quality
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Generate Prisma client
+        run: pnpm db:generate
+
+      - name: Validate Prisma schema
+        run: pnpm db:validate
+
+      - name: Apply migrations to clean PostgreSQL database
+        run: pnpm db:migrate:deploy
+
+      - name: Lint
+        run: pnpm lint:source
+
+      - name: Type-check
+        run: pnpm typecheck:source
+
+      - name: Test
+        run: pnpm test:source
+
+      - name: Build
+        run: pnpm build:source
