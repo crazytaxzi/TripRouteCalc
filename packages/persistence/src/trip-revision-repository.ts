@@ -7,6 +7,7 @@ import {
   resolveAppointmentWindow,
 } from '@trip-route-calc/foundation';
 import type {
+  ConfidenceReason,
   Duration,
   LocalAppointmentWindow,
   StopServiceDurationPlan,
@@ -68,8 +69,8 @@ export interface CreateUserOverrideInput {
 }
 
 export interface CreateCalculationResultInput {
-  readonly confidence: 'high' | 'medium' | 'low' | 'blocked';
-  readonly confidenceReasons: readonly string[];
+  readonly confidence: 'high' | 'moderate' | 'low' | 'unverified';
+  readonly confidenceReasons: readonly ConfidenceReason[];
   readonly explanation: readonly string[];
   readonly snapshot: Readonly<Record<string, unknown>>;
 }

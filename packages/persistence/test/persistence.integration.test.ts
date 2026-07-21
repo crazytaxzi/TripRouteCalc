@@ -1,9 +1,11 @@
 import { randomUUID } from 'node:crypto';
 
 import {
+  dataQualityReason,
   durationInMinutes,
   ianaTimeZone,
   localDateTime,
+  publicEvidenceReference,
   utcInstant,
 } from '@trip-route-calc/foundation';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
@@ -174,7 +176,20 @@ function revisionInput(
     ],
     result: {
       confidence: 'low',
-      confidenceReasons: ['No commercial route provider is configured.'],
+      confidenceReasons: [
+        dataQualityReason(
+          'PROVIDER_RESTRICTIONS_UNAVAILABLE',
+          [
+            publicEvidenceReference(
+              'PROVIDER',
+              'commercial-route-provider',
+              'Commercial-route provider evidence',
+            ),
+          ],
+          'No commercial route provider is configured.',
+          'This persistence fixture intentionally lacks commercial-route provider evidence.',
+        ),
+      ],
       explanation: ['This is persistence evidence, not a legal route result.'],
       snapshot: { marker, legalRouteVerified: false },
     },

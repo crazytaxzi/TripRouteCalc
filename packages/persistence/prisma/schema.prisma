@@ -53,10 +53,10 @@ enum WarningSeverity {
 }
 
 enum CalculationConfidence {
-  HIGH    @map("high")
-  MEDIUM  @map("medium")
-  LOW     @map("low")
-  BLOCKED @map("blocked")
+  HIGH       @map("high")
+  MODERATE   @map("moderate")
+  LOW        @map("low")
+  UNVERIFIED @map("unverified")
 }
 
 enum ProviderSnapshotStorageMode {

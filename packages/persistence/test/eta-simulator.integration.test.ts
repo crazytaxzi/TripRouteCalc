@@ -312,11 +312,11 @@ function revisionInput(
   input: EtaSimulationInput,
 ): CreateTripRevisionInput {
   const result = simulateEtaTrip(input);
-  expect(result.expected.confidence).toBe('HIGH');
+  expect(result.expected.confidence).toBe('MODERATE');
   return {
     tripId,
     calculationTimestamp: utcInstant('2026-07-20T14:59:01.000Z'),
-    ruleSetVersion: 'stage-15-v1',
+    ruleSetVersion: 'stage-16-v1',
     routingProviderName: input.route.provider.providerName,
     ...(input.route.provider.providerVersion === undefined
       ? {}
@@ -347,7 +347,7 @@ function revisionInput(
       },
     })),
     result: {
-      confidence: 'high',
+      confidence: 'moderate',
       confidenceReasons: result.expected.confidenceReasons,
       explanation: result.expected.explanations,
       snapshot: etaSimulationSnapshot(result),

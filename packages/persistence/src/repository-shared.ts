@@ -51,12 +51,12 @@ export const PRISMA_WARNING_SEVERITIES: Readonly<
 };
 
 export const PRISMA_CALCULATION_CONFIDENCE: Readonly<
-  Record<'high' | 'medium' | 'low' | 'blocked', PrismaCalculationConfidence>
+  Record<'high' | 'moderate' | 'low' | 'unverified', PrismaCalculationConfidence>
 > = {
   high: 'HIGH',
-  medium: 'MEDIUM',
+  moderate: 'MODERATE',
   low: 'LOW',
-  blocked: 'BLOCKED',
+  unverified: 'UNVERIFIED',
 };
 
 export const PRISMA_PROVIDER_STORAGE_MODES: Readonly<
