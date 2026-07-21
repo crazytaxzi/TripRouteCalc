@@ -10,8 +10,9 @@
 - Verified final implementation documentation head: `61cd575e043e5a70bd3eac421353cb89046e1764`
 - Clean final implementation documentation CI: run `1198` (`29867963558`)
 - Implementation merge commit: `b845c37c886bc95ca97aa2043a6b95b2b68c7286`
-- Ledger-closure CI: pending final PR `#32` gate
-- Completion status: COMPLETE, VERIFIED, AND MERGED; LEDGER CLOSURE IN PROGRESS
+- Verified ledger-closure head: `8ea5270beea0075b961d3c416e860694f561f17d`
+- Clean ledger-closure CI: run `1202` (`29868607335`)
+- Completion status: COMPLETE, VERIFIED, MERGED, AND LEDGER-CLOSED
 
 ## Protected governance
 
@@ -121,9 +122,9 @@ The raw idempotency key is never persisted. Existing trip, revision, calculation
 
 ## Verification evidence
 
-Permanent CI run `1192` (`29856292338`) passed on implementation head `eb3f5ef7debd614c4cfa96f6bd846911e24ccdf4`. Final implementation documentation CI run `1198` (`29867963558`) passed on head `61cd575e043e5a70bd3eac421353cb89046e1764`.
+Permanent CI run `1192` (`29856292338`) passed on implementation head `eb3f5ef7debd614c4cfa96f6bd846911e24ccdf4`. Final implementation documentation CI run `1198` (`29867963558`) passed on head `61cd575e043e5a70bd3eac421353cb89046e1764`. Ledger-closure CI run `1202` (`29868607335`) passed on head `8ea5270beea0075b961d3c416e860694f561f17d`.
 
-Both gates passed:
+All three gates passed:
 
 - `pnpm install --frozen-lockfile`
 - `pnpm db:generate`
