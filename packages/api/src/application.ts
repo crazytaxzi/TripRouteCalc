@@ -299,9 +299,10 @@ function simulationWithInternalReferences(
     });
   });
 
-  const routePayload = { ...route, legs };
-  delete routePayload.assessment;
-  const validatedRoute = assessCommercialRoute(routePayload);
+  const routePayload = Object.fromEntries(
+    Object.entries(route).filter(([key]) => key !== 'assessment'),
+  );
+  const validatedRoute = assessCommercialRoute({ ...routePayload, legs });
 
   return {
     ...(simulation as Omit<
@@ -1005,7 +1006,7 @@ export class Stage17ApplicationService {
       tripId,
       calculationTimestamp: utcInstant(this.#now().toISOString()),
       ruleSetVersion: draft.ruleSetVersion,
-      inputSnapshot: draft,
+      inputSnapshot: snapshotObject(draft),
       stops: revisionStops(draft.stops),
       ...(draft.loadId === null ? {} : { loadId: draft.loadId }),
       ...(draft.tractorId === null ? {} : { tractorId: draft.tractorId }),
