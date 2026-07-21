@@ -495,7 +495,7 @@ describe('Stage 15 HOS and action composition', () => {
       }),
     );
     const rest = result.earliestLegal.timeline.find(
-      (event) => event.type === 'HOS_ACTION' && event.duration.value === 600,
+      (event) => event.type === 'STOP_HOS_HOLD' && event.duration.value === 600,
     );
 
     expect(result.earliestLegal.status).toBe('COMPLETE');
