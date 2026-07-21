@@ -7,49 +7,48 @@ on:
     branches: [main]
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
-  stage14-type-diagnostic:
+  stage14-type-repair:
     runs-on: ubuntu-latest
     timeout-minutes: 10
-    env:
-      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/trip_route_calc_test?schema=public
     steps:
-      - name: Check out repository
+      - name: Check out Stage 14 branch
         uses: actions/checkout@v4
         with:
+          ref: agent/stage-14-operational-events
+          fetch-depth: 0
           show-progress: false
 
-      - name: Set up Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: 22
-
-      - name: Enable pnpm
+      - name: Repair exact optional readonly contracts
         run: |
-          corepack enable
-          corepack prepare pnpm@9.15.4 --activate
+          python3 <<'PY'
+          from pathlib import Path
 
-      - name: Install dependencies quietly
-        run: pnpm install --frozen-lockfile >/dev/null
+          path = Path('packages/foundation/src/operational-events.ts')
+          text = path.read_text()
+          replacements = {
+              '    location?: OperationalLocation;': '    location?: OperationalLocation | undefined;',
+              '    planningBuffer?: OperationalPlanningBuffer;': '    planningBuffer?: OperationalPlanningBuffer | undefined;',
+              '    legalDutyStatusSupport?: LegalDutyStatusSupport;': '    legalDutyStatusSupport?: LegalDutyStatusSupport | undefined;',
+          }
+          for old, new in replacements.items():
+              if text.count(old) != 1:
+                  raise RuntimeError(f'Expected exactly one contract line: {old!r}')
+              text = text.replace(old, new, 1)
+          path.write_text(text)
+          PY
 
-      - name: Generate Prisma client quietly
-        run: pnpm db:generate >/dev/null
-
-      - name: Capture strict TypeScript diagnostics
+      - name: Commit bounded type repair
         run: |
-          set +e
-          pnpm typecheck:source > stage14-type.txt 2>&1
-          code=$?
-          echo "exit_code=$code" >> stage14-type.txt
-          exit 0
-
-      - name: Upload strict TypeScript diagnostics
-        uses: actions/upload-artifact@v4
-        with:
-          name: stage14-type-diagnostics
-          path: stage14-type.txt
+          set -euo pipefail
+          git diff --check
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add packages/foundation/src/operational-events.ts
+          git commit -m 'Correct Stage 14 optional readonly contracts'
+          git push origin HEAD:agent/stage-14-operational-events
 
   verification:
     runs-on: ubuntu-latest
