@@ -21,25 +21,25 @@ jobs:
           ref: agent/stage-16-confidence-data-quality
           fetch-depth: 0
 
-      - name: Repair Stage 16 contracts
+      - name: Apply semantic Stage 16 repairs
         shell: bash
         run: |
           python - <<'PY'
+          import re
           from pathlib import Path
 
-          def replace_once(path: str, old: str, new: str, label: str) -> None:
+          def replace_state(path: str, old: str, new: str, label: str) -> None:
               target = Path(path)
               text = target.read_text(encoding='utf-8')
-              count = text.count(old)
-              if count != 1:
-                  raise SystemExit(f'{label}: expected one match, found {count}')
-              target.write_text(text.replace(old, new), encoding='utf-8')
+              if new in text:
+                  return
+              if old not in text:
+                  raise SystemExit(f'{label}: neither old nor new state was found')
+              target.write_text(text.replace(old, new, 1), encoding='utf-8')
 
-          replace_once(
+          replace_state(
               'packages/foundation/src/eta-simulator.ts',
-              """    state.confidenceReasons.push(...result.explanations);
-              return true;
-          """.replace('          ', ''),
+              "    state.confidenceReasons.push(...result.explanations);\n    return true;",
               """    for (const explanation of result.explanations) {
                 state.confidenceReasons.push(
                   dataQualityReason(
@@ -56,90 +56,91 @@ jobs:
                   ),
                 );
               }
-              return true;
-          """.replace('          ', ''),
+              return true;""".replace('              ', '    '),
               'optional operational confidence reason',
           )
 
-          replace_once(
-              'packages/foundation/test/eta-simulator.test.ts',
-              """                  path: 'legs[].segments[].travelDuration',
-                    reason: 'Provider travel time was unavailable in this fixture.',
-                  },
-          """.replace('          ', ''),
-              """                  path: 'legs[].segments[].travelDuration',
-                    reason: 'Provider travel time was unavailable in this fixture.',
-                    impact: 'lowers-confidence' as const,
-                  },
-          """.replace('          ', ''),
-              'fixture unavailable-field impact',
-          )
+          fixture = Path('packages/foundation/test/eta-simulator.test.ts')
+          fixture_text = fixture.read_text(encoding='utf-8')
+          reason_line = "                  reason: 'Provider travel time was unavailable in this fixture.',"
+          impact_line = "                  impact: 'lowers-confidence' as const,"
+          if impact_line not in fixture_text:
+              if reason_line not in fixture_text:
+                  raise SystemExit('fixture unavailable-field reason was not found')
+              fixture.write_text(
+                  fixture_text.replace(reason_line, f'{reason_line}\n{impact_line}', 1),
+                  encoding='utf-8',
+              )
 
-          replace_once(
-              'packages/persistence/src/trip-revision-repository.ts',
-              """  Duration,
-                LocalAppointmentWindow,
-          """.replace('          ', ''),
-              """  ConfidenceReason,
-                Duration,
-                LocalAppointmentWindow,
-          """.replace('          ', ''),
-              'confidence reason import',
+          revision = Path('packages/persistence/src/trip-revision-repository.ts')
+          revision_text = revision.read_text(encoding='utf-8')
+          if '  ConfidenceReason,\n' not in revision_text:
+              revision_text = revision_text.replace(
+                  'import type {\n  Duration,',
+                  'import type {\n  ConfidenceReason,\n  Duration,',
+                  1,
+              )
+          revision_text, count = re.subn(
+              r"readonly confidence: 'high' \| 'medium' \| 'low' \| 'blocked';\n\s*readonly confidenceReasons: readonly string\[\];",
+              "readonly confidence: 'high' | 'moderate' | 'low' | 'unverified';\n  readonly confidenceReasons: readonly ConfidenceReason[];",
+              revision_text,
+              count=1,
           )
-          replace_once(
-              'packages/persistence/src/trip-revision-repository.ts',
-              """export interface CreateCalculationResultInput {
-                readonly confidence: 'high' | 'medium' | 'low' | 'blocked';
-                readonly confidenceReasons: readonly string[];
-          """.replace('          ', ''),
-              """export interface CreateCalculationResultInput {
-                readonly confidence: 'high' | 'moderate' | 'low' | 'unverified';
-                readonly confidenceReasons: readonly ConfidenceReason[];
-          """.replace('          ', ''),
-              'calculation result confidence contract',
-          )
+          if count == 0 and "readonly confidence: 'high' | 'moderate' | 'low' | 'unverified';" not in revision_text:
+              raise SystemExit('calculation result confidence contract was not found')
+          revision.write_text(revision_text, encoding='utf-8')
 
-          replace_once(
-              'packages/persistence/src/repository-shared.ts',
-              """export const PRISMA_CALCULATION_CONFIDENCE: Readonly<
-                Record<'high' | 'medium' | 'low' | 'blocked', PrismaCalculationConfidence>
-              > = {
-                high: 'HIGH',
-                medium: 'MEDIUM',
-                low: 'LOW',
-                blocked: 'BLOCKED',
-              };
-          """.replace('          ', ''),
-              """export const PRISMA_CALCULATION_CONFIDENCE: Readonly<
-                Record<'high' | 'moderate' | 'low' | 'unverified', PrismaCalculationConfidence>
-              > = {
-                high: 'HIGH',
-                moderate: 'MODERATE',
-                low: 'LOW',
-                unverified: 'UNVERIFIED',
-              };
-          """.replace('          ', ''),
-              'Prisma confidence mapping',
-          )
+          shared = Path('packages/persistence/src/repository-shared.ts')
+          shared_text = shared.read_text(encoding='utf-8')
+          old_shared = """export const PRISMA_CALCULATION_CONFIDENCE: Readonly<
+            Record<'high' | 'medium' | 'low' | 'blocked', PrismaCalculationConfidence>
+          > = {
+            high: 'HIGH',
+            medium: 'MEDIUM',
+            low: 'LOW',
+            blocked: 'BLOCKED',
+          };""".replace('          ', '')
+          new_shared = """export const PRISMA_CALCULATION_CONFIDENCE: Readonly<
+            Record<'high' | 'moderate' | 'low' | 'unverified', PrismaCalculationConfidence>
+          > = {
+            high: 'HIGH',
+            moderate: 'MODERATE',
+            low: 'LOW',
+            unverified: 'UNVERIFIED',
+          };""".replace('          ', '')
+          if new_shared not in shared_text:
+              pattern = re.compile(
+                  r"export const PRISMA_CALCULATION_CONFIDENCE:[\s\S]*?\n};\n\nexport const PRISMA_PROVIDER_STORAGE_MODES",
+              )
+              match = pattern.search(shared_text)
+              if match is None:
+                  raise SystemExit('Prisma confidence mapping was not found')
+              shared_text = (
+                  shared_text[:match.start()]
+                  + new_shared
+                  + '\n\nexport const PRISMA_PROVIDER_STORAGE_MODES'
+                  + shared_text[match.end():]
+              )
+              shared.write_text(shared_text, encoding='utf-8')
 
-          replace_once(
-              'packages/persistence/prisma/schema.prisma',
-              """enum CalculationConfidence {
-                HIGH    @map("high")
-                MEDIUM  @map("medium")
-                LOW     @map("low")
-                BLOCKED @map("blocked")
-              }
-          """.replace('          ', ''),
-              """enum CalculationConfidence {
-                HIGH       @map("high")
-                MODERATE   @map("moderate")
-                LOW        @map("low")
-                UNVERIFIED @map("unverified")
-              }
-          """.replace('          ', ''),
-              'Prisma confidence enum',
-          )
+          schema = Path('packages/persistence/prisma/schema.prisma')
+          schema_text = schema.read_text(encoding='utf-8')
+          new_enum = """enum CalculationConfidence {
+            HIGH       @map("high")
+            MODERATE   @map("moderate")
+            LOW        @map("low")
+            UNVERIFIED @map("unverified")
+          }""".replace('          ', '')
+          if new_enum not in schema_text:
+              schema_text, count = re.subn(
+                  r'enum CalculationConfidence \{[\s\S]*?\n\}',
+                  new_enum,
+                  schema_text,
+                  count=1,
+              )
+              if count != 1:
+                  raise SystemExit('Prisma confidence enum was not found')
+              schema.write_text(schema_text, encoding='utf-8')
           PY
 
           mkdir -p packages/persistence/prisma/migrations/20260721150000_stage_16_confidence_levels
