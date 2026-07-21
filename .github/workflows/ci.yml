@@ -29,26 +29,19 @@ jobs:
 
           path = Path('packages/foundation/test/eta-simulator.test.ts')
           text = path.read_text(encoding='utf-8')
-          old = """    expect(result.expected.confidenceReasons).toEqual(
-              expect.arrayContaining([
-                expect.objectContaining({
-                  code: 'AVERAGE_SPEED_FALLBACK',
-                  userExplanation: expect.stringContaining('average-speed fallback'),
-                }),
-              ]),
-            );
-          """.replace('          ', '')
-          new = """    expect(
-              result.expected.confidenceReasons.some(
-                (reason) =>
-                  reason.code === 'AVERAGE_SPEED_FALLBACK' &&
-                  reason.userExplanation.includes('average-speed fallback'),
-              ),
-            ).toBe(true);
-          """.replace('          ', '')
-          if text.count(old) != 1:
-              raise SystemExit('Expected exactly one unsafe confidence matcher.')
-          path.write_text(text.replace(old, new), encoding='utf-8')
+          start_marker = "    expect(result.expected.confidenceReasons).toEqual("
+          end_marker = "  });\n});\n\ndescribe('Stage 15 UTC chronology"
+          start = text.index(start_marker)
+          end = text.index(end_marker, start)
+          replacement = """    expect(
+            result.expected.confidenceReasons.some(
+              (reason) =>
+                reason.code === 'AVERAGE_SPEED_FALLBACK' &&
+                reason.userExplanation.includes('average-speed fallback'),
+            ),
+          ).toBe(true);
+"""
+          path.write_text(text[:start] + replacement + text[end:], encoding='utf-8')
           PY
 
       - name: Commit assertion repair
