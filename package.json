@@ -10,11 +10,12 @@
   },
   "scripts": {
     "build": "pnpm db:generate && pnpm build:source",
-    "build:source": "tsc -b",
+    "build:source": "tsc -b && pnpm --filter @trip-route-calc/web build",
     "lint": "pnpm db:generate && pnpm lint:source",
     "lint:source": "eslint . --max-warnings=0",
     "test": "pnpm db:generate && pnpm test:source",
     "test:source": "vitest run",
+    "test:e2e": "pnpm --filter @trip-route-calc/web test:e2e",
     "test:watch": "pnpm db:generate && vitest",
     "typecheck": "pnpm db:generate && pnpm typecheck:source",
     "typecheck:source": "tsc -p tsconfig.typecheck.json --noEmit --pretty false",
@@ -22,7 +23,7 @@
     "db:validate": "pnpm --filter @trip-route-calc/persistence db:validate",
     "db:migrate:deploy": "pnpm --filter @trip-route-calc/persistence db:migrate:deploy",
     "db:migrate:status": "pnpm --filter @trip-route-calc/persistence db:migrate:status",
-    "check": "pnpm db:generate && pnpm db:validate && pnpm lint:source && pnpm typecheck:source && pnpm test:source && pnpm build:source"
+    "check": "pnpm db:generate && pnpm db:validate && pnpm lint:source && pnpm typecheck:source && pnpm test:source && pnpm build:source && pnpm test:e2e"
   },
   "devDependencies": {
     "@eslint/js": "^9.29.0",
