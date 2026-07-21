@@ -11,4 +11,4 @@ export * from './units.js';
 export * from './equipment.js';
 export * from './commercial-routing.js';
 export * from './kpra.js';
-export * from './operational-events.js';
+export * from './operational-events-guard.js';
