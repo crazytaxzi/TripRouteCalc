@@ -10,7 +10,6 @@ permissions:
 
 jobs:
   refresh:
-    if: github.head_ref == 'agent/stage-18-lock-refresh'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
