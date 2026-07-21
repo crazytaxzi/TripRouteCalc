@@ -7,158 +7,64 @@ on:
     branches: [main]
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
   verification:
-    if: github.actor != 'github-actions[bot]'
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    env:
+      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/trip_route_calc_test?schema=public
+
+    services:
+      postgres:
+        image: postgres:18-alpine
+        env:
+          POSTGRES_DB: trip_route_calc_test
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d trip_route_calc_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 12
+
     steps:
-      - name: Check out implementation branch
+      - name: Check out repository
         uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
         with:
-          ref: agent/stage-16-confidence-data-quality
-          fetch-depth: 0
+          node-version: 22
 
-      - name: Apply semantic Stage 16 repairs
-        shell: bash
+      - name: Enable pnpm
         run: |
-          python - <<'PY'
-          import re
-          from pathlib import Path
+          corepack enable
+          corepack prepare pnpm@9.15.4 --activate
 
-          def replace_state(path: str, old: str, new: str, label: str) -> None:
-              target = Path(path)
-              text = target.read_text(encoding='utf-8')
-              if new in text:
-                  return
-              if old not in text:
-                  raise SystemExit(f'{label}: neither old nor new state was found')
-              target.write_text(text.replace(old, new, 1), encoding='utf-8')
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
 
-          replace_state(
-              'packages/foundation/src/eta-simulator.ts',
-              "    state.confidenceReasons.push(...result.explanations);\n    return true;",
-              """    for (const explanation of result.explanations) {
-                state.confidenceReasons.push(
-                  dataQualityReason(
-                    'OPTIONAL_OPERATIONAL_EVENT_UNPLACED',
-                    [
-                      publicEvidenceReference(
-                        'EVENT',
-                        plan.eventId,
-                        'Optional operational event',
-                      ),
-                    ],
-                    'An optional operational event could not be placed, so the projection omits it.',
-                    explanation,
-                  ),
-                );
-              }
-              return true;""".replace('              ', '    '),
-              'optional operational confidence reason',
-          )
+      - name: Generate Prisma client
+        run: pnpm db:generate
 
-          fixture = Path('packages/foundation/test/eta-simulator.test.ts')
-          fixture_text = fixture.read_text(encoding='utf-8')
-          reason_line = "                  reason: 'Provider travel time was unavailable in this fixture.',"
-          impact_line = "                  impact: 'lowers-confidence' as const,"
-          if impact_line not in fixture_text:
-              if reason_line not in fixture_text:
-                  raise SystemExit('fixture unavailable-field reason was not found')
-              fixture.write_text(
-                  fixture_text.replace(reason_line, f'{reason_line}\n{impact_line}', 1),
-                  encoding='utf-8',
-              )
+      - name: Validate Prisma schema
+        run: pnpm db:validate
 
-          revision = Path('packages/persistence/src/trip-revision-repository.ts')
-          revision_text = revision.read_text(encoding='utf-8')
-          if '  ConfidenceReason,\n' not in revision_text:
-              revision_text = revision_text.replace(
-                  'import type {\n  Duration,',
-                  'import type {\n  ConfidenceReason,\n  Duration,',
-                  1,
-              )
-          revision_text, count = re.subn(
-              r"readonly confidence: 'high' \| 'medium' \| 'low' \| 'blocked';\n\s*readonly confidenceReasons: readonly string\[\];",
-              "readonly confidence: 'high' | 'moderate' | 'low' | 'unverified';\n  readonly confidenceReasons: readonly ConfidenceReason[];",
-              revision_text,
-              count=1,
-          )
-          if count == 0 and "readonly confidence: 'high' | 'moderate' | 'low' | 'unverified';" not in revision_text:
-              raise SystemExit('calculation result confidence contract was not found')
-          revision.write_text(revision_text, encoding='utf-8')
+      - name: Apply migrations to clean PostgreSQL database
+        run: pnpm db:migrate:deploy
 
-          shared = Path('packages/persistence/src/repository-shared.ts')
-          shared_text = shared.read_text(encoding='utf-8')
-          old_shared = """export const PRISMA_CALCULATION_CONFIDENCE: Readonly<
-            Record<'high' | 'medium' | 'low' | 'blocked', PrismaCalculationConfidence>
-          > = {
-            high: 'HIGH',
-            medium: 'MEDIUM',
-            low: 'LOW',
-            blocked: 'BLOCKED',
-          };""".replace('          ', '')
-          new_shared = """export const PRISMA_CALCULATION_CONFIDENCE: Readonly<
-            Record<'high' | 'moderate' | 'low' | 'unverified', PrismaCalculationConfidence>
-          > = {
-            high: 'HIGH',
-            moderate: 'MODERATE',
-            low: 'LOW',
-            unverified: 'UNVERIFIED',
-          };""".replace('          ', '')
-          if new_shared not in shared_text:
-              pattern = re.compile(
-                  r"export const PRISMA_CALCULATION_CONFIDENCE:[\s\S]*?\n};\n\nexport const PRISMA_PROVIDER_STORAGE_MODES",
-              )
-              match = pattern.search(shared_text)
-              if match is None:
-                  raise SystemExit('Prisma confidence mapping was not found')
-              shared_text = (
-                  shared_text[:match.start()]
-                  + new_shared
-                  + '\n\nexport const PRISMA_PROVIDER_STORAGE_MODES'
-                  + shared_text[match.end():]
-              )
-              shared.write_text(shared_text, encoding='utf-8')
+      - name: Lint
+        run: pnpm lint:source
 
-          schema = Path('packages/persistence/prisma/schema.prisma')
-          schema_text = schema.read_text(encoding='utf-8')
-          new_enum = """enum CalculationConfidence {
-            HIGH       @map("high")
-            MODERATE   @map("moderate")
-            LOW        @map("low")
-            UNVERIFIED @map("unverified")
-          }""".replace('          ', '')
-          if new_enum not in schema_text:
-              schema_text, count = re.subn(
-                  r'enum CalculationConfidence \{[\s\S]*?\n\}',
-                  new_enum,
-                  schema_text,
-                  count=1,
-              )
-              if count != 1:
-                  raise SystemExit('Prisma confidence enum was not found')
-              schema.write_text(schema_text, encoding='utf-8')
-          PY
+      - name: Type-check
+        run: pnpm typecheck:source
 
-          mkdir -p packages/persistence/prisma/migrations/20260721150000_stage_16_confidence_levels
-          cat > packages/persistence/prisma/migrations/20260721150000_stage_16_confidence_levels/migration.sql <<'SQL'
-          ALTER TYPE "CalculationConfidence" RENAME VALUE 'medium' TO 'moderate';
-          ALTER TYPE "CalculationConfidence" RENAME VALUE 'blocked' TO 'unverified';
-          SQL
+      - name: Test
+        run: pnpm test:source
 
-      - name: Commit Stage 16 persistence repair
-        shell: bash
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add packages/foundation/src/eta-simulator.ts \
-            packages/foundation/test/eta-simulator.test.ts \
-            packages/persistence/src/trip-revision-repository.ts \
-            packages/persistence/src/repository-shared.ts \
-            packages/persistence/prisma/schema.prisma \
-            packages/persistence/prisma/migrations/20260721150000_stage_16_confidence_levels/migration.sql
-          git commit -m "Align Stage 16 confidence persistence"
-          git push origin HEAD:agent/stage-16-confidence-data-quality
+      - name: Build
+        run: pnpm build:source
