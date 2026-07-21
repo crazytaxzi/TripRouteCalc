@@ -265,7 +265,7 @@ describe('Stage 15 constrained speed model', () => {
     const decision = result.earliestLegal.speedDecisions[0];
 
     expect(decision?.selectedSpeed.value).toBe(speedInMilesPerHour(42).value);
-    expect(decision?.limitingFactors.join(' ')).toContain('urban cap');
+    expect(decision?.limitingFactors.join(' ')).toContain('urban speed cap');
     expect(decision?.source).toBe('VERIFIED_PROVIDER_TIME');
   });
 
