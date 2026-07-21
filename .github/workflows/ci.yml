@@ -10,12 +10,46 @@ permissions:
   contents: read
 
 jobs:
+  stage15-lint-diagnostic:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/trip_route_calc_test?schema=public
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+        with:
+          show-progress: false
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Enable pnpm
+        run: |
+          corepack enable
+          corepack prepare pnpm@9.15.4 --activate
+      - name: Install dependencies quietly
+        run: pnpm install --frozen-lockfile >/dev/null
+      - name: Generate Prisma client quietly
+        run: pnpm db:generate >/dev/null
+      - name: Capture strict lint diagnostics
+        run: |
+          set +e
+          pnpm lint:source > stage15-lint.txt 2>&1
+          code=$?
+          echo "exit_code=$code" >> stage15-lint.txt
+          exit 0
+      - name: Upload strict lint diagnostics
+        uses: actions/upload-artifact@v4
+        with:
+          name: stage15-lint-diagnostics
+          path: stage15-lint.txt
+
   verification:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     env:
       DATABASE_URL: postgresql://postgres:postgres@localhost:5432/trip_route_calc_test?schema=public
-
     services:
       postgres:
         image: postgres:18-alpine
@@ -30,41 +64,30 @@ jobs:
           --health-interval 5s
           --health-timeout 5s
           --health-retries 12
-
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
-
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
           node-version: 22
-
       - name: Enable pnpm
         run: |
           corepack enable
           corepack prepare pnpm@9.15.4 --activate
-
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
-
       - name: Generate Prisma client
         run: pnpm db:generate
-
       - name: Validate Prisma schema
         run: pnpm db:validate
-
       - name: Apply migrations to clean PostgreSQL database
         run: pnpm db:migrate:deploy
-
       - name: Lint
         run: pnpm lint:source
-
       - name: Type-check
         run: pnpm typecheck:source
-
       - name: Test
         run: pnpm test:source
-
       - name: Build
         run: pnpm build:source
