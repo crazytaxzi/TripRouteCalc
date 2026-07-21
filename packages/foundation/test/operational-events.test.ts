@@ -71,7 +71,7 @@ function plan(
     duration: { mode: 'EXACT', duration: durationInMinutes(30) },
     dutyStatus: normallyOnDuty ? 'ON_DUTY_NOT_DRIVING' : 'OFF_DUTY',
     source: userSource,
-    location: location('explicit', 0, []),
+    location: location('explicit', 0, type === 'FUEL' ? ['FUEL'] : []),
     placement: { kind: placementKind },
     allowThirtyMinuteInterruptionOverlap: true,
     allowRestOverlap: !normallyOnDuty,
