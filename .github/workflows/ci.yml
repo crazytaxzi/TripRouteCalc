@@ -15,6 +15,22 @@ jobs:
     timeout-minutes: 15
     env:
       DATABASE_URL: postgresql://postgres:postgres@localhost:5432/trip_route_calc_test?schema=public
+
+    services:
+      postgres:
+        image: postgres:18-alpine
+        env:
+          POSTGRES_DB: trip_route_calc_test
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d trip_route_calc_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 12
+
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
@@ -26,35 +42,29 @@ jobs:
 
       - name: Enable pnpm
         run: |
-          corepack enable >/dev/null
-          corepack prepare pnpm@9.15.4 --activate >/dev/null
+          corepack enable
+          corepack prepare pnpm@9.15.4 --activate
 
       - name: Install dependencies
-        run: pnpm install --frozen-lockfile --reporter=silent
+        run: pnpm install --frozen-lockfile
 
       - name: Generate Prisma client
-        run: pnpm db:generate >/dev/null
+        run: pnpm db:generate
 
-      - name: Capture repository lint output
-        id: lint
-        shell: bash
-        run: |
-          set +e
-          pnpm lint:source > stage16-repository-lint.txt 2>&1
-          status=$?
-          echo "status=$status" >> "$GITHUB_OUTPUT"
-          echo >> stage16-repository-lint.txt
-          echo "EXIT_STATUS=$status" >> stage16-repository-lint.txt
-          exit 0
+      - name: Validate Prisma schema
+        run: pnpm db:validate
 
-      - name: Upload repository lint diagnostic
-        uses: actions/upload-artifact@v4
-        with:
-          name: stage16-repository-lint
-          path: stage16-repository-lint.txt
-          if-no-files-found: error
-          retention-days: 1
+      - name: Apply migrations to clean PostgreSQL database
+        run: pnpm db:migrate:deploy
 
-      - name: Preserve lint failure
-        if: steps.lint.outputs.status != '0'
-        run: exit 1
+      - name: Lint
+        run: pnpm lint:source
+
+      - name: Type-check
+        run: pnpm typecheck:source
+
+      - name: Test
+        run: pnpm test:source
+
+      - name: Build
+        run: pnpm build:source
