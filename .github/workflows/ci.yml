@@ -7,60 +7,9 @@ on:
     branches: [main]
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
-  stage15-final-lint-repair:
-    runs-on: ubuntu-latest
-    timeout-minutes: 10
-    steps:
-      - name: Check out Stage 15 branch
-        uses: actions/checkout@v4
-        with:
-          ref: agent/stage-15-eta-simulator
-          fetch-depth: 0
-          show-progress: false
-
-      - name: Remove redundant destination guard
-        run: |
-          python3 <<'PY'
-          from pathlib import Path
-
-          path = Path('packages/foundation/src/eta-simulator.ts')
-          lines = path.read_text().splitlines(keepends=True)
-          matches = [
-              index
-              for index, line in enumerate(lines)
-              if line.strip() == 'if (destination === undefined) {'
-          ]
-          if len(matches) != 1:
-              raise RuntimeError(f'Expected one redundant destination guard; found {len(matches)}')
-          index = matches[0]
-          expected = [
-              'if (destination === undefined) {',
-              'throw new EtaSimulationError(',
-              "'ROUTE_STOP_MISMATCH',",
-              '`Missing destination stop for leg ${leg.legId}.`,',
-              ');',
-              '}',
-          ]
-          actual = [line.strip() for line in lines[index:index + len(expected)]]
-          if actual != expected:
-              raise RuntimeError(f'Unexpected destination guard body: {actual!r}')
-          del lines[index:index + len(expected)]
-          path.write_text(''.join(lines))
-          PY
-
-      - name: Commit bounded lint repair
-        run: |
-          set -euo pipefail
-          git diff --check
-          git config user.name github-actions[bot]
-          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
-          git add packages/foundation/src/eta-simulator.ts
-          git commit -m 'Remove redundant Stage 15 destination guard'
-          git push origin HEAD:agent/stage-15-eta-simulator
-
   verification:
     runs-on: ubuntu-latest
     timeout-minutes: 15
