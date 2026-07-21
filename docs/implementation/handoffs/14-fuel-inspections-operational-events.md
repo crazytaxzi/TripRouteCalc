@@ -3,13 +3,17 @@
 - Source: `docs/specification/14_FUEL_INSPECTIONS_OPERATIONAL_EVENTS.md`
 - Date: 2026-07-20
 - Implementation branch: `agent/stage-14-operational-events`
-- Pull request: `#25 Implement Stage 14 fuel inspections and operational events`
+- Implementation pull request: `#25 Implement Stage 14 fuel inspections and operational events`
+- Ledger-closure pull request: `#26 Close Stage 14 implementation ledger`
 - Superseded draft: `#24`, closed after its GitHub Actions event stream stopped scheduling valid workflow changes
 - Verified implementation head: `e8f38232ea59a3cf290a0e01c17f54c92e598541`
 - Clean implementation CI: run `769` (`29800180281`)
-- Final documented head and CI: pending
-- Merge commit: pending
-- Completion status: IMPLEMENTATION COMPLETE AND VERIFIED; DOCUMENTATION AUDIT AND MERGE PENDING
+- Final documented head: `d4e18ce811212560cefbdb21dd0843966b85d902`
+- Final documented-head CI: run `775` (`29800449153`)
+- Implementation merge commit: `3725ef3bfcbdac82b99dd2e6698a3968d43051ec`
+- Ledger pre-stamp head: `e3b6a5d9ec5ed9eb1e3f261594a37f39da0f0b88`
+- Ledger pre-stamp CI: run `782` (`29800820453`)
+- Completion status: COMPLETE, VERIFIED, MERGED, AND LEDGER-CLOSED
 
 ## Protected governance
 
@@ -74,6 +78,10 @@ Documentation and handoff:
 - `docs/operations/README.md`
 - `docs/implementation/decisions/14-operational-events.md`
 - `docs/implementation/handoffs/14-fuel-inspections-operational-events.md`
+- `README.md`
+- `docs/implementation/STATUS.md`
+- `docs/implementation/GAP_MATRIX.md`
+- `docs/implementation/BLOCKERS.md`
 
 No product file was moved or deleted. Temporary diagnostic workflows, artifacts, and trigger files were removed before the clean implementation gate.
 
@@ -89,7 +97,13 @@ The PostgreSQL integration test creates successive revisions and confirms the ea
 
 ## Commands and verification actually run
 
-The permanent GitHub Actions gate on implementation head `e8f38232ea59a3cf290a0e01c17f54c92e598541` completed successfully in run `769` (`29800180281`):
+The permanent GitHub Actions gate completed successfully on the implementation, documented, and ledger-closure heads:
+
+- implementation run `769` (`29800180281`) on `e8f38232ea59a3cf290a0e01c17f54c92e598541`;
+- documented-head run `775` (`29800449153`) on `d4e18ce811212560cefbdb21dd0843966b85d902`; and
+- ledger pre-stamp run `782` (`29800820453`) on `e3b6a5d9ec5ed9eb1e3f261594a37f39da0f0b88`.
+
+They passed:
 
 - `pnpm install --frozen-lockfile`
 - `pnpm db:generate`
@@ -100,7 +114,7 @@ The permanent GitHub Actions gate on implementation head `e8f38232ea59a3cf290a0e
 - complete `pnpm test:source`
 - `pnpm build:source`
 
-Focused diagnostics also ran the Stage 14 foundation suites while recovering clipped CI output. No temporary diagnostic workflow remains in the branch.
+Focused diagnostics also ran the Stage 14 foundation suites while recovering clipped CI output. No temporary diagnostic workflow remains in the repository.
 
 ## Recovery summary
 
@@ -111,6 +125,7 @@ Focused diagnostics also ran the Stage 14 foundation suites while recovering cli
 - Adversarial review found incompatible explicit locations, pre-trip placement after driving, origin fueling below reserve, and uncovered post-stop range classification gaps.
 - A temporary repair workflow stopped receiving GitHub Actions events. After bounded event and PR recovery attempts, the correction was implemented as a thin public composition layer and independently tested.
 - Artifact-only diagnostics isolated three lint inference errors and one legacy fuel-fixture capability mismatch. Strict rules and assertions were preserved.
+- Superseded PR `#24` was closed, verified implementation continued through PR `#25`, and the repository ledger was closed through PR `#26`.
 - Every temporary workflow and trigger was removed, and the permanent gate then passed in full.
 
 ## Remaining blockers and limitations
@@ -123,7 +138,5 @@ Focused diagnostics also ran the Stage 14 foundation suites while recovering cli
 - The local environment could not run repository checks; authoritative checks ran in GitHub Actions and are reported as such.
 
 ## Next source
-
-After this PR is merged and the ledger is closed, use:
 
 `docs/specification/15_ETA_SIMULATOR_SPEEDS_TIME_ZONES.md`
