@@ -35,11 +35,7 @@ import type {
   OperationalLocation,
   OperationalPlacementConstraint,
 } from './operational-events-guard.js';
-import {
-  STOP_PROJECTIONS,
-  processStop,
-  validateOrderedStops,
-} from './stops.js';
+import { processStop, validateOrderedStops } from './stops.js';
 import type {
   StopProcessingResult,
   StopProjection,
@@ -57,7 +53,6 @@ import type {
   UtcInstant,
 } from './time.js';
 import {
-  DistanceSchema,
   DurationSchema,
   SpeedSchema,
   distanceInMeters,
@@ -71,7 +66,6 @@ import type {
 } from './units.js';
 
 const nonEmptyText = z.string().trim().min(1);
-const positiveSafeInteger = z.number().int().positive().max(Number.MAX_SAFE_INTEGER);
 const positiveBasisPoints = z.number().int().min(1).max(10_000);
 
 function freeze<T extends object>(value: T): Readonly<T> {
@@ -805,7 +799,7 @@ export function calculateEtaSegmentSpeed(
     );
   }
 
-  const factors: Array<Readonly<{ name: string; speed: Speed }>> = [
+  const factors: Readonly<{ name: string; speed: Speed }>[] = [
     freeze({ name: 'governed maximum', speed: model.governedMaximumSpeed }),
     freeze({ name: 'preferred planning speed', speed: model.preferredPlanningSpeed }),
     freeze({ name: 'maximum average trip speed', speed: model.maximumAverageTripSpeed }),
@@ -983,7 +977,7 @@ function validateSimulationInput(input: EtaSimulationInput): EtaSimulationInput 
   route.legs.forEach((legInput, index) => {
     const leg = CommercialRouteLegSchema.parse(legInput);
     const destination = stops[index + 1];
-    if (destination === undefined || leg.destinationStopId !== destination.id) {
+    if (leg.destinationStopId !== destination?.id) {
       throw new EtaSimulationError(
         'ROUTE_STOP_MISMATCH',
         `Route leg ${leg.legId} must end at ordered stop ${destination?.id ?? 'missing'}.`,
@@ -1830,7 +1824,6 @@ function simulateProjection(
   let cumulativeMeters = 0;
   for (let legIndex = 0; legIndex < input.route.legs.length && !state.blocked; legIndex += 1) {
     const leg = input.route.legs[legIndex];
-    if (leg === undefined) continue;
     for (const segment of leg.segments) {
       if (!processSegment(state, leg, segment, cumulativeMeters)) break;
       cumulativeMeters += segment.distance.value;
