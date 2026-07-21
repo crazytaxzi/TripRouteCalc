@@ -1,7 +1,11 @@
 import { randomUUID } from 'node:crypto';
 
 import {
+  CommercialRouteLegSchema,
+  EtaComplianceActionSchema,
+  OperationalEventPlanSchema,
   TripStopPlanSchema,
+  assessCommercialRoute,
   etaSimulationSnapshot,
   simulateEtaTrip,
   utcInstant,
@@ -70,9 +74,18 @@ const stage17TripDraftSchema = z
   })
   .strict();
 
-export type Stage17TripDraft = Readonly<
-  z.infer<typeof stage17TripDraftSchema>
->;
+type LogicalTripStop = Readonly<z.infer<typeof logicalTripStopSchema>>;
+
+export interface Stage17TripDraft {
+  readonly version: 1;
+  readonly driverId: string;
+  readonly tractorId: string | null;
+  readonly trailerId: string | null;
+  readonly loadId: string | null;
+  readonly driverHosStateId: string | null;
+  readonly ruleSetVersion: string;
+  readonly stops: readonly LogicalTripStop[];
+}
 
 export interface ApplicationOperationResult {
   readonly statusCode: number;
@@ -230,14 +243,14 @@ function simulationWithInternalReferences(
         leg.originReferenceId.startsWith('stp.')
           ? publicIds.decode(leg.originReferenceId, 'stop')
           : leg.originReferenceId;
-      return {
+      return CommercialRouteLegSchema.parse({
         ...leg,
         originReferenceId,
         destinationStopId: publicIds.decode(
           leg.destinationStopId,
           'stop',
         ),
-      };
+      });
     },
   );
 
@@ -249,10 +262,10 @@ function simulationWithInternalReferences(
       eventValue,
       `simulation.operationalEvents[${String(index)}]`,
     );
-    return {
+    return OperationalEventPlanSchema.parse({
       ...event,
       placement: decodePlacementStop(event.placement, publicIds),
-    };
+    });
   });
 
   const complianceActions = asArray(
@@ -263,13 +276,13 @@ function simulationWithInternalReferences(
       actionValue,
       `simulation.complianceActions[${String(index)}]`,
     );
-    return {
+    return EtaComplianceActionSchema.parse({
       ...action,
       placement: decodePlacementStop(action.placement, publicIds),
       ...(action.actionEvent === undefined
         ? {}
         : {
-            actionEvent: {
+            actionEvent: OperationalEventPlanSchema.parse({
               ...asObject(
                 action.actionEvent,
                 `simulation.complianceActions[${String(index)}].actionEvent`,
@@ -281,17 +294,24 @@ function simulationWithInternalReferences(
                 ).placement,
                 publicIds,
               ),
-            },
+            }),
           }),
-    };
+    });
   });
 
+  const routePayload = { ...route, legs };
+  delete routePayload.assessment;
+  const validatedRoute = assessCommercialRoute(routePayload);
+
   return {
-    ...(simulation as Omit<EtaSimulationInput, 'route' | 'stops'>),
-    route: { ...route, legs } as EtaSimulationInput['route'],
+    ...(simulation as Omit<
+      EtaSimulationInput,
+      'route' | 'stops' | 'operationalEvents' | 'complianceActions'
+    >),
+    route: validatedRoute,
     stops: draft.stops,
-    operationalEvents: operationalEvents as EtaSimulationInput['operationalEvents'],
-    complianceActions: complianceActions as EtaSimulationInput['complianceActions'],
+    operationalEvents,
+    complianceActions,
     revisionReference,
   };
 }
