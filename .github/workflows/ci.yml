@@ -7,48 +7,64 @@ on:
     branches: [main]
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
   verification:
-    if: github.actor != 'github-actions[bot]'
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    env:
+      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/trip_route_calc_test?schema=public
+
+    services:
+      postgres:
+        image: postgres:18-alpine
+        env:
+          POSTGRES_DB: trip_route_calc_test
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d trip_route_calc_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 12
+
     steps:
-      - name: Check out implementation branch
+      - name: Check out repository
         uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
         with:
-          ref: agent/stage-16-confidence-data-quality
-          fetch-depth: 0
+          node-version: 22
 
-      - name: Replace unsafe asymmetric matcher
-        shell: bash
+      - name: Enable pnpm
         run: |
-          python - <<'PY'
-          from pathlib import Path
+          corepack enable
+          corepack prepare pnpm@9.15.4 --activate
 
-          path = Path('packages/foundation/test/eta-simulator.test.ts')
-          text = path.read_text(encoding='utf-8')
-          start_marker = "    expect(result.expected.confidenceReasons).toEqual("
-          end_marker = "  });\n});\n\ndescribe('Stage 15 UTC chronology"
-          start = text.index(start_marker)
-          end = text.index(end_marker, start)
-          replacement = """    expect(
-            result.expected.confidenceReasons.some(
-              (reason) =>
-                reason.code === 'AVERAGE_SPEED_FALLBACK' &&
-                reason.userExplanation.includes('average-speed fallback'),
-            ),
-          ).toBe(true);
-"""
-          path.write_text(text[:start] + replacement + text[end:], encoding='utf-8')
-          PY
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
 
-      - name: Commit assertion repair
-        shell: bash
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add packages/foundation/test/eta-simulator.test.ts
-          git commit -m "Use typed Stage 16 confidence assertion"
-          git push origin HEAD:agent/stage-16-confidence-data-quality
+      - name: Generate Prisma client
+        run: pnpm db:generate
+
+      - name: Validate Prisma schema
+        run: pnpm db:validate
+
+      - name: Apply migrations to clean PostgreSQL database
+        run: pnpm db:migrate:deploy
+
+      - name: Lint
+        run: pnpm lint:source
+
+      - name: Type-check
+        run: pnpm typecheck:source
+
+      - name: Test
+        run: pnpm test:source
+
+      - name: Build
+        run: pnpm build:source
