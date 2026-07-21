@@ -57,7 +57,7 @@ jobs:
         shell: bash
         run: |
           set +e
-          pnpm --filter @trip-route-calc/foundation exec vitest run test/eta-simulator-acceptance.test.ts > stage15-acceptance-tests.txt 2>&1
+          pnpm exec vitest run packages/foundation/test/eta-simulator-acceptance.test.ts > stage15-acceptance-tests.txt 2>&1
           status=$?
           echo "status=$status" >> "$GITHUB_OUTPUT"
           exit 0
