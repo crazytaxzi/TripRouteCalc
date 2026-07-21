@@ -23,8 +23,30 @@ jobs:
 
       - name: Replace unsafe asymmetric matcher
         shell: bash
-        run: >-
-          python -c "from pathlib import Path; import base64; p=Path('packages/foundation/test/eta-simulator.test.ts'); t=p.read_text(encoding='utf-8'); old=base64.b64decode('ICAgIGV4cGVjdChyZXN1bHQuZXhwZWN0ZWQuY29uZmlkZW5jZVJlYXNvbnMpLnRvRXF1YWwoCiAgICAgIGV4cGVjdC5hcnJheUNvbnRhaW5pbmcoWwogICAgICAgIGV4cGVjdC5vYmplY3RDb250YWluaW5nKHsKICAgICAgICAgIGNvZGU6ICdBVkVSQUdFX1NQRUVEX0ZBTExCQUNLJywKICAgICAgICAgIHVzZXJFeHBsYW5hdGlvbjogZXhwZWN0LnN0cmluZ0NvbnRhaW5pbmcoJ2F2ZXJhZ2Utc3BlZWQgZmFsbGJhY2snKSwKICAgICAgICB9KSwKICAgICAgXSksCiAgICApOwo=').decode(); new=base64.b64decode('ICAgIGV4cGVjdCgKICAgICAgcmVzdWx0LmV4cGVjdGVkLmNvbmZpZGVuY2VSZWFzb25zLnNvbWUoCiAgICAgICAgKHJlYXNvbikgPT4KICAgICAgICAgIHJlYXNvbi5jb2RlID09PSAnQVZFUkFHRV9TUEVFRF9GQUxMQkFDSycgJiYKICAgICAgICAgIHJlYXNvbi51c2VyRXhwbGFuYXRpb24uaW5jbHVkZXMoJ2F2ZXJhZ2Utc3BlZWQgZmFsbGJhY2snKSwKICAgICAgKSwKICAgICkudG9CZSh0cnVlKTsK').decode(); assert t.count(old)==1; p.write_text(t.replace(old,new), encoding='utf-8')"
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          path = Path('packages/foundation/test/eta-simulator.test.ts')
+          lines = path.read_text(encoding='utf-8').splitlines()
+          start = 319
+          end = 327
+          if not lines[start].strip().startswith('expect(result.expected.confidenceReasons)'):
+              raise SystemExit(f'Unexpected line {start + 1}: {lines[start]}')
+          if lines[end - 1].strip() != ');':
+              raise SystemExit(f'Unexpected line {end}: {lines[end - 1]}')
+          replacement = [
+              '    expect(',
+              '      result.expected.confidenceReasons.some(',
+              '        (reason) =>',
+              "          reason.code === 'AVERAGE_SPEED_FALLBACK' &&",
+              "          reason.userExplanation.includes('average-speed fallback'),",
+              '      ),',
+              '    ).toBe(true);',
+          ]
+          lines[start:end] = replacement
+          path.write_text('\n'.join(lines) + '\n', encoding='utf-8')
+          PY
 
       - name: Commit assertion repair
         shell: bash
