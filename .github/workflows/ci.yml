@@ -13,6 +13,24 @@ jobs:
   verification:
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    env:
+      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/trip_route_calc_test?schema=public
+
+    services:
+      postgres:
+        image: postgres:18-alpine
+        env:
+          POSTGRES_DB: trip_route_calc_test
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d trip_route_calc_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 12
+
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
@@ -24,35 +42,29 @@ jobs:
 
       - name: Enable pnpm
         run: |
-          corepack enable >/dev/null
-          corepack prepare pnpm@9.15.4 --activate >/dev/null
+          corepack enable
+          corepack prepare pnpm@9.15.4 --activate
 
       - name: Install dependencies
-        run: pnpm install --frozen-lockfile --reporter=silent
+        run: pnpm install --frozen-lockfile
 
-      - name: Capture Stage 16 acceptance tests
-        id: tests
-        shell: bash
-        run: |
-          set +e
-          pnpm exec vitest run \
-            packages/foundation/test/confidence.test.ts \
-            packages/foundation/test/eta-confidence-explanations.test.ts \
-            > stage16-acceptance-tests.txt 2>&1
-          status=$?
-          echo "status=$status" >> "$GITHUB_OUTPUT"
-          echo >> stage16-acceptance-tests.txt
-          echo "EXIT_STATUS=$status" >> stage16-acceptance-tests.txt
-          exit 0
+      - name: Generate Prisma client
+        run: pnpm db:generate
 
-      - name: Upload Stage 16 acceptance tests
-        uses: actions/upload-artifact@v4
-        with:
-          name: stage16-acceptance-tests
-          path: stage16-acceptance-tests.txt
-          if-no-files-found: error
-          retention-days: 1
+      - name: Validate Prisma schema
+        run: pnpm db:validate
 
-      - name: Preserve acceptance failure
-        if: steps.tests.outputs.status != '0'
-        run: exit 1
+      - name: Apply migrations to clean PostgreSQL database
+        run: pnpm db:migrate:deploy
+
+      - name: Lint
+        run: pnpm lint:source
+
+      - name: Type-check
+        run: pnpm typecheck:source
+
+      - name: Test
+        run: pnpm test:source
+
+      - name: Build
+        run: pnpm build:source
