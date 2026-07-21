@@ -3,6 +3,7 @@
   "references": [
     { "path": "./packages/foundation" },
     { "path": "./packages/persistence" },
-    { "path": "./packages/routing" }
+    { "path": "./packages/routing" },
+    { "path": "./packages/compliance" }
   ]
 }

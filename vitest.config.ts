@@ -5,6 +5,9 @@ import { defineConfig } from 'vitest/config';
 export default defineConfig({
   resolve: {
     alias: {
+      '@trip-route-calc/foundation/regulatory': fileURLToPath(
+        new URL('./packages/foundation/src/regulatory.ts', import.meta.url),
+      ),
       '@trip-route-calc/foundation': fileURLToPath(
         new URL('./packages/foundation/src/index.ts', import.meta.url),
       ),
