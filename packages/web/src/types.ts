@@ -23,6 +23,20 @@ export type StopType =
   | 'border-crossing'
   | 'other';
 
+export type StopAppointmentMode =
+  | 'none'
+  | 'earliest'
+  | 'latest'
+  | 'fixed'
+  | 'window'
+  | 'open-window';
+
+export type StopServiceMode =
+  | 'exact'
+  | 'expected'
+  | 'range'
+  | 'historical-average';
+
 export interface DriverForm {
   readonly id?: string | undefined;
   readonly displayName: string;
@@ -117,7 +131,7 @@ export interface LoadForm {
 
 export interface StopForm {
   readonly localId: string;
-  readonly publicId?: string;
+  readonly publicId?: string | undefined;
   readonly type: StopType;
   readonly required: boolean;
   readonly lockedPosition: boolean;
@@ -126,14 +140,19 @@ export interface StopForm {
   readonly latitude: number | null;
   readonly longitude: number | null;
   readonly timeZone: string;
-  readonly appointmentMode: 'none' | 'fixed' | 'window';
+  readonly appointmentMode: StopAppointmentMode;
   readonly appointmentStartLocal: string;
   readonly appointmentEndLocal: string;
   readonly lateToleranceMinutes: number;
   readonly facilityOpenLocal: string;
   readonly facilityCloseLocal: string;
   readonly checkInMinutes: number;
+  readonly serviceMode: StopServiceMode;
   readonly serviceMinutes: number;
+  readonly serviceMinimumMinutes: number;
+  readonly serviceMaximumMinutes: number;
+  readonly historicalSourceName: string;
+  readonly historicalSampleSize: number | null;
   readonly waitingDutyStatus: DutyStatus;
   readonly checkInDutyStatus: DutyStatus;
   readonly serviceDutyStatus: DutyStatus;
@@ -156,7 +175,8 @@ export interface RouteForm {
 }
 
 export interface TripDraft {
-  readonly version: 1;
+  readonly version: 2;
+  readonly draftId: string;
   readonly apiBaseUrl: string;
   readonly driver: DriverForm;
   readonly hos: HosForm;
@@ -165,7 +185,7 @@ export interface TripDraft {
   readonly load: LoadForm;
   readonly stops: readonly StopForm[];
   readonly route: RouteForm;
-  readonly savedAt?: string;
+  readonly savedAt?: string | undefined;
 }
 
 export interface ValidationIssue {
@@ -190,8 +210,8 @@ export interface ProfileLists {
 export interface PlanningOutcome {
   readonly status: 'idle' | 'submitting' | 'complete' | 'blocked' | 'failed';
   readonly message: string;
-  readonly tripId?: string;
-  readonly revisionNumber?: number;
-  readonly confidence?: string;
+  readonly tripId?: string | undefined;
+  readonly revisionNumber?: number | undefined;
+  readonly confidence?: string | undefined;
   readonly warnings: readonly string[];
 }
