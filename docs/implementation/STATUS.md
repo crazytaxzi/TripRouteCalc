@@ -5,10 +5,10 @@
 - Canonical repository: `crazytaxzi/TripRouteCalc`
 - Repository visibility: private
 - Default branch: `main`
-- Active implementation branch: `agent/stage-14-ledger-close`
-- Active pull request: pending ledger-closure PR
-- Last completed pull request: `#25`
-- Product status: Stage 14 fuel, inspections, and operational events complete, verified, and merged; live commercial-routing and route-aware operational-location verification remain blocked by B-002, production regulatory data remains blocked by B-003, and live facility/location providers remain unselected
+- Active implementation branch: none
+- Active pull request: none
+- Last completed pull request: `#26`
+- Product status: Stage 14 fuel, inspections, and operational events complete, verified, merged, and ledger-closed; live commercial-routing and route-aware operational-location verification remain blocked by B-002, production regulatory data remains blocked by B-003, and live facility/location providers remain unselected
 - Completed sources: `01_REPOSITORY_AUDIT_AND_PLAN.md` through `14_FUEL_INSPECTIONS_OPERATIONAL_EVENTS.md`
 - Stage 01 status: COMPLETE
 - Stage 02 status: COMPLETE
@@ -45,10 +45,11 @@
 
 ## Verification evidence
 
-The complete permanent repository gate passed against the implementation and documented heads:
+The complete permanent repository gate passed against the implementation, documented, and ledger-closure heads:
 
 - implementation CI run `769` (`29800180281`) on `e8f38232ea59a3cf290a0e01c17f54c92e598541`
 - documented-head CI run `775` (`29800449153`) on `d4e18ce811212560cefbdb21dd0843966b85d902`
+- ledger pre-stamp CI run `782` (`29800820453`) on `e3b6a5d9ec5ed9eb1e3f261594a37f39da0f0b88`
 
 They passed:
 
@@ -61,7 +62,7 @@ They passed:
 - complete `pnpm test:source`
 - `pnpm build:source`
 
-Pull request `#25` was squash-merged into `main` as `3725ef3bfcbdac82b99dd2e6698a3968d43051ec`.
+Pull request `#25` was squash-merged into `main` as `3725ef3bfcbdac82b99dd2e6698a3968d43051ec`. Pull request `#26` closes the Stage 14 repository ledger and advances the exact next source to Stage 15.
 
 The local environment did not provide a usable private-repository checkout, pnpm, PostgreSQL, Docker, GitHub CLI, or working DNS for `github.com`. That environment limitation was handled under `ERROR_RECOVERY_PROTOCOL.md`; source changes and authoritative validation used the connected GitHub API and GitHub Actions without representing unavailable local checks as successful.
 
@@ -69,7 +70,7 @@ The local environment did not provide a usable private-repository checkout, pnpm
 
 - Reconciled and preserved an already-existing Stage 14 branch and draft pull request instead of replacing concurrent work.
 - Removed temporary repair workflows before permanent verification.
-- Reduced the first strict TypeScript failure to one `exactOptionalPropertyTypes` contract mismatch and corrected only the readonly type description.
+- Reduced the first strict TypeScript failure to one `exactOptionalPropertyTypes` contract mismatch and corrected only the readonly optional contract description.
 - Used artifact-only diagnostics when GitHub logs clipped the relevant lint and test output.
 - Preserved strict lint, TypeScript, tests, and production behavior rather than weakening repository gates.
 - Added a thin public safety composition after adversarial review exposed incompatible explicit locations, inspection-order gaps, origin fueling, and post-stop range-classification gaps.
@@ -89,4 +90,4 @@ The local environment did not provide a usable private-repository checkout, pnpm
 
 ## Next action
 
-Complete and merge the Stage 14 ledger-closure pull request, reopen the protected Prime Directive and Error Recovery Protocol, then begin `docs/specification/15_ETA_SIMULATOR_SPEEDS_TIME_ZONES.md` from the accepted HOS, stop-order, equipment, route, compliance, operational-event, time-zone, tenant, immutable-revision, and audit boundaries.
+Reopen the protected Prime Directive and Error Recovery Protocol, then begin `docs/specification/15_ETA_SIMULATOR_SPEEDS_TIME_ZONES.md` from the accepted HOS, stop-order, equipment, route, compliance, operational-event, time-zone, tenant, immutable-revision, and audit boundaries.
