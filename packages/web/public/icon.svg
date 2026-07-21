@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="TripRouteCalc road shield">
+  <rect width="512" height="512" rx="112" fill="#101820"/>
+  <path d="M256 72c92 0 166 34 166 34v126c0 104-66 172-166 208C156 404 90 336 90 232V106s74-34 166-34Z" fill="#7de3b7"/>
+  <path d="M226 132h60l-10 84h58l-78 164-78-164h58l-10-84Z" fill="#101820"/>
+</svg>
