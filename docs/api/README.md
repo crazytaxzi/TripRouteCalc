@@ -15,6 +15,10 @@ Stage 17 exposes the accepted domain, routing, compliance, ETA, confidence, and 
 - Controllers do not perform HOS, compliance, stop, route, ETA, confidence, or explanation arithmetic.
 - `/openapi.json` is the authoritative machine-readable Stage 17 contract.
 
+## Identity and authorization
+
+Bearer credentials carry a signed carrier, actor, token identifier, issue time, and expiration. The persistence layer independently verifies carrier membership and scopes every object lookup. Public trip, stop, revision, driver, HOS-state, equipment, load, and rule-set identifiers are typed encrypted tokens, so database UUIDs and cross-type identifier substitution are rejected before repository access.
+
 ## Endpoint groups
 
 - Trip setup: create, retrieve, patch, and read immutable revisions.
