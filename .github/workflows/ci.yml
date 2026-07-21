@@ -39,9 +39,17 @@ jobs:
       - name: Generate Prisma client
         run: pnpm db:generate >/dev/null
 
-      - name: Apply safe repository lint fixes
+      - name: Apply and capture repository lint fixes
+        id: lint
         shell: bash
-        run: pnpm exec eslint packages --fix
+        run: |
+          set +e
+          pnpm exec eslint packages --fix > stage16-lint-remaining.txt 2>&1
+          status=$?
+          echo "status=$status" >> "$GITHUB_OUTPUT"
+          echo >> stage16-lint-remaining.txt
+          echo "EXIT_STATUS=$status" >> stage16-lint-remaining.txt
+          exit 0
 
       - name: Commit mechanical lint fixes
         shell: bash
@@ -55,3 +63,15 @@ jobs:
             git commit -m "Apply repository Stage 16 lint fixes"
             git push origin HEAD:agent/stage-16-confidence-data-quality
           fi
+
+      - name: Upload remaining lint failures
+        uses: actions/upload-artifact@v4
+        with:
+          name: stage16-lint-remaining
+          path: stage16-lint-remaining.txt
+          if-no-files-found: error
+          retention-days: 1
+
+      - name: Preserve remaining lint failure
+        if: steps.lint.outputs.status != '0'
+        run: exit 1
