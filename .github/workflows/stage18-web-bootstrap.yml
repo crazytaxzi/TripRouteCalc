@@ -3,7 +3,7 @@ name: Stage 18 web preflight and lock refresh
 on:
   pull_request:
     branches:
-      - agent/stage-18-mobile-trip-setup-ui
+      - main
 
 permissions:
   contents: write
@@ -114,9 +114,8 @@ jobs:
           HEAD_BRANCH: ${{ github.head_ref }}
         run: |
           rm .github/workflows/stage18-web-bootstrap.yml
-          rm docs/implementation/evidence/stage18-lock-refresh-trigger.md
           git config user.name "TripRouteCalc Stage 18 Agent"
           git config user.email "actions@users.noreply.github.com"
-          git add packages/web pnpm-lock.yaml .github/workflows/stage18-web-bootstrap.yml docs/implementation/evidence/stage18-lock-refresh-trigger.md
+          git add packages/web pnpm-lock.yaml .github/workflows/stage18-web-bootstrap.yml
           git commit -m "build(stage18): refresh web lockfile and preflight"
           git push origin "HEAD:${HEAD_BRANCH}"
