@@ -24,20 +24,24 @@ jobs:
       - name: Remove redundant destination guard
         run: |
           python3 <<'PY'
+          import re
           from pathlib import Path
 
           path = Path('packages/foundation/src/eta-simulator.ts')
           text = path.read_text()
-          old = '''    if (destination === undefined) {
-              throw new EtaSimulationError(
-                'ROUTE_STOP_MISMATCH',
-                `Missing destination stop for leg ${leg.legId}.`,
-              );
-            }
-          '''
-          if text.count(old) != 1:
-              raise RuntimeError(f'Expected one redundant destination guard; found {text.count(old)}')
-          path.write_text(text.replace(old, '', 1))
+          pattern = re.compile(
+              r"^    if \(destination === undefined\) \{\n"
+              r"      throw new EtaSimulationError\(\n"
+              r"        'ROUTE_STOP_MISMATCH',\n"
+              r"        `Missing destination stop for leg \$\{leg\.legId\}\.`,\n"
+              r"      \);\n"
+              r"    \}\n",
+              re.MULTILINE,
+          )
+          updated, count = pattern.subn('', text, count=1)
+          if count != 1:
+              raise RuntimeError(f'Expected one redundant destination guard; found {count}')
+          path.write_text(updated)
           PY
 
       - name: Commit bounded lint repair
