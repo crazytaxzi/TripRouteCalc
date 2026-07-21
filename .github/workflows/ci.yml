@@ -21,59 +21,58 @@ jobs:
           ref: agent/stage-16-confidence-data-quality
           fetch-depth: 0
 
-      - name: Repair current TypeScript fixture contracts
+      - name: Repair exact fixture contracts
         shell: bash
         run: |
           python - <<'PY'
           from pathlib import Path
 
-          eta_test = Path('packages/foundation/test/eta-simulator.test.ts')
-          eta_text = eta_test.read_text(encoding='utf-8')
-          old_duration = """          ...(segment.unavailableTravelTime
-                        ? {}
-                        : { travelDuration: durationInMinutes(segment.minutes) }),
-          """.replace('          ', '')
-          new_duration = "          travelDuration: durationInMinutes(segment.minutes),\n"
-          if old_duration not in eta_text:
-              raise SystemExit('Conditional segment travel duration was not found.')
-          eta_test.write_text(
-              eta_text.replace(old_duration, new_duration, 1),
-              encoding='utf-8',
-          )
+          eta_path = Path('packages/foundation/test/eta-simulator.test.ts')
+          eta = eta_path.read_text(encoding='utf-8')
+          old = """          ...(segment.unavailableTravelTime
+            ? {}
+            : { travelDuration: durationInMinutes(segment.minutes) }),
+          """
+          new = "          travelDuration: durationInMinutes(segment.minutes),\n"
+          if eta.count(old) != 1:
+              raise SystemExit(f'Expected one conditional duration block, found {eta.count(old)}')
+          eta_path.write_text(eta.replace(old, new), encoding='utf-8')
 
-          persistence_test = Path('packages/persistence/test/persistence.integration.test.ts')
-          persistence_text = persistence_test.read_text(encoding='utf-8')
+          persistence_path = Path('packages/persistence/test/persistence.integration.test.ts')
+          persistence = persistence_path.read_text(encoding='utf-8')
           old_import = """import {
             durationInMinutes,
+            ianaTimeZone,
           """.replace('          ', '')
           new_import = """import {
             dataQualityReason,
             durationInMinutes,
+            ianaTimeZone,
             publicEvidenceReference,
           """.replace('          ', '')
-          if old_import not in persistence_text:
-              raise SystemExit('Foundation import block was not found.')
-          persistence_text = persistence_text.replace(old_import, new_import, 1)
+          if persistence.count(old_import) != 1:
+              raise SystemExit(f'Expected one foundation import block, found {persistence.count(old_import)}')
+          persistence = persistence.replace(old_import, new_import, 1)
           old_reason = "      confidenceReasons: ['No commercial route provider is configured.'],"
           new_reason = """      confidenceReasons: [
-                dataQualityReason(
-                  'PROVIDER_RESTRICTIONS_UNAVAILABLE',
-                  [
-                    publicEvidenceReference(
-                      'PROVIDER',
-                      'commercial-route-provider',
-                      'Commercial-route provider evidence',
-                    ),
-                  ],
-                  'No commercial route provider is configured.',
-                  'This persistence fixture intentionally lacks commercial-route provider evidence.',
+            dataQualityReason(
+              'PROVIDER_RESTRICTIONS_UNAVAILABLE',
+              [
+                publicEvidenceReference(
+                  'PROVIDER',
+                  'commercial-route-provider',
+                  'Commercial-route provider evidence',
                 ),
               ],
-          """.replace('          ', '')
-          if old_reason not in persistence_text:
-              raise SystemExit('Legacy string confidence reason was not found.')
-          persistence_test.write_text(
-              persistence_text.replace(old_reason, new_reason, 1),
+              'No commercial route provider is configured.',
+              'This persistence fixture intentionally lacks commercial-route provider evidence.',
+            ),
+          ],
+          """.rstrip()
+          if persistence.count(old_reason) != 1:
+              raise SystemExit(f'Expected one legacy string confidence reason, found {persistence.count(old_reason)}')
+          persistence_path.write_text(
+              persistence.replace(old_reason, new_reason, 1),
               encoding='utf-8',
           )
           PY
