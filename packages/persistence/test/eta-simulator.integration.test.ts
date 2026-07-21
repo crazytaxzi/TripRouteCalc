@@ -317,7 +317,9 @@ function revisionInput(
     calculationTimestamp: utcInstant('2026-07-20T14:59:01.000Z'),
     ruleSetVersion: 'stage-15-v1',
     routingProviderName: input.route.provider.providerName,
-    routingProviderVersion: input.route.provider.providerVersion,
+    ...(input.route.provider.providerVersion === undefined
+      ? {}
+      : { routingProviderVersion: input.route.provider.providerVersion }),
     inputSnapshot: input as unknown as Readonly<Record<string, unknown>>,
     stops: input.stops.map((tripStop) => ({
       sequence: tripStop.sequence,
@@ -382,7 +384,7 @@ describe('Stage 15 deterministic ETA revision replay', () => {
 
     expect(firstReplay).toEqual(stored?.resultSnapshot);
     expect(secondReplay).toEqual(firstReplay);
-    expect(stored?.calculationResult?.snapshot).toEqual(firstReplay);
+    expect(stored?.calculationResult?.resultSnapshot).toEqual(firstReplay);
     expect(stored?.stops.map((storedStop) => storedStop.sequence)).toEqual([1, 2]);
   });
 });
