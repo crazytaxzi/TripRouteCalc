@@ -212,9 +212,10 @@ function evaluateCondition(
       if (actual === undefined || (Array.isArray(actual) && actual.length === 0)) {
         return freeze({ status: 'unknown', facts });
       }
-      const actualValues = typeof actual === 'string' ? [actual] : actual;
-      const expectedValues =
-        typeof condition.value === 'string' ? [condition.value] : condition.value;
+      const actualValues: readonly string[] =
+      typeof actual === 'string' ? [actual] : actual;
+    const expectedValues: readonly string[] =
+      typeof condition.value === 'string' ? [condition.value] : condition.value;
       const overlaps = actualValues.some((value) => expectedValues.includes(value));
       const matched =
         condition.operator === 'not-equal'
