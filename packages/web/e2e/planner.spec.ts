@@ -1,6 +1,7 @@
 import { expect, test } from '@playwright/test';
+import type { Page } from '@playwright/test';
 
-async function mockProfiles(page: Parameters<typeof test>[0]['page']): Promise<void> {
+async function mockProfiles(page: Page): Promise<void> {
   await page.route('**/api/drivers', async (route) =>
     route.fulfill({ json: { drivers: [] } }),
   );
