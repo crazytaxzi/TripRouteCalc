@@ -142,3 +142,17 @@ B-003 remains open. Stage 16 can explain when legal-critical evidence is missing
 B-004 remains deferred. The in-place confidence migration, immutable JSON evidence, and permanent CI gate are complete, but production hosting, secrets management, backups, recovery objectives, retention policy, and operational infrastructure remain undecided.
 
 No new Stage 16 blocker was created. Confidence and explanation behavior must not be represented as resolution of missing route, regulatory, live-condition, authentication, privacy, API-redaction, or deployment evidence.
+
+## Stage 17 blocker review
+
+**Status:** No active Stage 17 implementation blocker
+
+Stage 17 required an authenticated and tenant-scoped REST boundary, strict request validation, stable opaque public identifiers, immutable revision writes, concurrency protection, persistent idempotency, structured errors, OpenAPI documentation, and PostgreSQL-backed success and failure acceptance scenarios. Those mandatory requirements are implemented, verified, and merged.
+
+B-002 remains open. The API exposes the commercial-routing boundary and returns explicit provider setup failures, but no licensed production provider, entitlement, coverage agreement, retention terms, server-only credential, or live adapter exists. Consumer routing remains prohibited as a fallback.
+
+B-003 remains open. The API exposes versioned regulatory evidence and structured legal or manual-verification blocks, but it does not create a reviewed production regulatory corpus, restriction feed, legal-research ownership, verification cadence, or official acceptance corpus.
+
+B-004 remains deferred. Stage 17 includes an in-memory fixed-window limiter and a verified bearer-token boundary, but distributed rate limiting, full identity lifecycle, production secrets, hosting, backups, recovery objectives, and deployment infrastructure remain future work.
+
+No new Stage 17 blocker was created. The test providers and rule fixtures prove deterministic boundary behavior only and must never be represented as production route or legal evidence.

@@ -6,7 +6,7 @@ The product is intended to produce transparent, defensible planning estimates fo
 
 ## Current state
 
-The canonical private repository is established on `main`. Stages 01 through 16 are complete, verified, merged, and ledger-closed. Stage 17 REST API and validation is complete and verified on pull request `#31`, pending the final documentation gate and merge. Stage 18 mobile trip setup UI is the next eligible implementation source after Stage 17 ledger closure.
+The canonical private repository is established on `main`. Stages 01 through 17 are complete, verified, merged, and ledger-closed. Stage 18 mobile trip setup UI is the exact next implementation source.
 
 - `@trip-route-calc/foundation` provides product terminology, first-release scope boundaries, explicit measurement primitives, UTC and IANA time-zone handling, DST-safe local appointment and regulatory-boundary resolution, provider-neutral domain contracts, validated driver HOS departure-state and duty-event contracts, the pure Stage 05 core clock engine, the pure Stage 06 rolling cycle engine, the pure Stage 07 advanced-rule evaluator, the Stage 09 equipment/load physical-validation domain, the Stage 10 ordered stop-processing domain, Stage 11 commercial-routing request and normalized-result contracts, Stage 12 regulatory source, scope, condition, rule-set, finding, and compliance-result contracts, Stage 13 KPRA action and revalidation contracts, Stage 14 structured operational-event and fuel-planning contracts, the Stage 15 deterministic three-projection ETA simulator, and the Stage 16 deterministic confidence and explanation model.
 - Stage 05 covers the standard 10-hour reset, 11-hour driving allowance, 14-hour window, cycle-availability blocking, and 30-minute interruption.
@@ -82,7 +82,7 @@ PostgreSQL 18 uses the named volume mounted at `/var/lib/postgresql`.
 - Stage 14: Fuel, Inspections, and Operational Events, COMPLETE; live operational-location verification blocked by B-002 and unselected facility providers
 - Stage 15: ETA Simulator, Speeds, and Time Zones, COMPLETE, VERIFIED, MERGED, AND LEDGER-CLOSED; live route, traffic, weather, closure, and facility confidence remains constrained by B-002, B-003, and unselected providers
 - Stage 16: Confidence, Explanations, and Data Quality, COMPLETE, VERIFIED, MERGED, AND LEDGER-CLOSED; confidence does not resolve missing live or legal evidence
-- Stage 17: REST API and Validation, COMPLETE AND VERIFIED ON PR #31; merge and ledger closure pending
+- Stage 17: REST API and Validation, COMPLETE, VERIFIED, MERGED, AND LEDGER-CLOSED; production provider, regulatory, identity-lifecycle, distributed-rate-limit, and deployment work remains explicitly blocked or deferred
 
 See:
 
@@ -146,4 +146,4 @@ No exception, exemption, emergency declaration, pilot program, adverse-driving r
 
 ## Next action
 
-Run the final Stage 17 documentation gate, merge pull request `#31`, ledger-close Stage 17 on `main`, then begin `docs/specification/18_MOBILE_TRIP_SETUP_UI.md` under the Prime Directive.
+Reopen the protected Prime Directive and Error Recovery Protocol, then begin `docs/specification/18_MOBILE_TRIP_SETUP_UI.md` from the accepted API, HOS, equipment, stop, route, compliance, operational-event, ETA, confidence, explanation, persistence, tenant, immutable-revision, audit, and redaction boundaries.

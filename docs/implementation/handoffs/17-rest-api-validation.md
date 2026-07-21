@@ -4,9 +4,15 @@
 - Date: 2026-07-21
 - Implementation branch: `agent/stage-17-rest-api-validation`
 - Implementation pull request: `#31 Implement Stage 17 REST API and validation`
+- Ledger-closure pull request: `#32 Close Stage 17 implementation ledger`
 - Verified implementation head: `eb3f5ef7debd614c4cfa96f6bd846911e24ccdf4`
 - Clean implementation CI: run `1192` (`29856292338`)
-- Completion status: COMPLETE, VERIFIED, AND READY TO MERGE
+- Verified final implementation documentation head: `61cd575e043e5a70bd3eac421353cb89046e1764`
+- Clean final implementation documentation CI: run `1198` (`29867963558`)
+- Implementation merge commit: `b845c37c886bc95ca97aa2043a6b95b2b68c7286`
+- Verified ledger-closure head: `8ea5270beea0075b961d3c416e860694f561f17d`
+- Clean ledger-closure CI: run `1202` (`29868607335`)
+- Completion status: COMPLETE, VERIFIED, MERGED, AND LEDGER-CLOSED
 
 ## Protected governance
 
@@ -116,7 +122,9 @@ The raw idempotency key is never persisted. Existing trip, revision, calculation
 
 ## Verification evidence
 
-Permanent CI run `1192` (`29856292338`) passed on implementation head `eb3f5ef7debd614c4cfa96f6bd846911e24ccdf4`:
+Permanent CI run `1192` (`29856292338`) passed on implementation head `eb3f5ef7debd614c4cfa96f6bd846911e24ccdf4`. Final implementation documentation CI run `1198` (`29867963558`) passed on head `61cd575e043e5a70bd3eac421353cb89046e1764`. Ledger-closure CI run `1202` (`29868607335`) passed on head `8ea5270beea0075b961d3c416e860694f561f17d`.
+
+All three gates passed:
 
 - `pnpm install --frozen-lockfile`
 - `pnpm db:generate`
@@ -138,7 +146,8 @@ The full suite included prior-stage regression coverage, API cryptography and ra
 - Vitest could not initially resolve workspace package source entries before build. Source aliases were added to the accepted test configuration rather than changing runtime package architecture.
 - Fastify's default path-parameter ceiling rejected encrypted identifiers with `414`. The documented `routerOptions.maxParamLength` boundary was raised to 512 while authenticated decryption, type checking, and tamper rejection remained the authoritative guard.
 - The complete changed-file inventory was reopened after the clean gate. It contains only expected Stage 17 implementation, test, migration, lockfile, workspace, and documentation files.
-- Pull request `#31` has no unresolved review threads or submitted review objections.
+- Pull request `#31` had no unresolved review threads or submitted review objections and was squash-merged as `b845c37c886bc95ca97aa2043a6b95b2b68c7286`.
+- Pull request `#32` changes documentation only and closes the repository ledger.
 
 ## Remaining blockers and limitations
 
