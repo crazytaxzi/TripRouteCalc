@@ -160,9 +160,7 @@ function route(
           segmentId: segment.segmentId,
           sequence: 1,
           distance: distanceInMiles(segment.miles),
-          ...(segment.unavailableTravelTime
-            ? {}
-            : { travelDuration: durationInMinutes(segment.minutes) }),
+          travelDuration: durationInMinutes(segment.minutes),
           geometry,
           expectedSpeed: speedInMilesPerHour(
             Math.max(1, Math.round(segment.miles / (segment.minutes / 60))),
