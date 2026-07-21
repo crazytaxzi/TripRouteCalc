@@ -14,8 +14,6 @@ jobs:
     if: github.actor != 'github-actions[bot]'
     runs-on: ubuntu-latest
     timeout-minutes: 15
-    env:
-      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/trip_route_calc_test?schema=public
     steps:
       - name: Check out implementation branch
         uses: actions/checkout@v4
@@ -23,55 +21,41 @@ jobs:
           ref: agent/stage-16-confidence-data-quality
           fetch-depth: 0
 
-      - name: Set up Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: 22
-
-      - name: Enable pnpm
-        run: |
-          corepack enable >/dev/null
-          corepack prepare pnpm@9.15.4 --activate >/dev/null
-
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile --reporter=silent
-
-      - name: Generate Prisma client
-        run: pnpm db:generate >/dev/null
-
-      - name: Apply and capture repository lint fixes
-        id: lint
+      - name: Replace unsafe asymmetric matcher
         shell: bash
         run: |
-          set +e
-          pnpm exec eslint packages --fix > stage16-lint-remaining.txt 2>&1
-          status=$?
-          echo "status=$status" >> "$GITHUB_OUTPUT"
-          echo >> stage16-lint-remaining.txt
-          echo "EXIT_STATUS=$status" >> stage16-lint-remaining.txt
-          exit 0
+          python - <<'PY'
+          from pathlib import Path
 
-      - name: Commit mechanical lint fixes
+          path = Path('packages/foundation/test/eta-simulator.test.ts')
+          text = path.read_text(encoding='utf-8')
+          old = """    expect(result.expected.confidenceReasons).toEqual(
+              expect.arrayContaining([
+                expect.objectContaining({
+                  code: 'AVERAGE_SPEED_FALLBACK',
+                  userExplanation: expect.stringContaining('average-speed fallback'),
+                }),
+              ]),
+            );
+          """.replace('          ', '')
+          new = """    expect(
+              result.expected.confidenceReasons.some(
+                (reason) =>
+                  reason.code === 'AVERAGE_SPEED_FALLBACK' &&
+                  reason.userExplanation.includes('average-speed fallback'),
+              ),
+            ).toBe(true);
+          """.replace('          ', '')
+          if text.count(old) != 1:
+              raise SystemExit('Expected exactly one unsafe confidence matcher.')
+          path.write_text(text.replace(old, new), encoding='utf-8')
+          PY
+
+      - name: Commit assertion repair
         shell: bash
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add packages
-          if git diff --cached --quiet; then
-            echo "No auto-fixable changes."
-          else
-            git commit -m "Apply repository Stage 16 lint fixes"
-            git push origin HEAD:agent/stage-16-confidence-data-quality
-          fi
-
-      - name: Upload remaining lint failures
-        uses: actions/upload-artifact@v4
-        with:
-          name: stage16-lint-remaining
-          path: stage16-lint-remaining.txt
-          if-no-files-found: error
-          retention-days: 1
-
-      - name: Preserve remaining lint failure
-        if: steps.lint.outputs.status != '0'
-        run: exit 1
+          git add packages/foundation/test/eta-simulator.test.ts
+          git commit -m "Use typed Stage 16 confidence assertion"
+          git push origin HEAD:agent/stage-16-confidence-data-quality
