@@ -21,34 +21,17 @@ jobs:
           fetch-depth: 0
 
       - name: Capture Stage 16 integration patch traceback
-        id: patch
         shell: bash
         run: |
-          python - <<'PY'
-          import subprocess
-          import textwrap
-          import traceback
-          from pathlib import Path
-
-          output = Path('stage16-patch-traceback.txt')
-          try:
-              workflow = subprocess.check_output(
-                  [
-                      'git',
-                      'show',
-                      '1656e255a1f0a606d0b2c6613ad2e8ea054a6963:.github/workflows/stage16-eta-integration.yml',
-                  ],
-                  text=True,
-              )
-              marker = "          python - <<'PY'\n"
-              start = workflow.index(marker) + len(marker)
-              end = workflow.index("          PY\n", start)
-              patch = textwrap.dedent(workflow[start:end])
-              exec(compile(patch, 'stage16-eta-integration.py', 'exec'), {})
-              output.write_text('PATCH_SUCCEEDED\n', encoding='utf-8')
-          except Exception:
-              output.write_text(traceback.format_exc(), encoding='utf-8')
-          PY
+          git show 1656e255a1f0a606d0b2c6613ad2e8ea054a6963:.github/workflows/stage16-eta-integration.yml > /tmp/stage16-workflow.yml
+          sed -n "/python - <<'PY'/,/^          PY$/p" /tmp/stage16-workflow.yml \
+            | sed '1d;$d;s/^          //' > /tmp/stage16-patch.py
+          set +e
+          python /tmp/stage16-patch.py > stage16-patch-traceback.txt 2>&1
+          status=$?
+          echo >> stage16-patch-traceback.txt
+          echo "EXIT_STATUS=$status" >> stage16-patch-traceback.txt
+          exit 0
 
       - name: Upload integration traceback
         uses: actions/upload-artifact@v4
