@@ -18,26 +18,22 @@ jobs:
         with:
           ref: agent/stage-12-regulatory-rules
           fetch-depth: 0
-      - name: Type string condition collections
+      - name: Normalize string collection indentation
         run: |
           python3 <<'PY'
           from pathlib import Path
           path = Path('packages/compliance/src/regulatory-engine.ts')
           text = path.read_text()
-          if text.count('      const actualValues =') != 1:
-              raise RuntimeError('Expected one actual-values declaration.')
-          if text.count('      const expectedValues =') != 1:
-              raise RuntimeError('Expected one expected-values declaration.')
-          text = text.replace(
-              '      const actualValues =',
-              '      const actualValues: readonly string[] =',
-              1,
-          )
-          text = text.replace(
-              '      const expectedValues =',
-              '      const expectedValues: readonly string[] =',
-              1,
-          )
+          replacements = {
+              "\n      typeof actual === 'string' ? [actual] : actual;":
+                  "\n        typeof actual === 'string' ? [actual] : actual;",
+              "\n    const expectedValues: readonly string[] =":
+                  "\n      const expectedValues: readonly string[] =",
+          }
+          for old, new in replacements.items():
+              if text.count(old) != 1:
+                  raise RuntimeError(f'Expected one indentation marker: {old!r}')
+              text = text.replace(old, new, 1)
           path.write_text(text)
           PY
       - name: Commit repair
@@ -47,5 +43,5 @@ jobs:
           git config user.name github-actions[bot]
           git config user.email 41898282+github-actions[bot]@users.noreply.github.com
           git add packages/compliance/src/regulatory-engine.ts
-          git commit -m 'Type Stage 12 string condition collections'
+          git commit -m 'Format Stage 12 string condition collections'
           git push origin HEAD:agent/stage-12-regulatory-rules
