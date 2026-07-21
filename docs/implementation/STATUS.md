@@ -48,11 +48,11 @@
 
 ## Verification evidence
 
-The permanent repository gate passed against both the implementation and final documentation heads:
+The permanent repository gate passed against the implementation, final implementation documentation, and ledger-closure heads:
 
 - implementation exit-gate CI run `1192` (`29856292338`) on `eb3f5ef7debd614c4cfa96f6bd846911e24ccdf4`
 - final implementation and documentation CI run `1198` (`29867963558`) on `61cd575e043e5a70bd3eac421353cb89046e1764`
-- ledger-closure CI: pending final PR `#32` gate
+- ledger-closure CI run `1202` (`29868607335`) on `8ea5270beea0075b961d3c416e860694f561f17d`
 
 The verified gates include:
 
