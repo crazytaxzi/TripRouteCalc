@@ -1653,7 +1653,26 @@ function processSegment(
   );
 }
 
-function mappedStopEventType(event: DutyEvent): EtaTimelineEventType {
+function mappedStopEventType(
+  event: DutyEvent,
+  stopTimeline: StopProcessingResult['timeline'],
+): EtaTimelineEventType {
+  const explicitType = stopTimeline.find(
+    (candidate) => candidate.dutyEventId === event.id,
+  )?.type;
+  switch (explicitType) {
+    case 'APPOINTMENT_WAIT':
+      return 'STOP_WAIT';
+    case 'CHECK_IN':
+      return 'STOP_CHECK_IN';
+    case 'SERVICE':
+      return 'STOP_SERVICE';
+    case 'HOS_HOLD':
+      return 'STOP_HOS_HOLD';
+    case 'ARRIVAL':
+    case 'DEPARTURE':
+      break;
+  }
   if (event.eventType === 'PAPERWORK') return 'STOP_CHECK_IN';
   if (event.eventType === 'BREAK' || event.eventType === 'REST') {
     return 'STOP_HOS_HOLD';
@@ -1686,7 +1705,7 @@ function processTripStop(
   for (const event of result.stopDutyEvents) {
     if (!state.hos.phaseDutyEvents.slice(beforePhaseLength).some((existing) => existing.id === event.id)) {
       appendDutyEvent(state, event, {
-        type: mappedStopEventType(event),
+        type: mappedStopEventType(event, result.timeline),
         startZone: stop.location.timeZone,
         stopId: stop.id,
       });
