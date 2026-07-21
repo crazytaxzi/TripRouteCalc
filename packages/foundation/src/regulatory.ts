@@ -411,7 +411,7 @@ const RegulatoryConditionSchemaInternal: z.ZodType<RegulatoryCondition> = z.lazy
           (value) => Date.parse(value.startsAt) < Date.parse(value.endsAt),
           { message: 'A regulatory time window must end after it starts.' },
         ),
-    ]),
+    ]) as unknown as z.ZodType<RegulatoryCondition>,
 );
 
 export const RegulatoryConditionSchema = RegulatoryConditionSchemaInternal;
@@ -663,34 +663,78 @@ export interface RegulatoryComplianceResult {
 }
 
 export function validateJurisdictionRule(input: unknown): JurisdictionRule {
-  return freeze(JurisdictionRuleSchema.parse(input));
+  const parsed = JurisdictionRuleSchema.parse(input);
+  return freeze({
+    ruleId: parsed.ruleId,
+    jurisdictionCode: parsed.jurisdictionCode,
+    category: parsed.category,
+    affectedVehicleTypes: freezeArray(parsed.affectedVehicleTypes),
+    roadScope: parsed.roadScope,
+    effectiveFrom: parsed.effectiveFrom,
+    ...(parsed.effectiveTo === undefined
+      ? {}
+      : { effectiveTo: parsed.effectiveTo }),
+    source: freeze(parsed.source),
+    explanation: parsed.explanation,
+    condition: parsed.condition,
+    requiredAction: freeze({
+      ...parsed.requiredAction,
+      requiredUpdatedFacts: freezeArray(
+        parsed.requiredAction.requiredUpdatedFacts,
+      ),
+    }),
+    severity: parsed.severity,
+    blocksRouteFinalization: parsed.blocksRouteFinalization,
+    requiresManualVerification: parsed.requiresManualVerification,
+    active: parsed.active,
+    version: parsed.version,
+  });
 }
 
 export function validateRegulatoryRuleSet(input: unknown): RegulatoryRuleSet {
   const parsed = RegulatoryRuleSetSchema.parse(input);
-  const normalized: RegulatoryRuleSet = {
-    ...parsed,
-    rules: freezeArray(parsed.rules.map((rule) => freeze(rule))),
+  return freeze({
+    ruleSetId: parsed.ruleSetId,
+    name: parsed.name,
+    version: parsed.version,
+    status: parsed.status,
+    effectiveFrom: parsed.effectiveFrom,
+    ...(parsed.effectiveTo === undefined
+      ? {}
+      : { effectiveTo: parsed.effectiveTo }),
+    source: freeze(parsed.source),
     coverage: freeze({
-      ...parsed.coverage,
       jurisdictionCodes: freezeArray(parsed.coverage.jurisdictionCodes),
+      status: parsed.coverage.status,
       limitations: freezeArray(parsed.coverage.limitations),
     }),
-  };
-  return freeze(normalized);
+    rules: freezeArray(parsed.rules.map(validateJurisdictionRule)),
+  });
 }
 
 export function validateRegulatoryEvaluationInput(
   input: unknown,
 ): RegulatoryEvaluationInput {
   const parsed = RegulatoryEvaluationInputSchema.parse(input);
-  const normalized: RegulatoryEvaluationInput = {
-    ...parsed,
+  return freeze({
+    routeId: parsed.routeId,
+    routeKind: parsed.routeKind,
+    providerName: parsed.providerName,
+    ...(parsed.providerVersion === undefined
+      ? {}
+      : { providerVersion: parsed.providerVersion }),
+    ...(parsed.providerRequestId === undefined
+      ? {}
+      : { providerRequestId: parsed.providerRequestId }),
+    providerRespondedAt: parsed.providerRespondedAt,
+    providerVerificationStatus: parsed.providerVerificationStatus,
+    vehicleType: parsed.vehicleType,
+    equipment: parsed.equipment,
     permitIdentifiers: freezeArray(parsed.permitIdentifiers),
+    evaluationAt: parsed.evaluationAt,
     segments: freezeArray(parsed.segments.map((segment) => freeze(segment))),
     ruleSet: validateRegulatoryRuleSet(parsed.ruleSet),
-  };
-  return freeze(normalized);
+  });
 }
 
 export function regulatoryRuleSnapshot(
@@ -780,18 +824,40 @@ export function validateRegulatoryComplianceResult(
 ): RegulatoryComplianceResult {
   const parsed = RegulatoryComplianceResultSchema.parse(input);
   return freeze({
-    ...parsed,
+    routeId: parsed.routeId,
+    ruleSetId: parsed.ruleSetId,
+    ruleSetVersion: parsed.ruleSetVersion,
+    evaluatedAt: parsed.evaluatedAt,
+    status: parsed.status,
+    legalFinalizationStatus: parsed.legalFinalizationStatus,
     findings: freezeArray(
-      parsed.findings.map((finding) =>
+      parsed.findings.map((finding): RegulatoryComplianceFinding =>
         freeze({
-          ...finding,
+          findingId: finding.findingId,
+          ...(finding.ruleId === undefined ? {} : { ruleId: finding.ruleId }),
+          ruleSetVersion: finding.ruleSetVersion,
+          affectedSegmentId: finding.affectedSegmentId,
+          jurisdictionCode: finding.jurisdictionCode,
+          category: finding.category,
+          severity: finding.severity,
+          source: freeze(finding.source),
+          ...(finding.effectiveRuleVersion === undefined
+            ? {}
+            : { effectiveRuleVersion: finding.effectiveRuleVersion }),
           inputFacts: freeze({ ...finding.inputFacts }),
+          explanation: finding.explanation,
           requiredAction: freeze({
             ...finding.requiredAction,
             requiredUpdatedFacts: freezeArray(
               finding.requiredAction.requiredUpdatedFacts,
             ),
           }),
+          ...(finding.actionLocation === undefined
+            ? {}
+            : { actionLocation: freeze(finding.actionLocation) }),
+          blocksRouteFinalization: finding.blocksRouteFinalization,
+          requiresManualVerification: finding.requiresManualVerification,
+          lastVerifiedAt: finding.lastVerifiedAt,
         }),
       ),
     ),
@@ -799,11 +865,13 @@ export function validateRegulatoryComplianceResult(
     manualVerificationSegmentIds: freezeArray(
       parsed.manualVerificationSegmentIds,
     ),
-    sourceAttribution: freezeArray(parsed.sourceAttribution.map((source) => freeze(source))),
+    lastVerifiedAt: parsed.lastVerifiedAt,
+    sourceAttribution: freezeArray(
+      parsed.sourceAttribution.map((source) => freeze(source)),
+    ),
     explanations: freezeArray(parsed.explanations),
   });
 }
-
 
 export function regulatoryComplianceResultSnapshot(
   input: RegulatoryComplianceResult,

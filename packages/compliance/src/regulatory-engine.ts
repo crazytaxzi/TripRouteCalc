@@ -472,7 +472,7 @@ function providerFinding(
     requiredAction: manualAction(
       'Verify the affected segment and current restrictions with an authoritative commercial-routing or official regulatory source before finalization.',
     ),
-    actionLocation,
+    ...(actionLocation === undefined ? {} : { actionLocation }),
     blocksRouteFinalization: true,
     requiresManualVerification: severity === 'manual-verification-required',
     lastVerifiedAt: input.ruleSet.source.lastVerifiedAt,
@@ -501,7 +501,9 @@ function ruleFinding(
       ...rule.requiredAction,
       requiredUpdatedFacts: freezeArray(rule.requiredAction.requiredUpdatedFacts),
     }),
-    actionLocation: segment.lastReasonableActionLocation,
+    ...(segment.lastReasonableActionLocation === undefined
+      ? {}
+      : { actionLocation: segment.lastReasonableActionLocation }),
     blocksRouteFinalization: rule.blocksRouteFinalization,
     requiresManualVerification: rule.requiresManualVerification,
     lastVerifiedAt: rule.source.lastVerifiedAt,
@@ -530,7 +532,9 @@ function unknownRuleFinding(
     requiredAction: manualAction(
       `Obtain the missing route or vehicle facts needed to evaluate rule ${rule.ruleId}.`,
     ),
-    actionLocation: segment.lastReasonableActionLocation,
+    ...(segment.lastReasonableActionLocation === undefined
+      ? {}
+      : { actionLocation: segment.lastReasonableActionLocation }),
     blocksRouteFinalization: true,
     requiresManualVerification: true,
     lastVerifiedAt: rule.source.lastVerifiedAt,

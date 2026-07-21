@@ -1,4 +1,5 @@
-import { utcInstant, validateJurisdictionRule } from '@trip-route-calc/foundation';
+import { utcInstant } from '@trip-route-calc/foundation';
+import { validateJurisdictionRule } from '@trip-route-calc/foundation/regulatory';
 import { describe, expect, it } from 'vitest';
 
 import { evaluateRegulatoryCompliance } from '../src/index.js';
