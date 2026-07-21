@@ -221,7 +221,9 @@ function input(
   };
 }
 
-function drivingEvents(result: ReturnType<typeof simulateEtaTrip>['earliestLegal']) {
+function drivingEvents(
+  result: ReturnType<typeof simulateEtaTrip>['earliestLegal'],
+): ReturnType<typeof simulateEtaTrip>['earliestLegal']['timeline'] {
   return result.timeline.filter((event) => event.type === 'DRIVING');
 }
 
