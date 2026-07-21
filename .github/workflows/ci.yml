@@ -7,102 +7,15 @@ on:
     branches: [main]
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
-  stage15-type-repair:
-    runs-on: ubuntu-latest
-    timeout-minutes: 10
-    steps:
-      - name: Check out Stage 15 branch
-        uses: actions/checkout@v4
-        with:
-          ref: agent/stage-15-eta-simulator
-          fetch-depth: 0
-          show-progress: false
-      - name: Add explicit array-bound helper
-        run: |
-          python3 <<'PY'
-          from pathlib import Path
-
-          path = Path('packages/foundation/src/eta-simulator.ts')
-          lines = path.read_text().splitlines(keepends=True)
-
-          current_matches = [
-              index for index, line in enumerate(lines)
-              if line.startswith('function currentTime(')
-          ]
-          if len(current_matches) != 1:
-              raise RuntimeError(f'Expected one currentTime function; found {len(current_matches)}')
-          current_index = current_matches[0]
-          expected_current = [
-              'function currentTime(context: SimulationHosContext): UtcInstant {',
-              'return context.phaseDutyEvents.at(-1)?.endAt ?? context.departureState.departureAt;',
-              '}',
-          ]
-          actual_current = [line.strip() for line in lines[current_index:current_index + 3]]
-          if actual_current != expected_current:
-              raise RuntimeError(f'Unexpected currentTime body: {actual_current!r}')
-
-          helper = [
-              '\n',
-              'function requiredItem<T>(\n',
-              '  values: readonly T[],\n',
-              '  index: number,\n',
-              '  message: string,\n',
-              '): T {\n',
-              '  const value = values[index];\n',
-              '  if (value === undefined) {\n',
-              "    throw new EtaSimulationError('ROUTE_STOP_MISMATCH', message);\n",
-              '  }\n',
-              '  return value;\n',
-              '}\n',
-          ]
-          lines[current_index + 3:current_index + 3] = helper
-
-          leg_matches = [
-              index for index, line in enumerate(lines)
-              if line.strip() == 'const leg = input.route.legs[legIndex];'
-          ]
-          destination_matches = [
-              index for index, line in enumerate(lines)
-              if line.strip() == 'const destination = input.stops[legIndex + 1];'
-          ]
-          if len(leg_matches) != 1 or len(destination_matches) != 1:
-              raise RuntimeError(
-                  f'Expected one leg and destination access; found {len(leg_matches)} and {len(destination_matches)}'
-              )
-          lines[leg_matches[0]] = (
-              "    const leg = requiredItem(\n"
-              "      input.route.legs,\n"
-              "      legIndex,\n"
-              "      `Missing route leg ${String(legIndex + 1)}.`,\n"
-              "    );\n"
-          )
-          lines[destination_matches[0]] = (
-              "    const destination = requiredItem(\n"
-              "      input.stops,\n"
-              "      legIndex + 1,\n"
-              "      `Missing destination stop for leg ${leg.legId}.`,\n"
-              "    );\n"
-          )
-          path.write_text(''.join(lines))
-          PY
-      - name: Commit bounded type repair
-        run: |
-          set -euo pipefail
-          git diff --check
-          git config user.name github-actions[bot]
-          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
-          git add packages/foundation/src/eta-simulator.ts
-          git commit -m 'Add explicit Stage 15 route bounds'
-          git push origin HEAD:agent/stage-15-eta-simulator
-
   verification:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     env:
       DATABASE_URL: postgresql://postgres:postgres@localhost:5432/trip_route_calc_test?schema=public
+
     services:
       postgres:
         image: postgres:18-alpine
@@ -117,30 +30,41 @@ jobs:
           --health-interval 5s
           --health-timeout 5s
           --health-retries 12
+
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
+
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
           node-version: 22
+
       - name: Enable pnpm
         run: |
           corepack enable
           corepack prepare pnpm@9.15.4 --activate
+
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
+
       - name: Generate Prisma client
         run: pnpm db:generate
+
       - name: Validate Prisma schema
         run: pnpm db:validate
+
       - name: Apply migrations to clean PostgreSQL database
         run: pnpm db:migrate:deploy
+
       - name: Lint
         run: pnpm lint:source
+
       - name: Type-check
         run: pnpm typecheck:source
+
       - name: Test
         run: pnpm test:source
+
       - name: Build
         run: pnpm build:source
