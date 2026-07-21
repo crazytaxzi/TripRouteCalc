@@ -24,7 +24,7 @@ export type StopType =
   | 'other';
 
 export interface DriverForm {
-  readonly id?: string;
+  readonly id?: string | undefined;
   readonly displayName: string;
 }
 
@@ -56,7 +56,7 @@ export interface HosForm {
 }
 
 export interface TractorForm {
-  readonly id?: string;
+  readonly id?: string | undefined;
   readonly unitNumber: string;
   readonly tractorType: 'day-cab' | 'sleeper' | 'cabover' | 'other';
   readonly axleCount: number;
@@ -76,7 +76,7 @@ export interface TractorForm {
 }
 
 export interface TrailerForm {
-  readonly id?: string;
+  readonly id?: string | undefined;
   readonly unitNumber: string;
   readonly trailerType:
     | 'dry-van'
@@ -98,7 +98,7 @@ export interface TrailerForm {
 }
 
 export interface LoadForm {
-  readonly id?: string;
+  readonly id?: string | undefined;
   readonly referenceNumber: string;
   readonly commodityDescription: string;
   readonly hazmat: boolean;
