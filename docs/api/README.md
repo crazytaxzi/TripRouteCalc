@@ -7,6 +7,7 @@ Stage 17 exposes the accepted domain, routing, compliance, ETA, confidence, and 
 - Every `/api` route requires an authenticated carrier and actor context.
 - Authentication does not replace tenant membership and object-ownership checks in persistence.
 - Public resource identifiers use typed deterministic authenticated encryption and never expose database UUIDs.
+- The Fastify router accepts encrypted path parameters up to 512 characters; authenticated decoding, entity-type checks, and tamper rejection remain mandatory.
 - Write contracts reject unknown fields and ambiguous bare measurements.
 - Trip and stop mutations create immutable revisions and require an expected revision number.
 - Idempotent write retries reuse the original response only when the operation, key, and request hash match.
