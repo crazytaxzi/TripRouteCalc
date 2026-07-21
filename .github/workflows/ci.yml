@@ -23,23 +23,22 @@ jobs:
           python3 <<'PY'
           from pathlib import Path
           path = Path('packages/compliance/src/regulatory-engine.ts')
-          text = path.read_text()
-          replacements = {
-              "\n      typeof actual === 'string' ? [actual] : actual;":
-                  "\n        typeof actual === 'string' ? [actual] : actual;",
-              "\n    const expectedValues: readonly string[] =":
-                  "\n      const expectedValues: readonly string[] =",
-          }
-          for old, new in replacements.items():
-              if text.count(old) != 1:
-                  raise RuntimeError(f'Expected one indentation marker: {old!r}')
-              text = text.replace(old, new, 1)
-          path.write_text(text)
+          lines = path.read_text().splitlines()
+          target = "typeof condition.value === 'string' ? [condition.value] : condition.value;"
+          matches = [index for index, line in enumerate(lines) if line.strip() == target]
+          if len(matches) != 1:
+              raise RuntimeError(f'Expected one condition-value line, found {len(matches)}.')
+          lines[matches[0]] = f'        {target}'
+          path.write_text('\n'.join(lines) + '\n')
           PY
-      - name: Commit repair
+      - name: Commit repair when needed
         run: |
           set -euo pipefail
           git diff --check
+          if git diff --quiet -- packages/compliance/src/regulatory-engine.ts; then
+            echo 'String collection indentation is already normalized.'
+            exit 0
+          fi
           git config user.name github-actions[bot]
           git config user.email 41898282+github-actions[bot]@users.noreply.github.com
           git add packages/compliance/src/regulatory-engine.ts
