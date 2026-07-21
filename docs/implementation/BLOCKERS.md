@@ -76,6 +76,43 @@ The local container's outbound DNS and package access remained unavailable, but 
 Stage 08 required accepted HOS contracts and engines, a clean PostgreSQL integration target, and the existing strict repository gates. Those inputs were sufficient to add and verify the complete master-scenario, boundary, replay, isolation, timezone, and persistence-mapping suite. No provider credential, regulatory feed, production deployment, schema migration, or new legal interpretation was required.
 
 The expanded suite exposed no verified production HOS defect. Commercial routing, production regulatory data, and deployment remain visible future blockers and were not replaced with mocks or approximations.
-## Stage 09 boundary notes
 
-No Stage 09 implementation blocker is open. Commercial route-provider selection and authoritative jurisdiction rule data remain intentionally deferred. Until those later stages are complete, equipment profiles and route physical input must not be presented as proof of route legality.
+## Stage 09 blocker review
+
+**Status:** No active Stage 09 blocker
+
+Stage 09 required explicit physical tractor, trailer, and load facts with provenance and immutable persistence. Those contracts, validation rules, additive profile details, audited tenant-scoped CRUD, and regression coverage are complete. B-002 and B-003 remain intentionally deferred because physical equipment evidence is not route-legality evidence.
+
+## Stage 10 blocker review
+
+**Status:** No active Stage 10 blocker
+
+Stage 10 required deterministic ordered stops, appointment and facility-hour handling, independent waiting, check-in, and service duty statuses, HOS overlap, and immutable stop-detail persistence. These are implemented and verified without requiring live appointment-confirmation, parking, or facility-history providers. Missing live provider evidence remains visible and is never replaced with fabricated facility availability.
+
+## Stage 11 blocker review
+
+**Status:** Implementation complete; live verification blocked by B-002
+
+Stage 11 completed the provider-neutral commercial-routing request, normalized result, timeout, retry, failure, evidence-retention, and no-consumer-fallback boundaries. A real commercial route still cannot be verified until B-002 supplies a licensed provider, documented entitlement and coverage, retention terms, server-only credentials, and a production adapter.
+
+## Stage 12 blocker review
+
+**Status:** Implementation complete; production regulatory evaluation blocked by B-003
+
+Stage 12 completed the data-driven regulatory rule contracts, scoped evaluation, administrative lifecycle, source attribution, immutable evidence, and fixture-based acceptance suite. Production legal evaluation remains blocked until B-003 supplies reviewed authoritative data, licensing, legal-research ownership, update cadence, and an accepted production corpus.
+
+## Stage 13 blocker review
+
+**Status:** Implementation complete; production California legal evaluation blocked by B-003
+
+Stage 13 completed the KPRA adjustment, confirmation, acknowledgement, revision, and full compliance-revalidation workflow. Test-only sourced examples prove behavior, not California legal authority. No production KPRA, axle, bridge, local-route, or permit threshold was invented.
+
+## Stage 14 blocker review
+
+**Status:** No active Stage 14 implementation blocker
+
+Stage 14 required structured operational events, explicit HOS effects, deterministic reserve-aware fuel planning, route-aware placement constraints, separate planning buffers, and immutable revision evidence. Those mandatory requirements are implemented and verified.
+
+B-002 remains open for live commercial-route and route-aware operational-location evidence. No live fuel, parking, scale, maintenance, border, meal, shower, traffic, closure, or facility provider is configured. Supplied fixture locations are test evidence only. The planner blocks missing or unreachable availability and never fabricates an operational stop.
+
+B-003 remains open for production legal-route evaluation, but Stage 14 added no legal threshold and did not require production regulatory data. B-004 remains deferred and did not block the Stage 14 domain, persistence, or CI exit gate.
