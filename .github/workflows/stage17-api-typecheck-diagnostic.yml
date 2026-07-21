@@ -8,6 +8,9 @@ on:
 permissions:
   contents: read
 
+env:
+  DATABASE_URL: postgresql://postgres:postgres@localhost:5432/trip_route_calc_test
+
 jobs:
   diagnose-api-typecheck:
     if: github.head_ref == 'agent/stage-17-rest-api-validation'
