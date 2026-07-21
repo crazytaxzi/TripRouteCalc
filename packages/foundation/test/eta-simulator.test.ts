@@ -317,14 +317,13 @@ describe('Stage 15 constrained speed model', () => {
 
     expect(result.expected.speedDecisions[0]?.source).toBe('FALLBACK_AVERAGE');
     expect(result.expected.confidence).toBe('LOW');
-    expect(result.expected.confidenceReasons).toEqual(
-      expect.arrayContaining([
-        expect.objectContaining({
-          code: 'AVERAGE_SPEED_FALLBACK',
-          userExplanation: expect.stringContaining('average-speed fallback'),
-        }),
-      ]),
-    );
+    expect(
+      result.expected.confidenceReasons.some(
+        (reason) =>
+          reason.code === 'AVERAGE_SPEED_FALLBACK' &&
+          reason.userExplanation.includes('average-speed fallback'),
+      ),
+    ).toBe(true);
   });
 });
 
