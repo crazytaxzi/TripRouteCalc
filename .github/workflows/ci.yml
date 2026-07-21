@@ -10,50 +10,6 @@ permissions:
   contents: read
 
 jobs:
-  stage14-test-diagnostic:
-    runs-on: ubuntu-latest
-    timeout-minutes: 10
-    env:
-      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/trip_route_calc_test?schema=public
-    steps:
-      - name: Check out repository
-        uses: actions/checkout@v4
-        with:
-          show-progress: false
-
-      - name: Set up Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: 22
-
-      - name: Enable pnpm
-        run: |
-          corepack enable
-          corepack prepare pnpm@9.15.4 --activate
-
-      - name: Install dependencies quietly
-        run: pnpm install --frozen-lockfile >/dev/null
-
-      - name: Generate Prisma client quietly
-        run: pnpm db:generate >/dev/null
-
-      - name: Capture focused Stage 14 test diagnostics
-        run: |
-          set +e
-          pnpm exec vitest run \
-            packages/foundation/test/operational-events.test.ts \
-            packages/foundation/test/operational-events-guard.test.ts \
-            > stage14-tests.txt 2>&1
-          code=$?
-          echo "exit_code=$code" >> stage14-tests.txt
-          exit 0
-
-      - name: Upload focused Stage 14 test diagnostics
-        uses: actions/upload-artifact@v4
-        with:
-          name: stage14-test-diagnostics
-          path: stage14-tests.txt
-
   verification:
     runs-on: ubuntu-latest
     timeout-minutes: 15
