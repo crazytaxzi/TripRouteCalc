@@ -6,7 +6,7 @@ The product is intended to produce transparent, defensible planning estimates fo
 
 ## Current state
 
-The canonical private repository is established on `main`. Stages 01 through 15 are complete, verified, merged, and ledger-closed. Stage 16 confidence, explanations, and data-quality behavior is complete and verified on its implementation branch pending pull-request merge and ledger closure.
+The canonical private repository is established on `main`. Stages 01 through 16 are complete, verified, merged, and ledger-closed. Stage 17 REST API and validation is the exact next source.
 
 - `@trip-route-calc/foundation` provides product terminology, first-release scope boundaries, explicit measurement primitives, UTC and IANA time-zone handling, DST-safe local appointment and regulatory-boundary resolution, provider-neutral domain contracts, validated driver HOS departure-state and duty-event contracts, the pure Stage 05 core clock engine, the pure Stage 06 rolling cycle engine, the pure Stage 07 advanced-rule evaluator, the Stage 09 equipment/load physical-validation domain, the Stage 10 ordered stop-processing domain, Stage 11 commercial-routing request and normalized-result contracts, Stage 12 regulatory source, scope, condition, rule-set, finding, and compliance-result contracts, Stage 13 KPRA action and revalidation contracts, Stage 14 structured operational-event and fuel-planning contracts, the Stage 15 deterministic three-projection ETA simulator, and the Stage 16 deterministic confidence and explanation model.
 - Stage 05 covers the standard 10-hour reset, 11-hour driving allowance, 14-hour window, cycle-availability blocking, and 30-minute interruption.
@@ -20,12 +20,12 @@ The canonical private repository is established on `main`. Stages 01 through 15 
 - Stage 13 adds a data-driven California KPRA adjustment and axle revalidation workflow that selects the strictest sourced exact-segment limit, identifies adjustment timing, requires new physical and weight evidence on a new revision, reruns complete compliance, and preserves acknowledgement and audit history without embedding production thresholds.
 - Stage 14 adds distinct fuel, inspection, securement, reefer, maintenance, border, parking, meal, and shower events with explicit duration, location, source, duty status, HOS effects, placement constraints, planning buffers, deterministic reserve-aware fuel planning, origin fueling, and immutable revision evidence without fabricating operational locations.
 - Stage 15 adds earliest-legal, expected, and conservative ETA projections; one UTC minute-precision event timeline; explicit IANA local rendering; DST and time-zone crossing behavior; constrained segment speed decisions; HOS, stop, compliance, and operational-event composition; qualifying stop/rest overlap; structured blockers and confidence reasons; and deterministic replay from immutable persisted revisions.
-- Stage 16 separates confidence from projection status; implements `HIGH`, `MODERATE`, `LOW`, and `UNVERIFIED`; classifies documented legal, verification, operational, live-data, and user-estimated factors; returns structured safe evidence references and plain-language explanations; withholds legal conclusions when evidence is unverified; and explains HOS constraints, stop clocks, interruptions, rests, appointment waiting, compliance actions, speed fallbacks, and final local time.
+- Stage 16 separates confidence from projection status; implements `HIGH`, `MODERATE`, `LOW`, and `UNVERIFIED`; classifies documented legal, verification, operational, live-data, and user-estimated factors; returns structured safe evidence references and plain-language explanations; withholds legal conclusions when evidence is unverified; and explains HOS constraints, stop clocks, interruptions, rests, appointment waiting, compliance actions, speed fallbacks, route constraints, operational events, and final local time.
 - `@trip-route-calc/routing` isolates commercial provider capabilities, licensing configuration, credentials, execution policy, provider errors, and the no-fallback runtime boundary.
 - `@trip-route-calc/compliance` isolates pure regulatory evaluation and KPRA revalidation from route-provider adapters, HOS arithmetic, persistence, API, and UI concerns.
 - `@trip-route-calc/persistence` provides PostgreSQL and Prisma persistence, tenant-scoped repositories, immutable trip revisions, ordered stops, evidence retention, regulatory lifecycle and change history, structured compliance evidence, KPRA acknowledgement and audit evidence, export history, audit records, immutable HOS input revisions, additive equipment-profile details, additive stop-processing details, typed normalized commercial-route evidence storage, Stage 14 operational-plan and override retention, Stage 15 deterministic ETA input/result replay, and Stage 16 structured confidence reasons and in-place confidence-enum migration.
 
-API behavior and UI behavior have not started. Live commercial-provider verification remains blocked until B-002 is resolved with a licensed provider, documented entitlement and retention terms, server-only credentials, and a real adapter. Production legal-route evaluation remains blocked until B-003 is resolved with authoritative reviewed regulatory sources and versioned production rules. Live fuel, parking, scale, maintenance, border, meal, shower, traffic, closure, weather, and facility availability providers remain unselected. Stage 16 therefore classifies and explains supplied evidence honestly; it does not turn missing live or legal evidence into a production legal conclusion.
+API behavior and UI behavior have not started. Live commercial-provider verification remains blocked until B-002 is resolved with a licensed provider, documented entitlement and retention terms, server-only credentials, and a real adapter. Production legal-route evaluation remains blocked until B-003 is resolved with authoritative reviewed regulatory sources and versioned production rules. Live fuel, parking, scale, maintenance, border, meal, shower, traffic, closure, weather, and facility availability providers remain unselected. Stage 16 classifies and explains supplied evidence honestly; it does not turn missing live or legal evidence into a production legal conclusion.
 
 ## Workspace checks
 
@@ -79,7 +79,7 @@ PostgreSQL 18 uses the named volume mounted at `/var/lib/postgresql`.
 - Stage 13: California KPRA and Axle Compliance, COMPLETE; production California legal evaluation blocked by B-003
 - Stage 14: Fuel, Inspections, and Operational Events, COMPLETE; live operational-location verification blocked by B-002 and unselected facility providers
 - Stage 15: ETA Simulator, Speeds, and Time Zones, COMPLETE, VERIFIED, MERGED, AND LEDGER-CLOSED; live route, traffic, weather, closure, and facility confidence remains constrained by B-002, B-003, and unselected providers
-- Stage 16: Confidence, Explanations, and Data Quality, COMPLETE AND VERIFIED ON THE IMPLEMENTATION BRANCH; merge and ledger closure remain pending
+- Stage 16: Confidence, Explanations, and Data Quality, COMPLETE, VERIFIED, MERGED, AND LEDGER-CLOSED; confidence does not resolve missing live or legal evidence
 
 See:
 
@@ -114,7 +114,7 @@ See:
 - `docs/hos/README.md`
 - `docs/hos/test-fixtures.md`
 - `docs/persistence/README.md`
-- `docs/specification/16_CONFIDENCE_EXPLANATIONS_DATA_QUALITY.md`
+- `docs/specification/17_REST_API_AND_VALIDATION.md`
 
 ## First-release scope
 
@@ -141,4 +141,4 @@ No exception, exemption, emergency declaration, pilot program, adverse-driving r
 
 ## Next action
 
-Complete and merge pull request `#29`, close the Stage 16 implementation ledger, then begin the Stage 17 REST API and boundary-validation source under the Prime Directive.
+Begin `docs/specification/17_REST_API_AND_VALIDATION.md` under the Prime Directive, preserving the accepted HOS, equipment, stop, route, compliance, operational-event, ETA, confidence, explanation, persistence, tenant, immutable-revision, audit, and redaction boundaries.

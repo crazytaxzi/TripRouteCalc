@@ -128,3 +128,17 @@ B-002 remains open for live commercial-route timing, traffic, weather, closure, 
 B-003 remains open for production legal-route and restriction evaluation. Test-only sourced rules and normalized route fixtures prove deterministic behavior, not production legality. Stage 15 does not invent regulatory authority, speed limits, route restrictions, permits, recap timing, restart completion, or sleeper qualification.
 
 B-004 remains deferred and did not block the pure simulator, immutable revision replay, PostgreSQL integration test, or permanent CI exit gate. No new Stage 15 blocker was created.
+
+## Stage 16 blocker review
+
+**Status:** No active Stage 16 implementation blocker
+
+Stage 16 required deterministic confidence classification, structured reasons, safe evidence references, constraint explanations, legal-conclusion withholding, persistence alignment, migration, replay, and complete factor coverage. Those mandatory requirements are implemented and verified.
+
+B-002 remains open. Stage 16 can classify missing commercial-route, traffic, weather, closure, local-access, provider-restriction, and facility evidence as moderate, low, or unverified, but classification does not supply the missing provider, credential, entitlement, retention terms, or live evidence.
+
+B-003 remains open. Stage 16 can explain when legal-critical evidence is missing or requires manual verification and can withhold a legal conclusion, but it does not create a reviewed production regulatory corpus, legal authority, restriction feed, verification cadence, or permit evidence.
+
+B-004 remains deferred. The in-place confidence migration, immutable JSON evidence, and permanent CI gate are complete, but production hosting, secrets management, backups, recovery objectives, retention policy, and operational infrastructure remain undecided.
+
+No new Stage 16 blocker was created. Confidence and explanation behavior must not be represented as resolution of missing route, regulatory, live-condition, authentication, privacy, API-redaction, or deployment evidence.
