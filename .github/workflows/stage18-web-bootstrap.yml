@@ -25,14 +25,18 @@ jobs:
           corepack enable
           corepack prepare pnpm@9.15.4 --activate
       - name: Apply bounded web preflight repairs
+        id: repair
+        continue-on-error: true
         run: |
-          python <<'PY'
+          set -o pipefail
+          python <<'PY' > stage18-lock-refresh.log 2>&1
           from pathlib import Path
 
           def replace_once(path: str, old: str, new: str) -> None:
               target = Path(path)
               text = target.read_text()
               count = text.count(old)
+              print(f'{path}: {count} match(es) for {old[:60]!r}')
               if count != 1:
                   raise RuntimeError(f'{path}: expected one match, found {count}: {old[:100]!r}')
               target.write_text(text.replace(old, new, 1))
@@ -40,6 +44,7 @@ jobs:
           types_path = Path('packages/web/src/types.ts')
           types_text = types_path.read_text()
           expected = types_text.count('readonly id?: string;')
+          print(f'types.ts: {expected} optional profile ids')
           if expected != 4:
               raise RuntimeError(f'types.ts: expected four optional profile ids, found {expected}')
           types_path.write_text(
@@ -56,7 +61,6 @@ jobs:
               "  if (draft.load.commodityDescription.trim() === '') {\n    issues.push({ severity: 'error', path: 'load.commodityDescription', message: 'Describe the commodity.' });\n  }\n",
               "  if (draft.load.commodityDescription.trim() === '') {\n    issues.push({ severity: 'error', path: 'load.commodityDescription', message: 'Describe the commodity.' });\n  }\n  if (draft.route.ruleSetVersion.trim() === '') {\n    issues.push({\n      severity: 'error',\n      path: 'route.ruleSetVersion',\n      message: 'Enter the reviewed regulatory rule-set version.',\n    });\n  }\n",
           )
-
           replace_once(
               'packages/web/src/api-client.ts',
               "      const { id: _id, sequence: _sequence, ...stop } = plan;\n",
@@ -77,28 +81,43 @@ jobs:
               "        confidence:\n          typeof expected.confidence === 'string' ? expected.confidence : undefined,\n        warnings: explanations,\n",
               "        ...(typeof expected.confidence === 'string'\n          ? { confidence: expected.confidence }\n          : {}),\n        warnings: explanations,\n",
           )
-
           replace_once(
               'packages/web/e2e/planner.spec.ts',
               "import { expect, test } from '@playwright/test';\n\nasync function mockProfiles(page: Parameters<typeof test>[0]['page']): Promise<void> {\n",
               "import { expect, test } from '@playwright/test';\nimport type { Page } from '@playwright/test';\n\nasync function mockProfiles(page: Page): Promise<void> {\n",
           )
-
           replace_once(
               'packages/web/src/model.test.ts',
               "    const attemptedLockedMove = draftReducer(moved, {\n      type: 'move-stop',\n      localId: moved.stops[0]!.localId,\n      direction: 1,\n    });\n",
               "    const lockedStart = moved.stops[0];\n    if (lockedStart === undefined) throw new Error('Missing locked start stop.');\n    const attemptedLockedMove = draftReducer(moved, {\n      type: 'move-stop',\n      localId: lockedStart.localId,\n      direction: 1,\n    });\n",
           )
+          print('bounded preflight complete')
           PY
       - name: Refresh frozen lockfile
-        run: pnpm install --no-frozen-lockfile
+        id: lock
+        if: steps.repair.outcome == 'success'
+        continue-on-error: true
+        run: |
+          set -o pipefail
+          pnpm install --no-frozen-lockfile >> stage18-lock-refresh.log 2>&1
+      - name: Upload diagnostic
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: stage18-lock-refresh
+          path: stage18-lock-refresh.log
+          retention-days: 1
+      - name: Fail on diagnostic error
+        if: steps.repair.outcome == 'failure' || steps.lock.outcome == 'failure'
+        run: exit 1
       - name: Commit preflight and lockfile
         env:
           HEAD_BRANCH: ${{ github.head_ref }}
         run: |
           rm .github/workflows/stage18-web-bootstrap.yml
+          rm docs/implementation/evidence/stage18-lock-refresh-trigger.md
           git config user.name "TripRouteCalc Stage 18 Agent"
           git config user.email "actions@users.noreply.github.com"
-          git add packages/web pnpm-lock.yaml .github/workflows/stage18-web-bootstrap.yml
+          git add packages/web pnpm-lock.yaml .github/workflows/stage18-web-bootstrap.yml docs/implementation/evidence/stage18-lock-refresh-trigger.md
           git commit -m "build(stage18): refresh web lockfile and preflight"
           git push origin "HEAD:${HEAD_BRANCH}"
