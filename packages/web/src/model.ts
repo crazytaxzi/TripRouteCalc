@@ -197,6 +197,7 @@ export function defaultTripDraft(): TripDraft {
       stopDefaults('final-consignee', true),
     ]),
     route: {
+      ruleSetVersion: '',
       policy: 'fastest-compliant',
       avoidTolls: false,
       avoidFerries: false,
@@ -533,6 +534,13 @@ export function validateDraft(draft: TripDraft): readonly ValidationIssue[] {
   }
   if (draft.load.commodityDescription.trim() === '') {
     issues.push({ severity: 'error', path: 'load.commodityDescription', message: 'Describe the commodity.' });
+  }
+  if (draft.route.ruleSetVersion.trim() === '') {
+    issues.push({
+      severity: 'error',
+      path: 'route.ruleSetVersion',
+      message: 'Enter the reviewed regulatory rule-set version.',
+    });
   }
   if (draft.stops.length < 2) {
     issues.push({ severity: 'error', path: 'stops', message: 'A trip needs a start and final stop.' });
