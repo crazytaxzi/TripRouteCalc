@@ -26,7 +26,9 @@ export function stage17OpenApiDocument(): Readonly<Record<string, unknown>> {
     required: true,
     schema: { type: 'string' },
   };
-  const jsonBody = (schema: Readonly<Record<string, unknown>>) => ({
+  const jsonBody = (
+    schema: Readonly<Record<string, unknown>>,
+  ): Readonly<Record<string, unknown>> => ({
     required: true,
     content: { 'application/json': { schema } },
   });

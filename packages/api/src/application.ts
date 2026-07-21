@@ -48,7 +48,6 @@ import type {
 import {
   ApiConflictError,
   ApiError,
-  ApiLegalBlockingError,
   ApiProviderUnavailableError,
   ApiValidationError,
 } from './errors.js';
@@ -132,12 +131,28 @@ function revisionStops(
   stops: readonly TripStopPlan[],
 ): CreateTripRevisionInput['stops'] {
   return stops.map((stop) => {
-    const { id: _id, sequence, type, required, ...details } = stop;
     const window = appointmentWindow(stop);
+    const details = {
+      lockedPosition: stop.lockedPosition,
+      location: stop.location,
+      appointment: stop.appointment,
+      facilityHours: stop.facilityHours,
+      checkInDuration: stop.checkInDuration,
+      serviceDuration: stop.serviceDuration,
+      waitingDutyStatus: stop.waitingDutyStatus,
+      checkInDutyStatus: stop.checkInDutyStatus,
+      serviceDutyStatus: stop.serviceDutyStatus,
+      earlyParkingAllowed: stop.earlyParkingAllowed,
+      overnightParkingAllowed: stop.overnightParkingAllowed,
+      ...(stop.notes === undefined ? {} : { notes: stop.notes }),
+      ...(stop.instructions === undefined
+        ? {}
+        : { instructions: stop.instructions }),
+    };
     return {
-      sequence,
-      type,
-      required,
+      sequence: stop.sequence,
+      type: stop.type,
+      required: stop.required,
       timeZone: stop.location.timeZone,
       expectedServiceDuration: expectedServiceDuration(stop.serviceDuration),
       ...(window === undefined ? {} : { appointmentWindow: window }),
@@ -353,7 +368,7 @@ export class Stage17ApplicationService {
       'driver.create',
       idempotencyKey,
       body,
-      async () => {
+      async (): Promise<ApplicationOperationResult> => {
         await assertTenantMembership(this.#client, context);
         const driver = await this.#client.driver.create({
           data: {
@@ -566,18 +581,22 @@ export class Stage17ApplicationService {
       async () => {
         const current = await this.#loadCurrent(context, tripId);
         this.#assertExpectedRevision(current, body.expectedRevisionNumber);
-        let found = false;
-        const stops = current.draft.stops.map((stop) => {
-          if (stop.id !== stopId) return stop;
-          found = true;
-          return logicalTripStopSchema.parse({
-            ...stop,
-            ...body.patch,
-            id: stop.id,
-            sequence: stop.sequence,
-          });
+        const stopIndex = current.draft.stops.findIndex(
+          (stop) => stop.id === stopId,
+        );
+        if (stopIndex < 0) this.#stopNotFound();
+        const existingStop = current.draft.stops[stopIndex];
+        if (existingStop === undefined) {
+          throw new Error('Validated stop index did not resolve to a stop.');
+        }
+        const updatedStop = logicalTripStopSchema.parse({
+          ...existingStop,
+          ...body.patch,
+          id: existingStop.id,
+          sequence: existingStop.sequence,
         });
-        if (!found) this.#stopNotFound();
+        const stops = [...current.draft.stops];
+        stops[stopIndex] = updatedStop;
         const draft = stage17TripDraftSchema.parse({
           ...current.draft,
           stops,
@@ -826,9 +845,10 @@ export class Stage17ApplicationService {
           sourceReference: warning.sourceReference,
         })),
         ruleEvidence: current.revision.ruleEvidence.map((evidence) => ({
-          sourceReference: evidence.sourceReference,
-          ruleVersion: evidence.ruleVersion,
-          evaluationSnapshot: evidence.evaluationSnapshot,
+          capturedVersion: evidence.capturedVersion,
+          capturedSourceMetadata: snapshotObject(
+            evidence.capturedSourceMetadata,
+          ),
         })),
         calculationStatus:
           current.revision.resultSnapshot === null ? 'not-calculated' : 'available',
