@@ -7,53 +7,64 @@ on:
     branches: [main]
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
   verification:
-    if: github.actor != 'github-actions[bot]'
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    env:
+      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/trip_route_calc_test?schema=public
+
+    services:
+      postgres:
+        image: postgres:18-alpine
+        env:
+          POSTGRES_DB: trip_route_calc_test
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d trip_route_calc_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 12
+
     steps:
-      - name: Check out implementation branch
+      - name: Check out repository
         uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
         with:
-          ref: agent/stage-15-eta-simulator
-          fetch-depth: 0
+          node-version: 22
 
-      - name: Correct persistence test contracts
-        shell: bash
+      - name: Enable pnpm
         run: |
-          python - <<'PY'
-          from pathlib import Path
+          corepack enable
+          corepack prepare pnpm@9.15.4 --activate
 
-          path = Path('packages/persistence/test/eta-simulator.integration.test.ts')
-          text = path.read_text(encoding='utf-8')
-          old = """    routingProviderName: input.route.provider.providerName,
-              routingProviderVersion: input.route.provider.providerVersion,
-              inputSnapshot: input as unknown as Readonly<Record<string, unknown>>,
-          """.replace('          ', '')
-          new = """    routingProviderName: input.route.provider.providerName,
-              ...(input.route.provider.providerVersion === undefined
-                ? {}
-                : { routingProviderVersion: input.route.provider.providerVersion }),
-              inputSnapshot: input as unknown as Readonly<Record<string, unknown>>,
-          """.replace('          ', '')
-          if text.count(old) != 1:
-              raise SystemExit('Expected exactly one provider version assignment.')
-          text = text.replace(old, new)
-          old_result = "expect(stored?.calculationResult?.snapshot).toEqual(firstReplay);"
-          new_result = "expect(stored?.calculationResult?.resultSnapshot).toEqual(firstReplay);"
-          if text.count(old_result) != 1:
-              raise SystemExit('Expected exactly one calculation result snapshot assertion.')
-          path.write_text(text.replace(old_result, new_result), encoding='utf-8')
-          PY
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
 
-      - name: Commit test repair
-        shell: bash
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add packages/persistence/test/eta-simulator.integration.test.ts
-          git commit -m "Correct ETA persistence test contracts"
-          git push origin HEAD:agent/stage-15-eta-simulator
+      - name: Generate Prisma client
+        run: pnpm db:generate
+
+      - name: Validate Prisma schema
+        run: pnpm db:validate
+
+      - name: Apply migrations to clean PostgreSQL database
+        run: pnpm db:migrate:deploy
+
+      - name: Lint
+        run: pnpm lint:source
+
+      - name: Type-check
+        run: pnpm typecheck:source
+
+      - name: Test
+        run: pnpm test:source
+
+      - name: Build
+        run: pnpm build:source
