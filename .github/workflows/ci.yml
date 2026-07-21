@@ -10,6 +10,34 @@ permissions:
   contents: read
 
 jobs:
+  stage14-type-diagnostic:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/trip_route_calc_test?schema=public
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Enable pnpm
+        run: |
+          corepack enable
+          corepack prepare pnpm@9.15.4 --activate
+
+      - name: Install dependencies quietly
+        run: pnpm install --frozen-lockfile >/dev/null
+
+      - name: Generate Prisma client quietly
+        run: pnpm db:generate >/dev/null
+
+      - name: Capture strict TypeScript diagnostics
+        run: pnpm typecheck:source
+
   verification:
     runs-on: ubuntu-latest
     timeout-minutes: 15
