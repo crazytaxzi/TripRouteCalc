@@ -3,6 +3,8 @@ name: Stage 12 Final Lint Repair
 on:
   push:
     branches: [agent/stage-12-regulatory-rules]
+  pull_request:
+    branches: [main]
 
 permissions:
   contents: write
