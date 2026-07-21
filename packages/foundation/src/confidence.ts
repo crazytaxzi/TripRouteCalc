@@ -223,7 +223,7 @@ export const DATA_QUALITY_FACTOR_RULES: Readonly<
   }),
   EXTERNAL_ADJUSTMENT_REDUCED_CONFIDENCE: freeze({
     category: 'MISSING_LIVE_DATA',
-    maximumLevel: 'LOW',
+    maximumLevel: 'MODERATE',
   }),
 });
 
