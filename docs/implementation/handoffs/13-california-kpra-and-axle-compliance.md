@@ -4,13 +4,15 @@
 - Date: 2026-07-20
 - Implementation branch: `agent/stage-13-california-kpra-axle`
 - Pull request: `#22 Implement Stage 13 California KPRA and axle compliance`
-- Verified clean implementation head: `84d8a405e094e8b81cb8e07d58ddbdd57fbb410b`
-- Verification run: `711` (`29794566014`)
-- Completion status: IMPLEMENTATION COMPLETE AND VERIFIED; MERGE PENDING; PRODUCTION REGULATORY DATA BLOCKED BY B-003
+- Final pull-request head: `38c374b2253c461b7c8649635fb3a3e8fcfed1f4`
+- Clean verification run: `711` (`29794566014`)
+- Final verification run: `713` (`29794706059`)
+- Merge commit: `35ceaacdadc98486ee592e5b3d806c4ae17b1bea`
+- Completion status: COMPLETE, VERIFIED, AND MERGED; PRODUCTION REGULATORY DATA BLOCKED BY B-003
 
 ## Protected governance
 
-Stage 13 is being executed under `PRIME_DIRECTIVE.md` and `ERROR_RECOVERY_PROTOCOL.md`. Production code contains no California KPRA or axle threshold. The 40-foot and 38-foot examples exist only in clearly labeled acceptance fixtures. Legal evaluation remains blocked without reviewed active rule data and verified commercial-route evidence.
+Stage 13 was executed under `PRIME_DIRECTIVE.md` and `ERROR_RECOVERY_PROTOCOL.md`. Production code contains no California KPRA or axle threshold. The 40-foot and 38-foot examples exist only in clearly labeled acceptance fixtures. Legal evaluation remains blocked without reviewed active rule data and verified commercial-route evidence.
 
 ## Requirement traceability
 
@@ -57,7 +59,7 @@ Stage 13 is being executed under `PRIME_DIRECTIVE.md` and `ERROR_RECOVERY_PROTOC
 - `packages/persistence/src/repositories.ts`
 - `packages/persistence/test/kpra-adjustment.integration.test.ts`
 
-No file was moved. All temporary diagnostic, annotation-repair, and test-evidence workflows were removed before clean-head verification.
+No file was moved. All temporary diagnostic, annotation-repair, and test-evidence workflows were removed before clean-head and final verification.
 
 ## Database and data changes
 
@@ -74,7 +76,12 @@ No production legal data was inserted.
 
 ## Verification evidence
 
-The complete permanent repository gate passed on clean implementation head `84d8a405e094e8b81cb8e07d58ddbdd57fbb410b` in CI run `711` (`29794566014`):
+The complete permanent repository gate passed twice after temporary workflows were removed:
+
+- clean implementation CI run `711` (`29794566014`) on `84d8a405e094e8b81cb8e07d58ddbdd57fbb410b`;
+- final documentation-only CI run `713` (`29794706059`) on pull-request head `38c374b2253c461b7c8649635fb3a3e8fcfed1f4`.
+
+Both passed:
 
 - `pnpm install --frozen-lockfile`;
 - `pnpm db:generate`;
@@ -82,10 +89,10 @@ The complete permanent repository gate passed on clean implementation head `84d8
 - clean PostgreSQL 18 `pnpm db:migrate:deploy`;
 - `pnpm lint:source`;
 - `pnpm typecheck:source`;
-- complete `pnpm test:source`; and
+- complete `pnpm test:source`: 29 test files and 187 tests passed; and
 - `pnpm build:source`.
 
-The separately captured full test evidence passed with 29 test files and 187 tests. A final documentation-only permanent gate is required after this evidence stamp and before merge.
+Pull request `#22` was squash-merged into `main` as `35ceaacdadc98486ee592e5b3d806c4ae17b1bea`.
 
 ## Recovery summary
 
@@ -93,7 +100,7 @@ The separately captured full test evidence passed with 29 test files and 187 tes
 - The corrected diagnostic isolated five missing explicit test return annotations.
 - Added only those annotations, confirmed strict lint success, and removed the temporary repair workflow.
 - Captured the clipped test summary through a one-use evidence workflow, confirmed 29 test files and 187 passing tests, then removed that workflow.
-- Repeated the complete permanent gate on the clean product and documentation branch.
+- Repeated the complete permanent gate on the clean product and documentation branch and again after the final evidence stamp.
 
 ## Production data blocker
 
@@ -110,4 +117,4 @@ B-002 also remains open, so live commercial-route verification and real adjustme
 
 ## Next source
 
-To be loaded from the numbered specification manifest after Stage 13 is verified and merged.
+`docs/specification/14_FUEL_INSPECTIONS_OPERATIONAL_EVENTS.md`
