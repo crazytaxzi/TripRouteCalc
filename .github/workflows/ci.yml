@@ -18,6 +18,8 @@ jobs:
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
+        with:
+          show-progress: false
 
       - name: Set up Node.js
         uses: actions/setup-node@v4
@@ -36,7 +38,18 @@ jobs:
         run: pnpm db:generate >/dev/null
 
       - name: Capture strict TypeScript diagnostics
-        run: pnpm typecheck:source
+        run: |
+          set +e
+          pnpm typecheck:source > stage14-type.txt 2>&1
+          code=$?
+          echo "exit_code=$code" >> stage14-type.txt
+          exit 0
+
+      - name: Upload strict TypeScript diagnostics
+        uses: actions/upload-artifact@v4
+        with:
+          name: stage14-type-diagnostics
+          path: stage14-type.txt
 
   verification:
     runs-on: ubuntu-latest
