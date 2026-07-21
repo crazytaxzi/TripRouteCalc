@@ -40,6 +40,11 @@ export const DUTY_EVENT_TYPES = [
   'REST',
   'MAINTENANCE',
   'BORDER_OR_AGRICULTURAL_INSPECTION',
+  'CARGO_SECUREMENT_CHECK',
+  'REEFER_CHECK',
+  'PARKING_SEARCH',
+  'MEAL',
+  'SHOWER',
   'OTHER',
 ] as const;
 export type DutyEventType = (typeof DUTY_EVENT_TYPES)[number];
