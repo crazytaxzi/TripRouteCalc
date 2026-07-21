@@ -8,6 +8,9 @@ on:
 permissions:
   contents: read
 
+env:
+  DATABASE_URL: postgresql://postgres:postgres@localhost:5432/trip_route_calc_test
+
 jobs:
   diagnose-transport-lint:
     if: github.head_ref == 'agent/stage-17-rest-api-validation'
@@ -21,6 +24,7 @@ jobs:
           corepack enable
           corepack prepare pnpm@9.15.4 --activate
       - run: pnpm install --frozen-lockfile
+      - run: pnpm db:generate
       - name: Capture lint
         id: lint
         continue-on-error: true
