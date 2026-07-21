@@ -4,7 +4,6 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 
 import {
   ApiIdempotencyRepository,
-  IdempotencyConflictError,
   createPersistenceClient,
   databaseUrlFromEnvironment,
 } from '../src/index.js';
@@ -113,7 +112,7 @@ describe('ApiIdempotencyRepository', () => {
         key,
         request: { order: ['second', 'first'] },
       }),
-    ).rejects.toMatchObject<Partial<IdempotencyConflictError>>({
+    ).rejects.toMatchObject({
       reason: 'REQUEST_MISMATCH',
     });
 
@@ -123,7 +122,7 @@ describe('ApiIdempotencyRepository', () => {
         key,
         request: { order: ['first', 'second'] },
       }),
-    ).rejects.toMatchObject<Partial<IdempotencyConflictError>>({
+    ).rejects.toMatchObject({
       reason: 'IN_PROGRESS',
     });
   });
