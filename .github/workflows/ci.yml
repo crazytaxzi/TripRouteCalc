@@ -13,6 +13,8 @@ jobs:
   verification:
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    env:
+      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/trip_route_calc_test?schema=public
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
