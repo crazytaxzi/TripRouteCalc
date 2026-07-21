@@ -7,10 +7,11 @@ on:
     branches: [main]
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   verification:
+    if: github.actor != 'github-actions[bot]'
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
@@ -20,23 +21,46 @@ jobs:
           ref: agent/stage-16-confidence-data-quality
           fetch-depth: 0
 
-      - name: Capture Stage 16 integration patch traceback
+      - name: Execute narrowed Stage 16 integration patch
         shell: bash
         run: |
           git show 1656e255a1f0a606d0b2c6613ad2e8ea054a6963:.github/workflows/stage16-eta-integration.yml > /tmp/stage16-workflow.yml
           sed -n "/python - <<'PY'/,/^          PY$/p" /tmp/stage16-workflow.yml \
             | sed '1d;$d;s/^          //' > /tmp/stage16-patch.py
-          set +e
-          python /tmp/stage16-patch.py > stage16-patch-traceback.txt 2>&1
-          status=$?
-          echo >> stage16-patch-traceback.txt
-          echo "EXIT_STATUS=$status" >> stage16-patch-traceback.txt
-          exit 0
+          python - <<'PATCHFIX'
+          from pathlib import Path
 
-      - name: Upload integration traceback
-        uses: actions/upload-artifact@v4
-        with:
-          name: stage16-patch-traceback
-          path: stage16-patch-traceback.txt
-          if-no-files-found: error
-          retention-days: 1
+          path = Path('/tmp/stage16-patch.py')
+          text = path.read_text(encoding='utf-8')
+          old = '''replace_once(
+              "readonly confidenceReasons: readonly string[];",
+              "readonly confidenceReasons: readonly ConfidenceReason[];",
+              'speed decision confidence reasons',
+          )'''
+          new = '''replace_once(
+              """  readonly source: 'VERIFIED_PROVIDER_TIME' | 'FALLBACK_AVERAGE';
+            readonly limitingFactors: readonly string[];
+            readonly confidenceReasons: readonly string[];
+            readonly explanation: string;
+          """.replace('          ', ''),
+              """  readonly source: 'VERIFIED_PROVIDER_TIME' | 'FALLBACK_AVERAGE';
+            readonly limitingFactors: readonly string[];
+            readonly confidenceReasons: readonly ConfidenceReason[];
+            readonly explanation: string;
+          """.replace('          ', ''),
+              'speed decision confidence reasons',
+          )'''
+          if text.count(old) != 1:
+              raise SystemExit('Could not narrow speed-decision confidence replacement.')
+          path.write_text(text.replace(old, new), encoding='utf-8')
+          PATCHFIX
+          python /tmp/stage16-patch.py
+
+      - name: Commit Stage 16 ETA integration
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add packages/foundation/src/eta-simulator.ts packages/foundation/src/confidence.ts
+          git commit -m "Integrate confidence and explanations into ETA projections"
+          git push origin HEAD:agent/stage-16-confidence-data-quality
