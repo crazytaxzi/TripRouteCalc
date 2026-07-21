@@ -1,0 +1,71 @@
+name: Stage 14 Readonly Repair
+
+on:
+  pull_request:
+    branches: [main]
+    paths: [.github/workflows/stage14-readonly-repair.yml]
+
+permissions:
+  contents: write
+
+jobs:
+  repair:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/stage-14-operational-events
+          fetch-depth: 0
+      - name: Describe immutable operational contracts
+        run: |
+          python3 <<'PY'
+          from pathlib import Path
+          path = Path('packages/foundation/src/operational-events.ts')
+          text = path.read_text()
+          replacements = {
+              """export type OperationalLocation = Readonly<
+            z.infer<typeof OperationalLocationSchema>
+          >;""": """type ParsedOperationalLocation = z.infer<typeof OperationalLocationSchema>;
+          export type OperationalLocation = Omit<
+            Readonly<ParsedOperationalLocation>,
+            'capabilities' | 'source'
+          > &
+            Readonly<{
+              capabilities: readonly OperationalLocationCapability[];
+              source: OperationalEventSource;
+            }>;""",
+              """export type OperationalEventPlan = Readonly<
+            z.infer<typeof OperationalEventPlanSchema>
+          >;""": """type ParsedOperationalEventPlan = z.infer<typeof OperationalEventPlanSchema>;
+          export type OperationalEventPlan = Omit<
+            Readonly<ParsedOperationalEventPlan>,
+            | 'source'
+            | 'location'
+            | 'placement'
+            | 'planningBuffer'
+            | 'legalDutyStatusSupport'
+          > &
+            Readonly<{
+              source: OperationalEventSource;
+              location?: OperationalLocation;
+              placement: OperationalPlacementConstraint;
+              planningBuffer?: OperationalPlanningBuffer;
+              legalDutyStatusSupport?: LegalDutyStatusSupport;
+            }>;""",
+          }
+          for old, new in replacements.items():
+              if text.count(old) != 1:
+                  raise RuntimeError(f'Expected one readonly contract match: {old!r}')
+              text = text.replace(old, new, 1)
+          path.write_text(text)
+          PY
+      - name: Commit repair
+        run: |
+          set -euo pipefail
+          git diff --check
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add packages/foundation/src/operational-events.ts
+          git commit -m 'Describe Stage 14 immutable operational contracts'
+          git push origin HEAD:agent/stage-14-operational-events
