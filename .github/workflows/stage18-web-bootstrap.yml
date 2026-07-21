@@ -1,7 +1,7 @@
 name: Stage 18 web preflight and lock refresh
 
 on:
-  push:
+  pull_request:
     branches:
       - agent/stage-18-mobile-trip-setup-ui
 
@@ -10,12 +10,12 @@ permissions:
 
 jobs:
   refresh:
-    if: github.actor != 'github-actions[bot]'
+    if: github.head_ref == 'agent/stage-18-lock-refresh'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: agent/stage-18-mobile-trip-setup-ui
+          ref: ${{ github.head_ref }}
           fetch-depth: 0
       - uses: actions/setup-node@v4
         with:
@@ -93,10 +93,12 @@ jobs:
       - name: Refresh frozen lockfile
         run: pnpm install --no-frozen-lockfile
       - name: Commit preflight and lockfile
+        env:
+          HEAD_BRANCH: ${{ github.head_ref }}
         run: |
           rm .github/workflows/stage18-web-bootstrap.yml
           git config user.name "TripRouteCalc Stage 18 Agent"
           git config user.email "actions@users.noreply.github.com"
           git add packages/web pnpm-lock.yaml .github/workflows/stage18-web-bootstrap.yml
           git commit -m "build(stage18): refresh web lockfile and preflight"
-          git push origin HEAD:agent/stage-18-mobile-trip-setup-ui
+          git push origin "HEAD:${HEAD_BRANCH}"
