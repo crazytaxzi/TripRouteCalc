@@ -66,6 +66,7 @@ interface TenantFixture {
 const provenance = Object.freeze({
   origin: 'CALCULATED' as const,
   verification: 'VERIFIED' as const,
+  verifiedAt: utcInstant('2026-07-20T14:58:00.000Z'),
   sourceName: 'Stage 15 persistence fixture',
   explanation: 'Deterministic test-only evidence.',
 });
