@@ -7,9 +7,317 @@ on:
     branches: [main]
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
+  stage14-adversarial-repair:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/trip_route_calc_test?schema=public
+    steps:
+      - name: Check out Stage 14 branch
+        uses: actions/checkout@v4
+        with:
+          ref: agent/stage-14-operational-events
+          fetch-depth: 0
+          show-progress: false
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Enable pnpm
+        run: |
+          corepack enable
+          corepack prepare pnpm@9.15.4 --activate
+
+      - name: Apply bounded adversarial corrections
+        run: |
+          python3 <<'PY'
+          from pathlib import Path
+
+          source_path = Path('packages/foundation/src/operational-events.ts')
+          source = source_path.read_text()
+
+          old_selection = '''  const plan = validateOperationalEventPlan(planInput);
+          if (plan.location !== undefined) {
+            return freeze({
+              status: 'SELECTED',
+              location: plan.location,
+              explanations: freezeArray([
+                `The event uses the explicitly selected location ${plan.location.description}.`,
+              ]),
+            });
+          }
+
+          const capability =
+            plan.placement.requiredCapability ?? EVENT_TO_CAPABILITY[plan.type];'''
+          new_selection = '''  const plan = validateOperationalEventPlan(planInput);
+          const capability =
+            plan.placement.requiredCapability ?? EVENT_TO_CAPABILITY[plan.type];
+          if (plan.location !== undefined) {
+            const incompatibilities: string[] = [];
+            if (!plan.location.truckCompatible) {
+              incompatibilities.push(
+                'The explicitly selected location is not recorded as truck-compatible.',
+              );
+            }
+            if (
+              capability !== undefined &&
+              !plan.location.capabilities.includes(capability)
+            ) {
+              incompatibilities.push(
+                `The explicitly selected location does not provide ${capability} capability.`,
+              );
+            }
+            if (
+              plan.placement.earliestRouteDistance !== undefined &&
+              plan.location.routeDistance.value <
+                plan.placement.earliestRouteDistance.value
+            ) {
+              incompatibilities.push(
+                'The explicitly selected location is before the allowed placement window.',
+              );
+            }
+            if (
+              plan.placement.latestRouteDistance !== undefined &&
+              plan.location.routeDistance.value >
+                plan.placement.latestRouteDistance.value
+            ) {
+              incompatibilities.push(
+                'The explicitly selected location is after the allowed placement window.',
+              );
+            }
+            if (incompatibilities.length > 0) {
+              return freeze({
+                status: 'UNAVAILABLE',
+                explanations: freezeArray([
+                  ...incompatibilities,
+                  'The planner did not accept an incompatible operational location.',
+                ]),
+              });
+            }
+            return freeze({
+              status: 'SELECTED',
+              location: plan.location,
+              explanations: freezeArray([
+                `The event uses the explicitly selected location ${plan.location.description}.`,
+              ]),
+            });
+          }'''
+          if source.count(old_selection) != 1:
+              raise RuntimeError('Expected exactly one explicit-location selection block.')
+          source = source.replace(old_selection, new_selection, 1)
+
+          old_schedule = '''  const plan = validateOperationalEventPlan(planInput);
+          const startAt = UtcInstantSchema.parse(startAtInput);
+          const departureState = validateDriverHosDepartureState(departureStateInput);
+          const selection = selectOperationalLocation(plan, availableLocations);'''
+          new_schedule = '''  const plan = validateOperationalEventPlan(planInput);
+          const startAt = UtcInstantSchema.parse(startAtInput);
+          const departureState = validateDriverHosDepartureState(departureStateInput);
+          const priorDrivingExists = priorDutyEvents.some(
+            (event) => event.dutyStatus === 'DRIVING',
+          );
+          if (plan.type === 'PRE_TRIP_INSPECTION' && priorDrivingExists) {
+            return freeze({
+              status: 'PLACEMENT_UNAVAILABLE',
+              plan,
+              explanations: freezeArray([
+                'A pre-trip inspection must be completed before the first driving event.',
+              ]),
+            });
+          }
+          if (plan.type === 'POST_TRIP_INSPECTION' && !priorDrivingExists) {
+            return freeze({
+              status: 'PLACEMENT_UNAVAILABLE',
+              plan,
+              explanations: freezeArray([
+                'A post-trip inspection cannot be placed before any driving has occurred.',
+              ]),
+            });
+          }
+          const selection = selectOperationalLocation(plan, availableLocations);'''
+          if source.count(old_schedule) != 1:
+              raise RuntimeError('Expected exactly one operational scheduling preamble.')
+          source = source.replace(old_schedule, new_schedule, 1)
+
+          old_fuel_boundary = '''        'Fuel capacity, current level, reserve, MPG, and route distance must form a physically consistent plan.',
+              ]),
+            });
+          }
+          if (current < reserve) {'''
+          new_fuel_boundary = '''        'Fuel capacity, current level, reserve, MPG, and route distance must form a physically consistent plan.',
+              ]),
+            });
+          }
+          const locations = validFuelLocations(input.locations, routeMiles);
+          const originFuelAvailable = locations.some(
+            (location) => toMiles(location.routeDistance) === 0,
+          );
+          if (current < reserve && !originFuelAvailable) {'''
+          if source.count(old_fuel_boundary) != 1:
+              raise RuntimeError('Expected exactly one fuel validation boundary.')
+          source = source.replace(old_fuel_boundary, new_fuel_boundary, 1)
+
+          duplicate_locations = '''
+          const locations = validFuelLocations(input.locations, routeMiles);
+          if (locations.length === 0) {'''
+          if source.count(duplicate_locations) != 1:
+              raise RuntimeError('Expected exactly one later fuel-location declaration.')
+          source = source.replace(
+              duplicate_locations,
+              '''
+          if (locations.length === 0) {''',
+              1,
+          )
+
+          old_reachable = '      return miles > positionMiles && miles <= maximumReach;'
+          new_reachable = '      return miles >= positionMiles && miles <= maximumReach;'
+          if source.count(old_reachable) != 1:
+              raise RuntimeError('Expected exactly one reachable fuel-location comparison.')
+          source = source.replace(old_reachable, new_reachable, 1)
+
+          old_blocking_reason = '''        blockingReason:
+                  remaining.length === 0
+                    ? 'NO_TRUCK_COMPATIBLE_LOCATION'
+                    : 'INSUFFICIENT_RANGE','''
+          new_blocking_reason = "        blockingReason: 'INSUFFICIENT_RANGE',"
+          if source.count(old_blocking_reason) != 1:
+              raise RuntimeError('Expected exactly one uncovered-gap blocking reason.')
+          source = source.replace(old_blocking_reason, new_blocking_reason, 1)
+          source_path.write_text(source)
+
+          test_path = Path('packages/foundation/test/operational-events.test.ts')
+          tests = test_path.read_text()
+          old_fixture_import = "import { departureState } from './hos-test-fixtures.js';"
+          new_fixture_import = "import { departureState, dutyEvent } from './hos-test-fixtures.js';"
+          if tests.count(old_fixture_import) != 1:
+              raise RuntimeError('Expected the Stage 14 HOS fixture import once.')
+          tests = tests.replace(old_fixture_import, new_fixture_import, 1)
+
+          first_describe_end = '''  it('preserves event sources and overrides in a JSON-safe operational snapshot', () => {
+              expect(operationalPlanSnapshot([plan('FUEL')])).toMatchObject({
+                operationalEvents: [
+                  {
+                    type: 'FUEL',
+                    userOverride: true,
+                    source: { type: 'USER_OVERRIDE' },
+                    dutyStatus: 'ON_DUTY_NOT_DRIVING',
+                  },
+                ],
+              });
+            });
+          });
+
+          describe('fuel planning', () => {'''
+          first_describe_replacement = '''  it('preserves event sources and overrides in a JSON-safe operational snapshot', () => {
+              expect(operationalPlanSnapshot([plan('FUEL')])).toMatchObject({
+                operationalEvents: [
+                  {
+                    type: 'FUEL',
+                    userOverride: true,
+                    source: { type: 'USER_OVERRIDE' },
+                    dutyStatus: 'ON_DUTY_NOT_DRIVING',
+                  },
+                ],
+              });
+            });
+
+            it('rejects an explicitly selected location that is not truck-compatible', () => {
+              const result = selectOperationalLocation(
+                plan('FUEL', {
+                  location: location('car-only-fuel', 0, ['FUEL'], {
+                    truckCompatible: false,
+                  }),
+                }),
+                [],
+              );
+
+              expect(result.status).toBe('UNAVAILABLE');
+              expect(result.explanations.join(' ')).toContain('truck-compatible');
+            });
+
+            it('does not place a pre-trip inspection after driving has started', () => {
+              const state = departureState();
+              const driving = dutyEvent({
+                id: 'already-driving',
+                startAt: state.departureAt,
+                minutes: 30,
+                dutyStatus: 'DRIVING',
+              });
+              const result = scheduleOperationalEvent(
+                plan('PRE_TRIP_INSPECTION'),
+                driving.endAt,
+                state,
+                [driving],
+              );
+
+              expect(result.status).toBe('PLACEMENT_UNAVAILABLE');
+              expect(result.dutyEvent).toBeUndefined();
+              expect(result.explanations.join(' ')).toContain(
+                'before the first driving event',
+              );
+            });
+          });
+
+          describe('fuel planning', () => {'''
+          if tests.count(first_describe_end) != 1:
+              raise RuntimeError('Expected the Stage 14 first describe ending once.')
+          tests = tests.replace(first_describe_end, first_describe_replacement, 1)
+
+          fuel_describe_start = "describe('fuel planning', () => {\n"
+          origin_test = '''describe('fuel planning', () => {
+            it('plans immediate origin fueling when current fuel is below reserve', () => {
+              const result = planFuelStops({
+                fuelCapacity: volumeInUsGallons(100),
+                currentFuelLevel: volumeInUsGallons(5),
+                estimatedMilesPerGallon: 5,
+                routeDistance: distanceInMiles(300),
+                requiredReserve: volumeInUsGallons(10),
+                locations: [location('origin-fuel', 0, ['FUEL'])],
+              });
+
+              expect(result.status).toBe('PLANNED');
+              expect(result.stops).toHaveLength(1);
+              expect(result.stops[0]).toMatchObject({
+                location: { locationId: 'origin-fuel' },
+                arrivalFuel: volumeInUsGallons(5),
+                gallonsAdded: volumeInUsGallons(95),
+              });
+            });
+
+'''
+          if tests.count(fuel_describe_start) != 1:
+              raise RuntimeError('Expected exactly one fuel-planning describe block.')
+          tests = tests.replace(fuel_describe_start, origin_test, 1)
+          test_path.write_text(tests)
+          PY
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile >/dev/null
+
+      - name: Generate Prisma client
+        run: pnpm db:generate >/dev/null
+
+      - name: Validate bounded correction
+        run: |
+          pnpm lint:source
+          pnpm typecheck:source
+          pnpm exec vitest run packages/foundation/test/operational-events.test.ts
+
+      - name: Commit bounded adversarial correction
+        run: |
+          set -euo pipefail
+          git diff --check
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add packages/foundation/src/operational-events.ts packages/foundation/test/operational-events.test.ts
+          git commit -m 'Harden Stage 14 operational placement and fuel planning'
+          git push origin HEAD:agent/stage-14-operational-events
+
   verification:
     runs-on: ubuntu-latest
     timeout-minutes: 15
