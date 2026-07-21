@@ -7,53 +7,9 @@ on:
     branches: [main]
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
-  stage15-lint-repair:
-    runs-on: ubuntu-latest
-    timeout-minutes: 10
-    steps:
-      - name: Check out Stage 15 branch
-        uses: actions/checkout@v4
-        with:
-          ref: agent/stage-15-eta-simulator
-          fetch-depth: 0
-          show-progress: false
-
-      - name: Apply bounded lint repair
-        run: |
-          python3 <<'PY'
-          from pathlib import Path
-
-          path = Path('packages/foundation/src/eta-simulator.ts')
-          text = path.read_text()
-          replacements = {
-              "import {\n  STOP_PROJECTIONS,\n  processStop,\n  validateOrderedStops,\n} from './stops.js';": "import { processStop, validateOrderedStops } from './stops.js';",
-              "  DistanceSchema,\n": "",
-              "const positiveSafeInteger = z.number().int().positive().max(Number.MAX_SAFE_INTEGER);\n": "",
-              "const factors: Array<Readonly<{ name: string; speed: Speed }>> = [": "const factors: Readonly<{ name: string; speed: Speed }>[] = [",
-              "if (destination === undefined || leg.destinationStopId !== destination.id) {": "if (leg.destinationStopId !== destination?.id) {",
-              "    if (leg === undefined) continue;\n": "",
-          }
-          for old, new in replacements.items():
-              count = text.count(old)
-              if count != 1:
-                  raise RuntimeError(f'Expected exactly one match for {old!r}; found {count}')
-              text = text.replace(old, new, 1)
-          path.write_text(text)
-          PY
-
-      - name: Commit bounded lint repair
-        run: |
-          set -euo pipefail
-          git diff --check
-          git config user.name github-actions[bot]
-          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
-          git add packages/foundation/src/eta-simulator.ts
-          git commit -m 'Repair Stage 15 strict lint findings'
-          git push origin HEAD:agent/stage-15-eta-simulator
-
   verification:
     runs-on: ubuntu-latest
     timeout-minutes: 15
