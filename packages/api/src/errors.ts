@@ -16,7 +16,7 @@ export const API_ERROR_CODES = [
 export type ApiErrorCode = (typeof API_ERROR_CODES)[number];
 
 export class ApiError extends Error {
-  public override readonly name = 'ApiError';
+  public override readonly name: string = 'ApiError';
 
   public constructor(
     public readonly statusCode: number,
