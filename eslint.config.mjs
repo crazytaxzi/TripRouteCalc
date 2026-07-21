@@ -5,8 +5,11 @@ export default tseslint.config(
   {
     ignores: [
       '**/dist/**',
+      '**/dist-types/**',
       '**/coverage/**',
       '**/node_modules/**',
+      '**/playwright-report/**',
+      '**/test-results/**',
       '**/src/generated/**',
       'eslint.config.mjs',
     ],
@@ -15,7 +18,7 @@ export default tseslint.config(
   ...tseslint.configs.strictTypeChecked,
   ...tseslint.configs.stylisticTypeChecked,
   {
-    files: ['**/*.ts'],
+    files: ['**/*.ts', '**/*.tsx'],
     languageOptions: {
       parserOptions: {
         project: './tsconfig.typecheck.json',
