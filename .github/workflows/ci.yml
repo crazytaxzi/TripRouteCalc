@@ -12,7 +12,7 @@ permissions:
 jobs:
   verification:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 25
     env:
       DATABASE_URL: postgresql://postgres:postgres@localhost:5432/trip_route_calc_test?schema=public
 
@@ -68,3 +68,9 @@ jobs:
 
       - name: Build
         run: pnpm build:source
+
+      - name: Install Playwright Chromium
+        run: pnpm --filter @trip-route-calc/web exec playwright install --with-deps chromium
+
+      - name: Browser workflow
+        run: pnpm test:e2e

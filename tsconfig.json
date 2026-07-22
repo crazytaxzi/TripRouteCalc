@@ -5,6 +5,7 @@
     { "path": "./packages/persistence" },
     { "path": "./packages/routing" },
     { "path": "./packages/compliance" },
-    { "path": "./packages/api" }
+    { "path": "./packages/api" },
+    { "path": "./packages/web" }
   ]
 }

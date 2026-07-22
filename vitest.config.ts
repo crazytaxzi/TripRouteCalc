@@ -26,7 +26,12 @@ export default defineConfig({
     },
   },
   test: {
-    include: ['packages/*/test/**/*.test.ts'],
+    include: [
+      'packages/*/test/**/*.test.ts',
+      'packages/web/src/**/*.test.ts',
+      'packages/web/src/**/*.test.tsx',
+    ],
+    setupFiles: ['./packages/web/src/test-setup.ts'],
     passWithNoTests: false,
     fileParallelism: false,
     hookTimeout: 30_000,

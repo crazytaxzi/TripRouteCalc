@@ -1,0 +1,30 @@
+{
+  "name": "@trip-route-calc/web",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite --host 0.0.0.0",
+    "build": "vite build",
+    "preview": "vite preview --host 0.0.0.0",
+    "test": "vitest run",
+    "test:e2e": "playwright test"
+  },
+  "dependencies": {
+    "@trip-route-calc/foundation": "workspace:*",
+    "@js-temporal/polyfill": "^0.5.1",
+    "react": "19.2.7",
+    "react-dom": "19.2.7",
+    "zod": "^3.25.67"
+  },
+  "devDependencies": {
+    "@playwright/test": "1.61.1",
+    "@testing-library/react": "16.3.2",
+    "@testing-library/user-event": "^14.6.1",
+    "@types/react": "^19.2.0",
+    "@types/react-dom": "^19.2.0",
+    "@vitejs/plugin-react": "6.0.3",
+    "jsdom": "29.1.1",
+    "vite": "8.1.0"
+  }
+}
