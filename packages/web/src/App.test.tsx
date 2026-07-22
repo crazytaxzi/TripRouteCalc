@@ -2,14 +2,62 @@
 
 import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { App } from './App.js';
+import { TripPlanningClient } from './api-client.js';
 import { DRAFT_STORAGE_KEY, defaultTripDraft, saveDraft } from './model.js';
+import type { StopForm, TripDraft } from './types.js';
+
+function readyStop(
+  stop: StopForm,
+  description: string,
+  latitude: number,
+  longitude: number,
+): StopForm {
+  return {
+    ...stop,
+    locationDescription: description,
+    addressText: description,
+    latitude,
+    longitude,
+    timeZone: 'America/Denver',
+  };
+}
+
+function validDraft(): TripDraft {
+  const base = defaultTripDraft();
+  const start = base.stops[0];
+  const final = base.stops[1];
+  if (start === undefined || final === undefined) {
+    throw new Error('Default trip did not include structural endpoint stops.');
+  }
+  return {
+    ...base,
+    driver: { displayName: 'Workflow Driver' },
+    tractor: { ...base.tractor, unitNumber: 'TR-180' },
+    trailer: { ...base.trailer, unitNumber: 'TL-180' },
+    load: {
+      ...base.load,
+      referenceNumber: 'LOAD-180',
+      commodityDescription: 'General freight',
+      permitRequirement: 'not-required',
+    },
+    stops: [
+      readyStop(start, 'Denver origin', 39.7392, -104.9903),
+      readyStop(final, 'Colorado Springs destination', 38.8339, -104.8214),
+    ],
+    route: { ...base.route, ruleSetVersion: 'reviewed-fixture-v1' },
+  };
+}
 
 beforeEach(() => {
   localStorage.clear();
   sessionStorage.clear();
+});
+
+afterEach(() => {
+  vi.restoreAllMocks();
 });
 
 describe('Stage 18 mobile trip setup UI', () => {
@@ -117,6 +165,53 @@ describe('Stage 18 mobile trip setup UI', () => {
     );
     expect(within(card).getByLabelText('Historical source')).toBeDefined();
     expect(within(card).getByLabelText('Historical sample size')).toBeDefined();
+  });
+
+  it('keeps a successful calculation visible when profile refresh fails', async () => {
+    const saved = validDraft();
+    const persisted: TripDraft = {
+      ...saved,
+      tripId: 'trip-public-1',
+    };
+    saveDraft(saved);
+    vi.spyOn(TripPlanningClient.prototype, 'submitDraft').mockResolvedValue({
+      draft: persisted,
+      outcome: {
+        status: 'complete',
+        message: 'The trip was saved and calculated.',
+        tripId: 'trip-public-1',
+        revisionNumber: 7,
+        warnings: [],
+      },
+    });
+    vi.spyOn(TripPlanningClient.prototype, 'loadProfiles').mockRejectedValue(
+      new Error('profile endpoint offline'),
+    );
+
+    const user = userEvent.setup();
+    render(<App />);
+    await user.click(screen.getByRole('button', { name: /restore draft/iu }));
+    await user.type(
+      screen.getByLabelText(/bearer token/iu),
+      'session-test-token',
+    );
+    await user.click(
+      screen.getByRole('button', { name: /save and calculate trip/iu }),
+    );
+
+    expect(
+      await screen.findByText('The trip was saved and calculated.'),
+    ).toBeDefined();
+    expect(screen.getByText('Trip trip-public-1')).toBeDefined();
+    expect(screen.getByText('Revision 7')).toBeDefined();
+    expect(
+      screen.getByText(
+        /trip saved; profile refresh failed: profile endpoint offline/iu,
+      ),
+    ).toBeDefined();
+    expect(
+      screen.queryByText(/trip submission failed/iu),
+    ).toBeNull();
   });
 
   it('restores local work without persisting the bearer token in the draft', async () => {
