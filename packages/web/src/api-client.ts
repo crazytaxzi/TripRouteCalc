@@ -65,14 +65,33 @@ function number(value: unknown, label: string): number {
   return value;
 }
 
+function nullableString(value: unknown, label: string): string | null {
+  if (value === null) return null;
+  return string(value, label);
+}
+
 function normalizeBaseUrl(value: string): string {
   const trimmed = value.trim();
   if (trimmed === '' || trimmed === '/') return '';
   return trimmed.endsWith('/') ? trimmed.slice(0, -1) : trimmed;
 }
 
+function canonical(value: unknown): unknown {
+  if (Array.isArray(value)) return value.map(canonical);
+  if (value === null || typeof value !== 'object') return value;
+  return Object.fromEntries(
+    Object.entries(value as Record<string, unknown>)
+      .sort(([left], [right]) => left.localeCompare(right))
+      .map(([key, child]) => [key, canonical(child)]),
+  );
+}
+
+function equivalent(left: unknown, right: unknown): boolean {
+  return JSON.stringify(canonical(left)) === JSON.stringify(canonical(right));
+}
+
 async function digest(value: unknown): Promise<string> {
-  const bytes = new TextEncoder().encode(JSON.stringify(value));
+  const bytes = new TextEncoder().encode(JSON.stringify(canonical(value)));
   const result = await crypto.subtle.digest('SHA-256', bytes);
   return Array.from(new Uint8Array(result))
     .slice(0, 16)
@@ -84,18 +103,68 @@ async function idempotencyKey(prefix: string, value: unknown): Promise<string> {
   return `stage18-${prefix}-${await digest(value)}`;
 }
 
-function publicStopsFromTrip(
+function tripFromOperation(
   response: Record<string, unknown>,
+  label: string,
+): Record<string, unknown> {
+  return response.trip === undefined ? response : object(response.trip, label);
+}
+
+function revisionNumber(trip: Record<string, unknown>): number {
+  return number(
+    object(trip.currentRevision, 'currentRevision').revisionNumber,
+    'currentRevision.revisionNumber',
+  );
+}
+
+function stopRows(trip: Record<string, unknown>): readonly Record<string, unknown>[] {
+  return objectArraySchema.parse(trip.stops);
+}
+
+function stopId(row: Record<string, unknown>, index: number): string {
+  return string(row.id ?? row.stopId, `stops[${String(index)}].id`);
+}
+
+function stopPatch(stop: StopForm): Record<string, unknown> {
+  const plan = stopPlan(stop, 1);
+  return Object.fromEntries(
+    Object.entries(plan).filter(
+      ([key]) => key !== 'id' && key !== 'sequence',
+    ),
+  );
+}
+
+function createStopPayload(stop: StopForm, sequence: number): Record<string, unknown> {
+  const plan = stopPlan(stop, sequence);
+  return Object.fromEntries(
+    Object.entries(plan).filter(([key]) => key !== 'id'),
+  );
+}
+
+function serverStopPatch(row: Record<string, unknown>): Record<string, unknown> {
+  return Object.fromEntries(
+    Object.entries(row).filter(
+      ([key]) => key !== 'id' && key !== 'stopId' && key !== 'sequence',
+    ),
+  );
+}
+
+function hydratePersistedPrefix(
+  rows: readonly Record<string, unknown>[],
   sourceStops: readonly StopForm[],
 ): readonly StopForm[] {
-  const rows = objectArraySchema.parse(response.stops);
-  if (rows.length !== sourceStops.length) {
-    throw new TypeError('Trip response stop count did not match the submitted draft.');
-  }
-  return sourceStops.map((stop, index) => ({
-    ...stop,
-    publicId: string(rows[index]?.stopId, `stops[${String(index)}].stopId`),
-  }));
+  const explicitIds = new Set(
+    sourceStops.flatMap((stop) =>
+      stop.publicId === undefined ? [] : [stop.publicId],
+    ),
+  );
+  if (explicitIds.size > 0) return sourceStops;
+  return sourceStops.map((stop, index) => {
+    const row = rows[index];
+    return row === undefined
+      ? stop
+      : { ...stop, publicId: stopId(row, index) };
+  });
 }
 
 export class TripPlanningClient {
@@ -116,7 +185,7 @@ export class TripPlanningClient {
   async #request(
     path: string,
     options: Readonly<{
-      method?: 'GET' | 'POST' | 'PATCH';
+      method?: 'GET' | 'POST' | 'PATCH' | 'DELETE';
       payload?: unknown;
       idempotencyKey?: string;
     }> = {},
@@ -243,6 +312,177 @@ export class TripPlanningClient {
     return string(response[`${kind}Id`], `${kind}Id`);
   }
 
+  async #syncStops(
+    tripId: string,
+    initialTrip: Record<string, unknown>,
+    sourceStops: readonly StopForm[],
+  ): Promise<Readonly<{
+    trip: Record<string, unknown>;
+    stops: readonly StopForm[];
+  }>> {
+    let trip = initialTrip;
+    let revision = revisionNumber(trip);
+    let rows = stopRows(trip);
+    let stops = hydratePersistedPrefix(rows, sourceStops);
+
+    const desiredIds = new Set(
+      stops.flatMap((stop) =>
+        stop.publicId === undefined ? [] : [stop.publicId],
+      ),
+    );
+    for (const [index, row] of [...rows].entries()) {
+      const id = stopId(row, index);
+      if (desiredIds.has(id)) continue;
+      const payload = { expectedRevisionNumber: revision };
+      const response = await this.#request(
+        `/api/trips/${tripId}/stops/${id}`,
+        {
+          method: 'DELETE',
+          payload,
+          idempotencyKey: await idempotencyKey('trip-stop-delete', {
+            tripId,
+            id,
+            payload,
+          }),
+        },
+      );
+      trip = tripFromOperation(response, 'deleted-stop trip');
+      revision = revisionNumber(trip);
+      rows = stopRows(trip);
+    }
+
+    for (const stop of stops) {
+      if (stop.publicId === undefined) continue;
+      const rowIndex = rows.findIndex(
+        (row, index) => stopId(row, index) === stop.publicId,
+      );
+      const row = rows[rowIndex];
+      if (row === undefined) continue;
+      const patch = stopPatch(stop);
+      if (equivalent(patch, serverStopPatch(row))) continue;
+      const payload = { expectedRevisionNumber: revision, patch };
+      const response = await this.#request(
+        `/api/trips/${tripId}/stops/${stop.publicId}`,
+        {
+          method: 'PATCH',
+          payload,
+          idempotencyKey: await idempotencyKey('trip-stop-patch', {
+            tripId,
+            stopId: stop.publicId,
+            payload,
+          }),
+        },
+      );
+      trip = tripFromOperation(response, 'patched-stop trip');
+      revision = revisionNumber(trip);
+      rows = stopRows(trip);
+    }
+
+    for (const stop of stops) {
+      if (stop.publicId !== undefined) continue;
+      const create = createStopPayload(stop, rows.length + 1);
+      const payload = { expectedRevisionNumber: revision, stop: create };
+      const response = await this.#request(`/api/trips/${tripId}/stops`, {
+        method: 'POST',
+        payload,
+        idempotencyKey: await idempotencyKey('trip-stop-create', {
+          tripId,
+          localId: stop.localId,
+          payload,
+        }),
+      });
+      trip = tripFromOperation(response, 'created-stop trip');
+      revision = revisionNumber(trip);
+      rows = stopRows(trip);
+      const created = object(response.stop, 'created stop');
+      const createdId = string(created.id ?? created.stopId, 'created stop id');
+      stops = stops.map((candidate) =>
+        candidate.localId === stop.localId
+          ? { ...candidate, publicId: createdId }
+          : candidate,
+      );
+    }
+
+    const desiredOrder = stops.map((stop, index) =>
+      string(stop.publicId, `desired stop ${String(index + 1)} id`),
+    );
+    let currentOrder = rows.map((row, index) => stopId(row, index));
+    if (!equivalent(currentOrder, desiredOrder)) {
+      const finalStop = stops.at(-1);
+      let temporarilyUnlockedFinal = false;
+      if (
+        finalStop?.publicId !== undefined &&
+        finalStop.lockedPosition &&
+        currentOrder.indexOf(finalStop.publicId) !== desiredOrder.length - 1
+      ) {
+        const payload = {
+          expectedRevisionNumber: revision,
+          patch: { lockedPosition: false },
+        };
+        const response = await this.#request(
+          `/api/trips/${tripId}/stops/${finalStop.publicId}`,
+          {
+            method: 'PATCH',
+            payload,
+            idempotencyKey: await idempotencyKey('trip-final-unlock', {
+              tripId,
+              stopId: finalStop.publicId,
+              payload,
+            }),
+          },
+        );
+        trip = tripFromOperation(response, 'temporarily unlocked final trip');
+        revision = revisionNumber(trip);
+        rows = stopRows(trip);
+        currentOrder = rows.map((row, index) => stopId(row, index));
+        temporarilyUnlockedFinal = true;
+      }
+
+      if (!equivalent(currentOrder, desiredOrder)) {
+        const payload = {
+          expectedRevisionNumber: revision,
+          stopIds: desiredOrder,
+        };
+        const response = await this.#request(
+          `/api/trips/${tripId}/stops/reorder`,
+          {
+            method: 'POST',
+            payload,
+            idempotencyKey: await idempotencyKey('trip-stop-reorder', {
+              tripId,
+              payload,
+            }),
+          },
+        );
+        trip = tripFromOperation(response, 'reordered-stop trip');
+        revision = revisionNumber(trip);
+        rows = stopRows(trip);
+      }
+
+      if (temporarilyUnlockedFinal && finalStop?.publicId !== undefined) {
+        const payload = {
+          expectedRevisionNumber: revision,
+          patch: { lockedPosition: true },
+        };
+        const response = await this.#request(
+          `/api/trips/${tripId}/stops/${finalStop.publicId}`,
+          {
+            method: 'PATCH',
+            payload,
+            idempotencyKey: await idempotencyKey('trip-final-relock', {
+              tripId,
+              stopId: finalStop.publicId,
+              payload,
+            }),
+          },
+        );
+        trip = tripFromOperation(response, 'relocked final trip');
+      }
+    }
+
+    return { trip, stops };
+  }
+
   public async submitDraft(draft: TripDraft): Promise<SubmissionResult> {
     const driverId = await this.#saveDriver(draft);
     const [tractorId, trailerId, loadId] = await Promise.all([
@@ -273,64 +513,63 @@ export class TripPlanningClient {
     const createdTrip = await this.#request('/api/trips', {
       method: 'POST',
       payload: createTripPayload,
-      idempotencyKey: await idempotencyKey('trip-create', createTripPayload),
+      idempotencyKey: await idempotencyKey('trip-create', {
+        draftId: savedDraft.draftId,
+        ...createTripPayload,
+      }),
     });
     const tripId = string(createdTrip.tripId, 'tripId');
-    const initialRevision = object(createdTrip.currentRevision, 'currentRevision');
-    let revisionNumber = number(
-      initialRevision.revisionNumber,
-      'currentRevision.revisionNumber',
-    );
+    let trip = await this.#request(`/api/trips/${tripId}`);
+    let revision = revisionNumber(trip);
 
-    const equipmentPayload = {
-      expectedRevisionNumber: revisionNumber,
-      tractorId,
-      trailerId,
-      loadId,
-    };
-    const equipmentTrip = await this.#request(`/api/trips/${tripId}`, {
-      method: 'PATCH',
-      payload: equipmentPayload,
-      idempotencyKey: await idempotencyKey('trip-equipment', equipmentPayload),
-    });
-    revisionNumber = number(
-      object(equipmentTrip.currentRevision, 'currentRevision').revisionNumber,
-      'currentRevision.revisionNumber',
-    );
-
-    let publicStops: readonly StopForm[] = [];
-    for (const [index, sourceStop] of savedDraft.stops.entries()) {
-      const plan = stopPlan(sourceStop, index + 1);
-      const stop = Object.fromEntries(
-        Object.entries(plan).filter(
-          ([key]) => key !== 'id' && key !== 'sequence',
-        ),
+    if (string(trip.driverId, 'trip.driverId') !== driverId) {
+      throw new PlanningApiError(
+        409,
+        'REVISION_CONFLICT',
+        'The saved trip belongs to a different driver. Start a new draft before changing the trip driver.',
+        { tripId },
       );
-      const stopPayload = { expectedRevisionNumber: revisionNumber, stop };
-      const updatedTrip = await this.#request(`/api/trips/${tripId}/stops`, {
-        method: 'POST',
-        payload: stopPayload,
-        idempotencyKey: await idempotencyKey(
-          `trip-stop-${String(index + 1)}`,
-          stopPayload,
-        ),
-      });
-      revisionNumber = number(
-        object(updatedTrip.currentRevision, 'currentRevision').revisionNumber,
-        'currentRevision.revisionNumber',
-      );
-      const persisted = publicStopsFromTrip(
-        updatedTrip,
-        savedDraft.stops.slice(0, index + 1),
-      );
-      publicStops = [
-        ...persisted,
-        ...savedDraft.stops.slice(index + 1),
-      ];
     }
 
-    const persistedDraft: TripDraft = { ...savedDraft, stops: publicStops };
-    const routeInput = routeRequestFromDraft(persistedDraft, publicStops);
+    const equipment = object(trip.equipment, 'trip.equipment');
+    const patch: Record<string, unknown> = {};
+    if (nullableString(equipment.tractorId, 'trip.equipment.tractorId') !== tractorId) {
+      patch.tractorId = tractorId;
+    }
+    if (nullableString(equipment.trailerId, 'trip.equipment.trailerId') !== trailerId) {
+      patch.trailerId = trailerId;
+    }
+    if (nullableString(equipment.loadId, 'trip.equipment.loadId') !== loadId) {
+      patch.loadId = loadId;
+    }
+    if (trip.ruleSetVersion !== savedDraft.route.ruleSetVersion) {
+      patch.ruleSetVersion = savedDraft.route.ruleSetVersion;
+    }
+    if (Object.keys(patch).length > 0) {
+      const payload = { expectedRevisionNumber: revision, ...patch };
+      const response = await this.#request(`/api/trips/${tripId}`, {
+        method: 'PATCH',
+        payload,
+        idempotencyKey: await idempotencyKey('trip-patch', {
+          tripId,
+          payload,
+        }),
+      });
+      trip = tripFromOperation(response, 'patched trip');
+    }
+
+    const synchronized = await this.#syncStops(tripId, trip, savedDraft.stops);
+    trip = synchronized.trip;
+    revision = revisionNumber(trip);
+    const persistedDraft: TripDraft = {
+      ...savedDraft,
+      stops: synchronized.stops,
+    };
+
+    const routeInput = routeRequestFromDraft(
+      persistedDraft,
+      persistedDraft.stops,
+    );
     if (routeInput.status === 'blocked') {
       return {
         draft: persistedDraft,
@@ -339,7 +578,7 @@ export class TripPlanningClient {
           message:
             'Equipment or load evidence is incomplete for commercial routing.',
           tripId,
-          revisionNumber,
+          revisionNumber: revision,
           warnings: routeInput.issues.map((issue) => issue.message),
         },
       };
@@ -359,7 +598,7 @@ export class TripPlanningClient {
           status: 'blocked',
           message: 'The commercial route requires correction or manual verification.',
           tripId,
-          revisionNumber,
+          revisionNumber: revision,
           warnings: route.assessment.blockingReasons,
         },
       };
@@ -367,11 +606,13 @@ export class TripPlanningClient {
 
     const simulation = {
       ...simulationInputFromDraft(persistedDraft, driverId, route),
-      stops: publicStops.map((stop, index) => stopPlan(stop, index + 1)),
+      stops: persistedDraft.stops.map((stop, index) =>
+        stopPlan(stop, index + 1),
+      ),
       revisionReference: 'server-replaces-this-reference',
     };
     const calculationPayload = {
-      expectedRevisionNumber: revisionNumber,
+      expectedRevisionNumber: revision,
       simulation,
     };
     const calculationResponse = await this.#request(
@@ -381,16 +622,20 @@ export class TripPlanningClient {
         payload: calculationPayload,
         idempotencyKey: await idempotencyKey(
           'trip-calculate',
-          calculationPayload,
+          { tripId, calculationPayload },
         ),
       },
     );
-    const trip = object(calculationResponse.trip, 'calculated trip');
-    const calculatedRevision = object(trip.currentRevision, 'currentRevision');
+    const calculatedTrip = object(
+      calculationResponse.trip,
+      'calculated trip',
+    );
     const calculation = object(calculationResponse.calculation, 'calculation');
     const expected = object(calculation.expected, 'expected calculation');
     const explanations = Array.isArray(expected.explanations)
-      ? expected.explanations.filter((value): value is string => typeof value === 'string')
+      ? expected.explanations.filter(
+          (value): value is string => typeof value === 'string',
+        )
       : [];
 
     return {
@@ -402,10 +647,7 @@ export class TripPlanningClient {
             ? 'The trip was saved, but a legal or evidence blocker prevents a usable plan.'
             : 'The trip was saved and calculated.',
         tripId,
-        revisionNumber: number(
-          calculatedRevision.revisionNumber,
-          'currentRevision.revisionNumber',
-        ),
+        revisionNumber: revisionNumber(calculatedTrip),
         ...(typeof expected.confidence === 'string'
           ? { confidence: expected.confidence }
           : {}),
