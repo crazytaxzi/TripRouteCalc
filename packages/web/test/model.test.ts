@@ -83,7 +83,10 @@ describe('mobile trip setup model', () => {
 describe('controlled recalculation', () => {
   it('debounces request storms', async () => {
     let calls = 0;
-    const controller = new RecalculationController(async () => { calls += 1; }, 5);
+    const controller = new RecalculationController((): Promise<void> => {
+      calls += 1;
+      return Promise.resolve();
+    }, 5);
     controller.request();
     controller.request();
     controller.request();
