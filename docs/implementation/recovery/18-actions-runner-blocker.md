@@ -1,130 +1,116 @@
-# Stage 18 Recovery Checkpoint: runner and implementation blockers
+# Stage 18 Recovery Checkpoint: External Verification Infrastructure
 
-- Updated: 2026-07-21
+- Updated: 2026-07-22
 - Stage: 18 - Mobile-First Trip Setup and Stop Editor
 - Repository: `crazytaxzi/TripRouteCalc`
 - Branch: `agent/stage-18-mobile-trip-setup-ui`
 - Pull request: `#33`
-- Current implementation head before this checkpoint commit: `08452ebd1f3b4a1f5e563d33b14a2a6b153b7d45`
-- Base branch and commit: `main` at `94a890d6761c21489b1b48d9e4376657b8cd1687`
-- Stage status: BLOCKED; not complete and not eligible to merge
+- Source state before this checkpoint update: `644fd0c115c14e6ff1f2ae1d8f4f47a311cd6047`
+- Base: `main` at `94a890d6761c21489b1b48d9e4376657b8cd1687`
+- Stage status: source integration complete; mandatory dependency-backed verification unavailable; not eligible to merge
 
-## Active external failure
+## Hosted runner failure
 
-GitHub Actions still rejects the permanent `CI` workflow before any job step starts.
+GitHub Actions rejects the permanent `CI` workflow before checkout or any repository command executes.
 
-Latest evidence:
+Latest inspected evidence:
 
-- CI run `29883812542`, job `88810114711`, completed with failure against `08452ebd1f3b4a1f5e563d33b14a2a6b153b7d45`.
-- The job exposes no step summaries and no log URL.
-- Earlier permanent and temporary workflow runs failed with the same approximately three-second, empty-step signature.
-- A bounded rerun of the temporary preflight workflow also failed before setup.
-- Earlier job-log download attempts returned `404 BlobNotFound` and produced no artifacts.
-- GitHub notification email showed one job annotation but did not include the annotation text in the email body.
+- run `29886457427`, job `88817901032`, completed in failure;
+- zero job steps;
+- no job log URL;
+- direct log retrieval returned `404 BlobNotFound`;
+- earlier permanent, temporary, and rerun attempts showed the same empty-step signature.
 
-Classification:
+Classification remains an external account, policy, billing, quota, or hosted-runner resource restriction. No Actions result is evidence of a repository code failure because no code was executed.
 
-- Category: external permission, account-policy, billing/quota, or hosted-runner resource constraint
-- Confidence: medium
-- Reason: multiple different workflows and one explicit rerun fail before checkout or any repository command executes.
-- Exact GitHub annotation: unavailable through the connected GitHub API and notification email body. It must be opened in the GitHub Actions web UI before selecting the precise account remedy.
+## Local package infrastructure failure
 
-## Recovery actions completed
+The authorized local runtime provides Node.js 22 and global TypeScript 5.8.3, but it does not contain the TripRouteCalc dependency graph or pnpm.
 
-1. Preserved PR `#33`, kept it draft, and did not merge or weaken any gate.
-2. Reopened and applied `PRIME_DIRECTIVE.md` and `ERROR_RECOVERY_PROTOCOL.md` before each continuation.
-3. Reconciled the branch, Stage 18 specification, shared guardrails, Stage 17 API contracts, concurrent helper work, and every changed web/API boundary used by the UI.
-4. Corrected and then removed the temporary self-mutating preflight workflow after confirming the hosted runner still did not start.
-5. Applied the bounded preflight corrections directly:
-   - exact optional reusable-profile IDs;
-   - required rule-set initialization and validation;
-   - explicit Playwright `Page` typing;
-   - guarded model-test endpoint access;
-   - unused destructuring removal and optional confidence emission.
-6. Corrected the Stage 18 client transaction against the real Stage 17 API contract:
-   - handled nested `{ trip, stop }` create-stop responses;
-   - used public stop field `id` rather than the nonexistent `stopId` assumption;
-   - persisted stops incrementally without comparing a partial server prefix to the full draft;
-   - resumed immutable trip revisions through the saved public `tripId`;
-   - patched equipment and rule-set changes on the existing trip;
-   - synchronized stop create, patch, delete, and reorder operations with expected revisions;
-   - preserved structured HTTP 422 route and calculation results instead of throwing away blocked evidence;
-   - avoided duplicate trip creation during normal recalculation.
-7. Expanded the stop editor to cover add, remove, duplicate, insert, drag and button reorder, required or optional state, position locks, all supported appointment modes, all supported service-duration modes, facility hours, parking, duty status, notes, and instructions.
-8. Added controlled recalculation behavior with explicit calculation, a 1.2-second valid-change debounce, abortable superseded requests, no invalid automatic requests, and independent local autosave state.
-9. Upgraded local recovery to version 2 with validated migration from version 1, structural endpoint enforcement, saved public trip and stop references, and continued exclusion of bearer tokens.
-10. Expanded static test coverage for migration, storage isolation, trip-reference recovery, stop operations, appointment and service mapping, focus management, real API envelopes, immutable revisions, one persistent trip chain, structured blocked calculations, responsive workflow, and the version 2 storage key.
-11. Closed a provider-failure recovery window:
-    - the fully synchronized local draft is now saved immediately after trip and stop persistence and before commercial routing is requested;
-    - a regression test forces a route-provider `503` and verifies that the saved trip ID, driver ID, and stop IDs remain recoverable while calculation is never called.
-12. Removed a foundation-level HOS evidence choke point:
-    - `Stage18HosFormInput` now accepts validated `CycleRecapReturn` and `SleeperPeriodEvidence` collections;
-    - `buildStage18HosDepartureState` forwards supplied evidence instead of replacing both collections with empty arrays;
-    - a focused foundation test verifies the evidence survives central HOS validation and remains frozen.
-13. Isolated secondary profile refresh from the authoritative calculation outcome:
-    - a successful or blocked trip result is committed to UI state before refreshing reusable profile lists;
-    - profile refresh failure now updates connection status without replacing the saved calculation with a false submission failure;
-    - a component regression verifies the successful result, trip ID, and revision remain visible.
-14. Hardened locked intermediate positions at the application boundary:
-    - add, insert, duplicate, remove, button move, and drag reorder are previewed before dispatch;
-    - any structural edit that would shift a locked intermediate stop from its absolute index is rejected with an accessible live announcement;
-    - a component regression locks stop 3 and verifies duplicate and removal before it leave the list and lock state unchanged.
-15. Preserved all prior Stage 17 behavior and did not add map or detailed timeline work from Source 19.
+The configured internal npm registry returned HTTP `503` on every bounded attempt, including three consecutive retries on 2026-07-22. External package and GitHub download routes are blocked from the runtime. No useful npm or pnpm cache was present.
 
-## Confirmed implementation gaps from adversarial specification review
+Consequences:
 
-These are Stage 18 requirements, not optional future polish:
+- pnpm 9.15.4 could not be installed;
+- the missing `packages/web` lockfile importer could not be generated safely;
+- React, Zod, Vitest, Vite, ESLint, Prisma, and Playwright could not be installed;
+- a PostgreSQL-backed repository gate could not be assembled.
 
-1. Departure HOS entry remains incomplete in the web package:
-   - the foundation builder now accepts recap returns and existing sleeper evidence;
-   - `HosForm`, the saved-draft schema and migration, the editor, and `hosFromDraft` still do not collect or forward those collections, so the running UI still supplies none.
-2. Tractor profile input still omits domain-supported facts including VIN, wheelbase, California compliance state/evidence, and notes.
-3. Trailer profile input still omits current rail position, rail-position mappings, liftgate, special equipment, and notes.
-4. Load input still omits front and rear overhang, temperature requirements, permit restrictions, escort requirements, route restrictions, secure-parking or high-value requirement, and notes.
+The lockfile was not edited manually because doing so without package resolution would create unverified dependency evidence.
 
-The Stage 18 exit gate cannot be claimed while these gaps remain.
+## Recovery and source work completed
 
-## Remaining mandatory work
+1. Preserved PR `#33` as draft and did not merge or weaken a gate.
+2. Applied the Prime Directive and Error Recovery Protocol throughout the continuation.
+3. Reconciled Stage 18 against the Stage 17 API contract and the complete Source 18 requirements.
+4. Implemented the complete HOS recap-return and existing sleeper-evidence workflow.
+5. Implemented and mounted advanced tractor, trailer, permit, cargo, temperature, route-restriction, and secure-parking evidence.
+6. Switched reusable-profile writes and commercial routing to the detailed equipment serializers.
+7. Removed the obsolete flat permit field and the applied integration helper script.
+8. Hardened malformed local recovery and stale public-stop recovery.
+9. Preserved immutable trip revisions, structured blockers, provider-failure continuation IDs, profile-refresh isolation, controlled recalculation, and locked-stop invariants.
+10. Added accessibility-only live announcement styling.
+11. Added focused model, wiring, recovery, and mounted-App regressions.
 
-1. Complete web draft, migration, editor, validation, and mapper support for recap returns and existing sleeper evidence using the accepted HOS types.
-2. Implement the confirmed tractor, trailer, and load input gaps using the existing domain contracts. Do not invent Source 19 behavior or rewrite legal calculations in the UI layer.
-3. Refresh `pnpm-lock.yaml` with pnpm `9.15.4` so the `packages/web` importer and exact dependency graph are represented.
-4. Run the complete current Stage 18 head through an authorized environment with Node.js 22, pnpm, PostgreSQL, and Playwright Chromium.
-5. Repair evidence-backed failures without weakening validation or deleting prior-stage coverage.
-6. Perform final adversarial review against actual test output and the complete PR diff.
-7. Update the implementation ledger and write the Stage 18 completion handoff only after every mandatory check passes.
-8. Keep PR `#33` draft and do not advance to Source 19 until the Stage 18 exit gate is verified.
+The previously recorded Source 18 implementation gaps are now addressed in source. No map or detailed Source 19 timeline work was introduced.
 
-## Validation state
+## Verification actually executed without Actions
 
-Not run successfully for the current Stage 18 implementation:
+The rewritten source boundaries were reconstructed locally and evaluated with the installed TypeScript 5.8.3 compiler.
 
-- `pnpm install --frozen-lockfile`
-- Prisma generation
-- Prisma schema validation
-- clean PostgreSQL migration deployment
-- ESLint
-- TypeScript type checking
-- complete Vitest suite
-- production build
-- Playwright Chromium installation
-- mobile and desktop Playwright workflow
-- prior-stage regression gate
+Completed:
 
-No item above may be reported as passed until a runner or equivalent authorized local environment actually executes it.
+- TSX parser check for `App.tsx`;
+- TypeScript parser checks for `api-client.ts` and `equipment-detail-model.ts`;
+- strict clean-room semantic compilation using the real Stage 18 form contracts and controlled declarations at unavailable external-package boundaries;
+- strict options included exact optional properties, unchecked indexed access, unused local and parameter detection, ES2022, DOM, and bundler module resolution;
+- source review of the mounted editor, profile round-trip mapping, detailed domain serializer, API submission flow, and regression files.
 
-## Exact continuation sequence
+The strict pass found three genuine defects, which were repaired and rechecked:
 
-1. Continue implementing the confirmed independent Stage 18 source gaps while preserving the draft PR.
-2. Open GitHub Actions run `29883812542` and read the single annotation attached to job `88810114711`.
-3. Resolve the annotation-directed account or repository restriction. Inspect personal account Billing and licensing, Actions usage, Actions budgets that stop usage at the limit, payment status, or repository Actions policy only as directed by that annotation.
-4. After hosted jobs can start, use one bounded lock-refresh commit or an authorized local checkout to run `pnpm install --no-frozen-lockfile` with pnpm `9.15.4` and commit the resulting lockfile plus only evidence-backed repairs.
-5. Run the permanent CI gate and Playwright suite against the resulting head.
-6. Continue under `ERROR_RECOVERY_PROTOCOL.md` until all mandatory gates pass, then complete the Stage 18 ledger, handoff, review, and merge sequence.
+- `fetch` received an explicitly undefined abort signal;
+- one foundation type import was unused;
+- legacy permit recovery attempted to narrow one expression and then read a fresh `unknown` expression.
 
-## Last known-good state
+The strict clean-room semantic compile completed without diagnostics after these repairs.
 
-- `main` remains Stage 17 complete, verified, merged, and ledger-closed.
-- PR `#33` remains draft and mergeable but unverified.
-- Helper PR `#37` is stale, based on an older Stage 18 head, and did not overcome the same pre-step runner failure.
-- No production deployment, production database mutation, credential change, or user-data change occurred.
+This verification is stronger than a syntax-only review but is not a substitute for dependency-backed repository commands. Controlled declarations were used only where packages could not be installed.
+
+## Mandatory results still unavailable
+
+The following are not marked passed:
+
+- `pnpm install --frozen-lockfile`;
+- pnpm 9.15.4 lockfile refresh;
+- Prisma generation;
+- Prisma schema validation;
+- clean PostgreSQL migration deployment;
+- repository ESLint;
+- full dependency-backed TypeScript typecheck;
+- complete Vitest suite;
+- Vite production build;
+- Playwright Chromium installation;
+- mobile and desktop Playwright workflow;
+- prior-stage regression gate.
+
+No item above may be reported as successful until an environment with package access actually executes it.
+
+## Exact continuation after infrastructure recovery
+
+1. Obtain an authorized checkout with package registry access.
+2. Install pnpm `9.15.4` and run `pnpm install --no-frozen-lockfile` once to refresh the lockfile accurately.
+3. Commit only the generated lockfile and evidence-backed source repairs, if any.
+4. Run Prisma generation and schema validation.
+5. Deploy all migrations to a clean PostgreSQL database and verify migration status.
+6. Run repository lint, full typecheck, Vitest, production build, and Playwright mobile and desktop workflows.
+7. Run the prior-stage regression gate.
+8. Repair failures without weakening legal, evidence, tenancy, revision, or stop-order validation.
+9. Complete the Stage 18 implementation ledger and completion handoff.
+10. Merge only after every mandatory result is genuinely green.
+
+## Last known safe state
+
+- `main` remains Stage 17 complete and ledger-closed.
+- PR `#33` remains draft, open, and unmerged.
+- helper PR `#37` is stale and did not overcome the runner failure.
+- no production deployment, production database mutation, credential change, or user-data change occurred.
