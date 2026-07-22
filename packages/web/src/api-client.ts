@@ -125,6 +125,10 @@ function stopId(row: Record<string, unknown>, index: number): string {
   return string(row.id ?? row.stopId, `stops[${String(index)}].id`);
 }
 
+function stopSequence(row: Record<string, unknown>, index: number): number {
+  return number(row.sequence, `stops[${String(index)}].sequence`);
+}
+
 function stopPatch(stop: StopForm): Record<string, unknown> {
   const plan = stopPlan(stop, 1);
   return Object.fromEntries(
@@ -188,6 +192,7 @@ export class TripPlanningClient {
       method?: 'GET' | 'POST' | 'PATCH' | 'DELETE';
       payload?: unknown;
       idempotencyKey?: string;
+      acceptedStatuses?: readonly number[];
     }> = {},
   ): Promise<Record<string, unknown>> {
     if (this.#token === '') {
@@ -215,7 +220,8 @@ export class TripPlanningClient {
         : { body: JSON.stringify(options.payload) }),
     });
     const payload = object(await response.json(), 'API response');
-    if (!response.ok) {
+    const accepted = options.acceptedStatuses?.includes(response.status) === true;
+    if (!response.ok && !accepted) {
       const error = object(payload.error, 'API error');
       throw new PlanningApiError(
         response.status,
@@ -380,7 +386,13 @@ export class TripPlanningClient {
 
     for (const stop of stops) {
       if (stop.publicId !== undefined) continue;
-      const create = createStopPayload(stop, rows.length + 1);
+      const nextSequence =
+        rows.reduce(
+          (maximum, row, index) =>
+            Math.max(maximum, stopSequence(row, index)),
+          0,
+        ) + 1;
+      const create = createStopPayload(stop, nextSequence);
       const payload = { expectedRevisionNumber: revision, stop: create };
       const response = await this.#request(`/api/trips/${tripId}/stops`, {
         method: 'POST',
@@ -407,7 +419,10 @@ export class TripPlanningClient {
       string(stop.publicId, `desired stop ${String(index + 1)} id`),
     );
     let currentOrder = rows.map((row, index) => stopId(row, index));
-    if (!equivalent(currentOrder, desiredOrder)) {
+    const sequencesAreContiguous = rows.every(
+      (row, index) => stopSequence(row, index) === index + 1,
+    );
+    if (!equivalent(currentOrder, desiredOrder) || !sequencesAreContiguous) {
       const finalStop = stops.at(-1);
       let temporarilyUnlockedFinal = false;
       if (
@@ -438,45 +453,43 @@ export class TripPlanningClient {
         temporarilyUnlockedFinal = true;
       }
 
-      if (!equivalent(currentOrder, desiredOrder)) {
-        const payload = {
-          expectedRevisionNumber: revision,
-          stopIds: desiredOrder,
-        };
-        const response = await this.#request(
-          `/api/trips/${tripId}/stops/reorder`,
-          {
-            method: 'POST',
+      const payload = {
+        expectedRevisionNumber: revision,
+        stopIds: desiredOrder,
+      };
+      const response = await this.#request(
+        `/api/trips/${tripId}/stops/reorder`,
+        {
+          method: 'POST',
+          payload,
+          idempotencyKey: await idempotencyKey('trip-stop-reorder', {
+            tripId,
             payload,
-            idempotencyKey: await idempotencyKey('trip-stop-reorder', {
-              tripId,
-              payload,
-            }),
-          },
-        );
-        trip = tripFromOperation(response, 'reordered-stop trip');
-        revision = revisionNumber(trip);
-        rows = stopRows(trip);
-      }
+          }),
+        },
+      );
+      trip = tripFromOperation(response, 'reordered-stop trip');
+      revision = revisionNumber(trip);
+      rows = stopRows(trip);
 
       if (temporarilyUnlockedFinal && finalStop?.publicId !== undefined) {
-        const payload = {
+        const relockPayload = {
           expectedRevisionNumber: revision,
           patch: { lockedPosition: true },
         };
-        const response = await this.#request(
+        const relockResponse = await this.#request(
           `/api/trips/${tripId}/stops/${finalStop.publicId}`,
           {
             method: 'PATCH',
-            payload,
+            payload: relockPayload,
             idempotencyKey: await idempotencyKey('trip-final-relock', {
               tripId,
               stopId: finalStop.publicId,
-              payload,
+              payload: relockPayload,
             }),
           },
         );
-        trip = tripFromOperation(response, 'relocked final trip');
+        trip = tripFromOperation(relockResponse, 'relocked final trip');
       }
     }
 
@@ -587,6 +600,7 @@ export class TripPlanningClient {
     const routeResponse = await this.#request('/api/routes/validate', {
       method: 'POST',
       payload: routeInput.request,
+      acceptedStatuses: [422],
     });
     const routePayload = { ...object(routeResponse.route, 'route') };
     delete routePayload.assessment;
@@ -624,6 +638,7 @@ export class TripPlanningClient {
           'trip-calculate',
           { tripId, calculationPayload },
         ),
+        acceptedStatuses: [422],
       },
     );
     const calculatedTrip = object(
