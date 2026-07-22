@@ -33,9 +33,9 @@ export type StopType = (typeof STOP_TYPES)[number];
 export type AppointmentSettings = {
   readonly mode: AppointmentMode;
   readonly timeZone: string;
-  readonly fixedAt?: string;
-  readonly earliestAt?: string;
-  readonly latestAt?: string;
+  readonly fixedAt?: string | undefined;
+  readonly earliestAt?: string | undefined;
+  readonly latestAt?: string | undefined;
   readonly lateToleranceMinutes: number;
   readonly earlyParkingAllowed: boolean;
   readonly overnightParkingAllowed: boolean;
@@ -43,16 +43,16 @@ export type AppointmentSettings = {
 
 export type ServiceSettings = {
   readonly mode: ServiceMode;
-  readonly exactMinutes?: number;
-  readonly expectedMinutes?: number;
-  readonly minimumMinutes?: number;
-  readonly maximumMinutes?: number;
+  readonly exactMinutes?: number | undefined;
+  readonly expectedMinutes?: number | undefined;
+  readonly minimumMinutes?: number | undefined;
+  readonly maximumMinutes?: number | undefined;
   readonly dutyStatus: DutyStatus;
 };
 
 export type TripStopDraft = {
   readonly localId: string;
-  readonly serverId?: string;
+  readonly serverId?: string | undefined;
   readonly sequence: number;
   readonly type: StopType;
   readonly label: string;
@@ -70,7 +70,7 @@ export type ProfileSelection = {
 };
 
 export type TripSetupState = {
-  readonly tripId?: string;
+  readonly tripId?: string | undefined;
   readonly revisionNumber: number;
   readonly driver: ProfileSelection;
   readonly tractor: ProfileSelection;
@@ -85,8 +85,8 @@ export type TripSetupState = {
   readonly autoRecalculate: boolean;
   readonly dirty: boolean;
   readonly calculationPending: boolean;
-  readonly lastCalculationAt?: string;
-  readonly lastError?: string;
+  readonly lastCalculationAt?: string | undefined;
+  readonly lastError?: string | undefined;
 };
 
 export type ValidationIssue = {
