@@ -159,10 +159,17 @@ describe('Stage 18 mobile trip setup UI', () => {
       screen.getByRole('button', { name: /remove stop 2/iu }),
     );
     expect(screen.getAllByRole('article')).toHaveLength(4);
-    expect(
-      within(screen.getAllByRole('article')[2] as HTMLElement)
-        .getByLabelText('Lock this position'),
-    ).toBeChecked();
+    const stillLockedCard = screen.getAllByRole('article')[2];
+    if (stillLockedCard === undefined) {
+      throw new Error('Locked stop moved out of its expected position.');
+    }
+    const stillLocked = within(stillLockedCard).getByLabelText(
+      'Lock this position',
+    );
+    if (!(stillLocked instanceof HTMLInputElement)) {
+      throw new TypeError('Lock control was not a checkbox.');
+    }
+    expect(stillLocked.checked).toBe(true);
   });
 
   it('shows the complete appointment and service-duration controls on demand', async () => {
