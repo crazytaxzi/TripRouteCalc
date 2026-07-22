@@ -5,7 +5,7 @@
 - Repository: `crazytaxzi/TripRouteCalc`
 - Branch: `agent/stage-18-mobile-trip-setup-ui`
 - Pull request: `#33`
-- Current implementation head before this checkpoint commit: `e7cbe01385e0b4b6b5b5a9b0b738844ea530e5d7`
+- Current implementation head before this checkpoint commit: `08452ebd1f3b4a1f5e563d33b14a2a6b153b7d45`
 - Base branch and commit: `main` at `94a890d6761c21489b1b48d9e4376657b8cd1687`
 - Stage status: BLOCKED; not complete and not eligible to merge
 
@@ -13,9 +13,9 @@
 
 GitHub Actions still rejects the permanent `CI` workflow before any job step starts.
 
-Latest observed evidence before this checkpoint:
+Latest evidence:
 
-- CI run `29882448754`, job `88806001276`, completed with failure against `0dc9e7f69b24c4f0772b7407fd53645eaf84fff1`.
+- CI run `29883812542`, job `88810114711`, completed with failure against `08452ebd1f3b4a1f5e563d33b14a2a6b153b7d45`.
 - The job exposes no step summaries and no log URL.
 - Earlier permanent and temporary workflow runs failed with the same approximately three-second, empty-step signature.
 - A bounded rerun of the temporary preflight workflow also failed before setup.
@@ -61,7 +61,15 @@ Classification:
     - `Stage18HosFormInput` now accepts validated `CycleRecapReturn` and `SleeperPeriodEvidence` collections;
     - `buildStage18HosDepartureState` forwards supplied evidence instead of replacing both collections with empty arrays;
     - a focused foundation test verifies the evidence survives central HOS validation and remains frozen.
-13. Preserved all prior Stage 17 behavior and did not add map or detailed timeline work from Source 19.
+13. Isolated secondary profile refresh from the authoritative calculation outcome:
+    - a successful or blocked trip result is committed to UI state before refreshing reusable profile lists;
+    - profile refresh failure now updates connection status without replacing the saved calculation with a false submission failure;
+    - a component regression verifies the successful result, trip ID, and revision remain visible.
+14. Hardened locked intermediate positions at the application boundary:
+    - add, insert, duplicate, remove, button move, and drag reorder are previewed before dispatch;
+    - any structural edit that would shift a locked intermediate stop from its absolute index is rejected with an accessible live announcement;
+    - a component regression locks stop 3 and verifies duplicate and removal before it leave the list and lock state unchanged.
+15. Preserved all prior Stage 17 behavior and did not add map or detailed timeline work from Source 19.
 
 ## Confirmed implementation gaps from adversarial specification review
 
@@ -73,22 +81,19 @@ These are Stage 18 requirements, not optional future polish:
 2. Tractor profile input still omits domain-supported facts including VIN, wheelbase, California compliance state/evidence, and notes.
 3. Trailer profile input still omits current rail position, rail-position mappings, liftgate, special equipment, and notes.
 4. Load input still omits front and rear overhang, temperature requirements, permit restrictions, escort requirements, route restrictions, secure-parking or high-value requirement, and notes.
-5. Intermediate lock semantics need hardening: inserting, deleting, duplicating, or moving another stop can currently shift a locked intermediate position even when the locked stop itself is not directly moved.
-6. A successful trip calculation can still be visually overwritten as failed when the secondary profile-list refresh fails afterward. The calculation result must remain authoritative while the refresh error is shown separately.
 
 The Stage 18 exit gate cannot be claimed while these gaps remain.
 
 ## Remaining mandatory work
 
 1. Complete web draft, migration, editor, validation, and mapper support for recap returns and existing sleeper evidence using the accepted HOS types.
-2. Implement the confirmed equipment/load input and lock-semantics gaps above using the existing domain contracts. Do not invent Source 19 behavior or rewrite HOS arithmetic from the UI layer.
-3. Isolate post-calculation profile refresh failures from the successful calculation outcome and add regression coverage.
-4. Refresh `pnpm-lock.yaml` with pnpm `9.15.4` so the `packages/web` importer and exact dependency graph are represented.
-5. Run the complete current Stage 18 head through an authorized environment with Node.js 22, pnpm, PostgreSQL, and Playwright Chromium.
-6. Repair evidence-backed failures without weakening validation or deleting prior-stage coverage.
-7. Perform final adversarial review against actual test output and the complete PR diff.
-8. Update the implementation ledger and write the Stage 18 completion handoff only after every mandatory check passes.
-9. Keep PR `#33` draft and do not advance to Source 19 until the Stage 18 exit gate is verified.
+2. Implement the confirmed tractor, trailer, and load input gaps using the existing domain contracts. Do not invent Source 19 behavior or rewrite legal calculations in the UI layer.
+3. Refresh `pnpm-lock.yaml` with pnpm `9.15.4` so the `packages/web` importer and exact dependency graph are represented.
+4. Run the complete current Stage 18 head through an authorized environment with Node.js 22, pnpm, PostgreSQL, and Playwright Chromium.
+5. Repair evidence-backed failures without weakening validation or deleting prior-stage coverage.
+6. Perform final adversarial review against actual test output and the complete PR diff.
+7. Update the implementation ledger and write the Stage 18 completion handoff only after every mandatory check passes.
+8. Keep PR `#33` draft and do not advance to Source 19 until the Stage 18 exit gate is verified.
 
 ## Validation state
 
@@ -111,12 +116,11 @@ No item above may be reported as passed until a runner or equivalent authorized 
 ## Exact continuation sequence
 
 1. Continue implementing the confirmed independent Stage 18 source gaps while preserving the draft PR.
-2. Reconcile the newest head and identify its latest Actions run.
-3. Open the latest failed Actions run in the GitHub web UI and read the single job annotation.
-4. Resolve the annotation-directed account or repository restriction. Inspect personal account Billing and licensing, Actions usage, Actions budgets that stop usage at the limit, payment status, or repository Actions policy only as directed by that annotation.
-5. After hosted jobs can start, use one bounded lock-refresh commit or an authorized local checkout to run `pnpm install --no-frozen-lockfile` with pnpm `9.15.4` and commit the resulting lockfile plus only evidence-backed repairs.
-6. Run the permanent CI gate and Playwright suite against the resulting head.
-7. Continue under `ERROR_RECOVERY_PROTOCOL.md` until all mandatory gates pass, then complete the Stage 18 ledger, handoff, review, and merge sequence.
+2. Open GitHub Actions run `29883812542` and read the single annotation attached to job `88810114711`.
+3. Resolve the annotation-directed account or repository restriction. Inspect personal account Billing and licensing, Actions usage, Actions budgets that stop usage at the limit, payment status, or repository Actions policy only as directed by that annotation.
+4. After hosted jobs can start, use one bounded lock-refresh commit or an authorized local checkout to run `pnpm install --no-frozen-lockfile` with pnpm `9.15.4` and commit the resulting lockfile plus only evidence-backed repairs.
+5. Run the permanent CI gate and Playwright suite against the resulting head.
+6. Continue under `ERROR_RECOVERY_PROTOCOL.md` until all mandatory gates pass, then complete the Stage 18 ledger, handoff, review, and merge sequence.
 
 ## Last known-good state
 
