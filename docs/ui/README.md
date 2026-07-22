@@ -24,14 +24,18 @@ The Stage 18 component does not duplicate calculation, HOS, routing, compliance,
 
 ## Draft preservation
 
-Unsaved work is stored locally under `trip-route-calc:trip-setup-draft:v1`. Malformed or structurally incomplete stored data is rejected and replaced by a fresh draft.
+Unsaved work is stored locally under `trip-route-calc:trip-setup-draft:v1`. Recovery validates the complete nested driver, clock, load, stop, enum, number, and boolean shape. Malformed or structurally incomplete stored data is rejected and replaced by a fresh draft.
+
+## Locked stop positions
+
+A locked stop retains its exact list index. The model rejects any move, removal, insertion, or duplication that would shift a locked stop indirectly. The editor disables insertion and duplication controls where the operation cannot preserve existing locks.
 
 ## Accessibility behavior
 
 - Native labelled form controls
 - Large touch targets
 - Keyboard/button stop ordering in addition to drag ordering
-- Locked-stop movement protection
+- Exact locked-stop position protection
 - Focusable validation summary with live updates
 - Text severity labels rather than color-only cues
 - Single-column mobile layout
