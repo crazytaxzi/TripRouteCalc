@@ -134,4 +134,4 @@ PR `#33` must remain draft and unmerged until an environment with the repository
 
 No unavailable test, build, migration, lint, or browser result is represented as successful in this checkpoint.
 
-The final pushed source checkpoint for this continuation is tracked by the branch head and PR metadata; no merge was performed.
+The final pushed source checkpoint for this continuation is `ba2d2a73fbdf41ccbdf94844dc0d22be736f1e26`; no merge was performed.
