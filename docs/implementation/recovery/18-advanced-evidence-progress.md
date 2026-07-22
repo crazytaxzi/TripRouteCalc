@@ -1,91 +1,130 @@
-# Stage 18 Advanced Evidence Progress
+# Stage 18 Advanced Evidence and Offline Verification Checkpoint
 
-- Date: 2026-07-21
+- Updated: 2026-07-22
 - Repository: `crazytaxzi/TripRouteCalc`
 - Branch: `agent/stage-18-mobile-trip-setup-ui`
 - Pull request: `#33`
-- Status: source work in progress; pull request remains draft and unverified
+- Status: Stage 18 source integration complete; dependency-backed release gate unavailable; pull request remains draft and unmerged
 
-## Completed in this recovery slice
+## Source integration completed
 
-### HOS evidence is implemented end to end
+### HOS evidence
 
-The Stage 18 web workflow now has accepted form, recovery, editor, mapping, and regression coverage for:
+The web workflow now collects, recovers, edits, validates, and maps:
 
 - expected cycle recap returns;
-- source duty dates;
-- local recap availability times converted with the departure IANA time zone;
+- recap source dates and local availability times;
 - returned cycle minutes;
-- existing sleeper periods;
-- local sleeper start and end times converted with the departure IANA time zone;
-- recorded duration, short or long candidate role, optional pair ID, evidence source, and explanation.
+- existing sleeper-period evidence;
+- sleeper start and end times, duration, short or long candidate role, pair ID, source, and explanation.
 
-Older version 1 and version 2 drafts receive empty evidence collections during migration. No recap hours or sleeper history are invented. Incomplete or contradictory evidence remains subject to the central HOS validator.
+Local values are converted with the departure IANA time zone and passed through the existing central HOS validator. Older drafts receive empty evidence collections; no recap hours or sleeper history are invented.
 
-### Transaction and stop-editor corrections remain preserved
+### Advanced tractor, trailer, and load evidence
 
-The branch still contains the previously completed corrections for:
+The running `App.tsx` now mounts `EquipmentDetailEditor` and uses the composed detailed recovery and validation facade. The workflow includes:
 
-- resumable immutable trip revisions;
-- real Stage 17 nested stop response handling;
-- structured HTTP 422 blockers;
-- synchronized trip and stop IDs saved before route-provider calls;
-- successful calculation results surviving secondary profile-refresh failure;
-- locked intermediate stops retaining their absolute positions across add, insert, duplicate, remove, button move, and drag operations;
-- debounced and abortable automatic recalculation;
-- bearer-token exclusion from local recovery.
+- tractor VIN, wheelbase, California compliance state and evidence, and notes;
+- trailer current rail position, exact rail-to-KPRA mappings, liftgate, special equipment, and notes;
+- load front and rear overhang, Fahrenheit temperature requirements, exact permit records, jurisdiction and permit restrictions, escort requirements, route restrictions, secure or high-value parking requirements, and notes.
 
-### Advanced equipment and load contracts are implemented below the App mount
+Saved profiles round-trip these facts back into editable form state. The obsolete flat permit-identifier input was removed so it cannot diverge from the authoritative permit rows.
 
-Committed source now provides:
+### Persistence and API corrections
 
-- advanced tractor form fields and saved-profile round-trip for VIN, wheelbase, California compliance status and evidence, and notes;
-- advanced trailer form fields and saved-profile round-trip for current rail position, exact rail-to-KPRA mappings, liftgate, special equipment, and notes;
-- advanced load form fields and saved-profile round-trip for overhang, Fahrenheit temperature requirements, exact permits with jurisdiction and restrictions, escort requirements, route restrictions, secure or high-value parking, and notes;
-- detailed domain serialization through the existing foundation validators;
-- detailed commercial route equipment construction;
-- additive detailed local recovery that preserves rich fields while migrating legacy flat permit identifiers;
-- detailed validation composed with the existing Stage 18 validation summary;
-- standalone model and editor regression coverage.
+The planning client now:
 
-The planning client now uses the detailed serializer for profile writes and commercial route requests. It also imports the detailed draft saver explicitly, correcting a static missing-import defect in the prior client.
+- serializes the detailed tractor, trailer, and load profiles for reusable-profile writes;
+- supplies the detailed equipment combination to commercial routing;
+- saves synchronized trip and stop continuation references before calling the route provider;
+- clears stale public stop IDs that are absent from the current server trip, then recreates those stops instead of wedging the revision chain;
+- preserves structured HTTP 422 blockers;
+- continues an existing immutable trip revision chain rather than creating duplicate trips during recalculation;
+- conditionally emits the abort signal under exact optional property typing.
 
-## Remaining source integration
+Detailed local recovery now handles malformed JSON through the core recovery cleanup rather than throwing before the recovery banner can render.
 
-The advanced equipment editor and composed recovery/validation facade are committed but are not yet mounted in `packages/web/src/App.tsx` because the connected GitHub Contents action stopped exposing the live App blob SHA required for a safe replacement.
+### Accessibility and cleanup
 
-A deterministic patch script is committed at:
+- Locked intermediate positions remain absolute across all structural editing paths.
+- The stop-editor live announcement now uses an actual assistive-only CSS utility.
+- The temporary advanced-integration patch script was removed after its changes were applied.
 
-- `scripts/apply-stage18-advanced-equipment-ui.mjs`
+## Regression coverage committed
 
-It performs only two reviewed changes:
+The branch contains focused coverage for:
 
-1. switches App recovery, saving, and validation to `trip-form-model.ts` while retaining the existing reducer and draft factory;
-2. mounts `EquipmentDetailEditor` immediately before the ordered-stop section.
+- detailed profile serialization and Fahrenheit conversion;
+- detailed profile round-trip;
+- legacy permit migration;
+- malformed detailed evidence;
+- malformed JSON recovery cleanup;
+- mounted advanced editor autosave;
+- absence of the obsolete flat permit field;
+- detailed App and API wiring;
+- HOS recap and sleeper evidence;
+- immutable trip revisions, provider failure recovery, structured blockers, profile-refresh isolation, and locked-stop structural edits.
 
-The script validates exact source anchors and refuses to write when the App has drifted or is already integrated.
+These tests are committed source. They have not been represented as executed by Vitest because the package runtime cannot currently be installed.
 
-Authorized continuation command:
+## Offline verification actually executed
 
-```bash
-node scripts/apply-stage18-advanced-equipment-ui.mjs
-```
+An exact copy of the rewritten Stage 18 source boundaries was reconstructed locally and checked with the installed TypeScript `5.8.3` compiler.
 
-After running it, the resulting `App.tsx` must be reviewed and committed. The patch script should then be removed before Stage 18 closure unless the project explicitly retains it as a migration utility.
+Executed checks:
 
-## Execution blocker
+1. TypeScript parser checks with TSX enabled for:
+   - `packages/web/src/App.tsx`;
+   - `packages/web/src/api-client.ts`;
+   - `packages/web/src/equipment-detail-model.ts`.
+2. A strict clean-room semantic compile using the real Stage 18 form contracts and controlled declarations only for unavailable external package boundaries, with:
+   - `strict`;
+   - `exactOptionalPropertyTypes`;
+   - `noUncheckedIndexedAccess`;
+   - `noUnusedLocals`;
+   - `noUnusedParameters`;
+   - ES2022 and DOM libraries;
+   - bundler module resolution.
 
-The latest directly inspected hosted run remains GitHub Actions run `29884806566`, job `88813070441`. It failed before checkout with no step summaries and no job log URL, matching the prior account, policy, billing, quota, or hosted-runner failure signature.
+The first strict pass found and caused repairs for real defects:
 
-The current source after this addendum has not been executed by GitHub Actions. `pnpm-lock.yaml` also still requires an authorized pnpm `9.15.4` refresh for the web workspace importer.
+- an explicit `signal: undefined` supplied to `fetch` under exact optional typing;
+- an unused foundation type import;
+- invalid repeated narrowing of an `unknown` legacy permit identifier value.
 
-## Mandatory continuation
+After those repairs, the strict clean-room semantic compile completed with no diagnostics.
 
-1. Apply and review `scripts/apply-stage18-advanced-equipment-ui.mjs` in an authorized checkout or through an authenticated Git commit action that can replace `App.tsx` safely.
-2. Add an App-level autosave and validation regression for the mounted advanced editor.
-3. Reconcile the detailed serializer tests against actual TypeScript, ESLint, Vitest, and Playwright output.
-4. Refresh `pnpm-lock.yaml` with pnpm `9.15.4`.
-5. Resolve the GitHub Actions pre-step restriction and execute the complete Stage 18 gate.
-6. Perform final adversarial review, update the implementation ledger, write the completion handoff, and merge only after every mandatory check passes.
+This is genuine source verification, but it is intentionally not described as the repository's full `pnpm typecheck` because unavailable third-party packages were represented at their public boundaries.
 
-No test, build, migration, or browser gate is represented as passed in this document.
+## Infrastructure attempts and remaining unavailable gates
+
+GitHub Actions continues to fail before checkout with zero job steps and no log archive. The latest previously inspected run was `29886457427`, job `88817901032`.
+
+The local runtime has Node.js 22 and TypeScript 5.8.3, but no pnpm, React, Zod, Vitest, Vite, ESLint, Prisma, PostgreSQL harness, or Playwright installation. The only reachable package registry endpoint repeatedly returned HTTP `503`, including three bounded retries on 2026-07-22. External npm and GitHub download routes are blocked from the runtime.
+
+Therefore these gates remain unavailable and are not marked passed:
+
+- `pnpm install --frozen-lockfile`;
+- pnpm 9.15.4 lockfile refresh for the `packages/web` importer;
+- Prisma generation and schema validation;
+- clean PostgreSQL migration deployment;
+- repository ESLint;
+- full dependency-backed TypeScript typecheck;
+- complete Vitest suite;
+- Vite production build;
+- Playwright Chromium installation and mobile or desktop workflows;
+- complete prior-stage regression gate.
+
+## Continuation boundary
+
+The independent Stage 18 source work identified by the adversarial specification review is implemented and pushed. No known source-integration item remains intentionally deferred to Source 19.
+
+PR `#33` must remain draft and unmerged until an environment with the repository dependency graph can execute the unavailable gates. When package access is restored, the next authorized checkout must:
+
+1. refresh `pnpm-lock.yaml` with pnpm `9.15.4`;
+2. execute the complete root `check` workflow plus clean database migration deployment;
+3. repair only evidence-backed failures without weakening validation;
+4. complete the Stage 18 implementation ledger, handoff, and final adversarial review;
+5. merge only after every mandatory result is actually green.
+
+No unavailable test, build, migration, lint, or browser result is represented as successful in this checkpoint.
