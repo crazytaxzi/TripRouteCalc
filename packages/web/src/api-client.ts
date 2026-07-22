@@ -11,6 +11,7 @@ import { z } from 'zod';
 import {
   loadFromForm,
   routeRequestFromDraft,
+  saveDraft,
   simulationInputFromDraft,
   stopPlan,
   tractorFromForm,
@@ -618,6 +619,7 @@ export class TripPlanningClient {
       ...workingDraft,
       stops: synchronized.stops,
     };
+    saveDraft(persistedDraft);
 
     const routeInput = routeRequestFromDraft(
       persistedDraft,
