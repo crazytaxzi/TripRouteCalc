@@ -1,77 +1,97 @@
 # Stage 18 Recovery Checkpoint: GitHub Actions runner did not start
 
-- Date: 2026-07-21
+- Updated: 2026-07-21
 - Stage: 18 - Mobile-First Trip Setup and Stop Editor
-- Requirement: complete preflight corrections, refresh `pnpm-lock.yaml`, and run the mandatory repository and browser validation gates
 - Repository: `crazytaxzi/TripRouteCalc`
 - Branch: `agent/stage-18-mobile-trip-setup-ui`
 - Pull request: `#33`
-- Last known branch head before this checkpoint: `70f596b2a0b7b703dcd90e28e8f416e29120ab3b`
+- Implementation head before this checkpoint update: `13357f9b2759ecd4d603c658e1ad03aabd693171`
 - Base branch and commit: `main` at `94a890d6761c21489b1b48d9e4376657b8cd1687`
 - Stage status: BLOCKED; not complete and not eligible to merge
 
-## Failure
+## Active failure
 
-GitHub Actions workflow runs for both the permanent `CI` workflow and a temporary bounded Stage 18 preflight workflow failed before any job step started.
+GitHub Actions still rejects the permanent `CI` workflow before any job step starts.
 
-Observed evidence:
+Latest evidence:
 
-- CI run `29876550269`, job `88788209773`, failed in approximately three seconds.
-- Stage 18 preflight run `29876550261`, initial job `88788209773`, failed in approximately three seconds.
-- The preflight workflow was rerun once through the GitHub Actions API; replacement job `88788435823` moved from queued to failed with the same empty-step signature.
-- The GitHub workflow-job API returned no step summaries.
-- The job-log download endpoint returned `404 BlobNotFound` for both affected jobs.
-- Neither run produced an artifact.
-- GitHub notification email showed one job annotation but did not include the annotation text in the message body.
+- CI run `29880640595`, job `88800533958`, completed with failure against `13357f9b2759ecd4d603c658e1ad03aabd693171`.
+- The job exposes no step summaries and no log URL.
+- Earlier permanent and temporary workflow runs failed with the same approximately three-second, empty-step signature.
+- A bounded rerun of the temporary preflight workflow also failed before setup.
+- Earlier job-log download attempts returned `404 BlobNotFound` and produced no artifacts.
+- GitHub notification email showed one job annotation but did not include the annotation text in the email body.
 
 ## Classification
 
 - Category: external permission, account-policy, billing/quota, or hosted-runner resource constraint
 - Confidence: medium
-- Reason: two different workflows and a bounded rerun failed before setup, with no job steps, logs, or artifacts. Repository code and the preflight script never executed.
-- Exact GitHub account annotation: unavailable through the connected API and email body; it must be opened in the GitHub Actions run UI before selecting a billing, quota, policy, or account remedy.
+- Reason: multiple different workflows and one explicit rerun fail before checkout or any repository command executes.
+- Exact GitHub annotation: unavailable through the connected GitHub API and notification email body. It must be opened in the GitHub Actions web UI before selecting the precise account remedy.
 
-## Recovery actions performed
+## Recovery actions completed
 
-1. Preserved PR `#33` and its Stage 18 implementation branch.
-2. Reopened and applied `PRIME_DIRECTIVE.md` and `ERROR_RECOVERY_PROTOCOL.md`.
-3. Reconciled the active branch, PR, Stage 18 specification, shared guardrails, and implementation status.
-4. Identified and corrected two defects in the temporary preflight workflow:
-   - the `pull_request.branches` filter incorrectly targeted the head branch instead of PR base `main`;
-   - the commit step referenced a trigger file that did not exist.
-5. Triggered the corrected workflow and observed the same pre-step hosted-runner failure.
-6. Performed one bounded rerun using the GitHub Actions API; the same signature returned.
-7. Removed the temporary self-mutating preflight workflow so the PR does not retain diagnostic workflow debris.
-8. Preserved the current implementation and did not weaken, skip, or claim any validation gate.
+1. Preserved PR `#33`, kept it draft, and did not merge or weaken any gate.
+2. Reopened and applied `PRIME_DIRECTIVE.md` and `ERROR_RECOVERY_PROTOCOL.md` before each continuation.
+3. Reconciled the branch, Stage 18 specification, shared guardrails, Stage 17 API contracts, concurrent helper work, and every changed web/API boundary used by the UI.
+4. Corrected and then removed the temporary self-mutating preflight workflow after confirming the hosted runner still did not start.
+5. Applied the bounded preflight corrections directly:
+   - exact optional reusable-profile IDs;
+   - required rule-set initialization and validation;
+   - explicit Playwright `Page` typing;
+   - guarded model-test endpoint access;
+   - unused destructuring removal and optional confidence emission.
+6. Corrected the Stage 18 client transaction against the real Stage 17 API contract:
+   - handled nested `{ trip, stop }` create-stop responses;
+   - used public stop field `id` rather than the nonexistent `stopId` assumption;
+   - persisted stops incrementally without comparing a partial server prefix to the full draft;
+   - resumed immutable trip revisions through the saved public `tripId`;
+   - patched equipment and rule-set changes on the existing trip;
+   - synchronized stop create, patch, delete, and reorder operations with expected revisions;
+   - preserved structured HTTP 422 route and calculation results instead of throwing away blocked evidence;
+   - avoided duplicate trip creation during normal recalculation.
+7. Expanded the stop editor to cover the Stage 18 contract:
+   - add, remove, duplicate, and insert;
+   - drag and button reorder;
+   - required or optional;
+   - lock position;
+   - earliest, latest, fixed, window, and open-window appointments;
+   - exact, expected, range, and historical-average service durations;
+   - facility hours, parking, duty status, notes, and instructions.
+8. Added controlled recalculation behavior:
+   - explicit calculation remains available;
+   - optional recalculation waits 1.2 seconds after valid changes settle;
+   - superseded requests are aborted;
+   - invalid drafts never trigger automatic requests;
+   - local autosave state is independent from calculation state.
+9. Upgraded local recovery to version 2 with validated migration from version 1, structural endpoint enforcement, saved public trip and stop references, and continued exclusion of bearer tokens.
+10. Expanded static test coverage for:
+    - draft migration and storage isolation;
+    - trip-reference recovery;
+    - stop duplicate, insert, lock, optional, and endpoint protection;
+    - appointment and service-duration mapping;
+    - first-invalid-field focus;
+    - nested API responses, immutable revisions, one persistent trip chain, and structured blocked calculations;
+    - responsive browser interaction and the version 2 storage key.
+11. Preserved all prior Stage 17 behavior and did not add map or detailed timeline work from Source 19.
 
-## Pending bounded preflight corrections
+## Remaining mandatory work
 
-The following evidence-backed corrections were prepared but did not execute because the hosted runner never started:
-
-1. `packages/web/src/types.ts`
-   - make the four optional reusable-profile `id` fields explicit as `string | undefined` for `exactOptionalPropertyTypes`.
-2. `packages/web/src/model.ts`
-   - initialize `route.ruleSetVersion` in the default draft;
-   - surface an error when the reviewed rule-set version is empty.
-3. `packages/web/src/api-client.ts`
-   - omit stop `id` and `sequence` without unused destructuring bindings;
-   - preserve unsaved later stops while persisting stops sequentially;
-   - remove provider route `assessment` before domain reassessment without an unused binding;
-   - include optional confidence only when present.
-4. `packages/web/e2e/planner.spec.ts`
-   - use the exported Playwright `Page` type instead of indexing the test callback parameter type.
-5. `packages/web/src/model.test.ts`
-   - replace the non-null assertion for the locked start stop with an explicit guard.
-6. `pnpm-lock.yaml`
-   - refresh with pnpm `9.15.4` so the new `packages/web` importer and all exact dependency resolutions are represented.
+1. Refresh `pnpm-lock.yaml` with pnpm `9.15.4` so the `packages/web` importer and its exact dependency graph are represented. The current frozen lockfile is not acceptable as final evidence.
+2. Run the complete current Stage 18 head through an authorized environment with Node.js 22, pnpm, PostgreSQL, and Playwright Chromium.
+3. Repair any evidence-backed failures without weakening validation or deleting prior-stage coverage.
+4. Perform the final adversarial review against actual test output and the complete PR diff.
+5. Update the implementation ledger and write the Stage 18 completion handoff only after all mandatory checks pass.
+6. Keep PR `#33` draft and do not advance to Source 19 until the Stage 18 exit gate is verified.
 
 ## Validation state
 
-Not run successfully for the current Stage 18 head:
+Not run successfully for the current Stage 18 implementation:
 
 - `pnpm install --frozen-lockfile`
-- Prisma generation and schema validation
-- clean database migration deployment
+- Prisma generation
+- Prisma schema validation
+- clean PostgreSQL migration deployment
 - ESLint
 - TypeScript type checking
 - complete Vitest suite
@@ -84,14 +104,15 @@ No item above may be reported as passed until a runner or equivalent authorized 
 
 ## Exact next action
 
-1. Open either GitHub Actions run `29876550269` or `29876550261` and read the single job annotation.
-2. Resolve the indicated GitHub account-level Actions restriction. Check personal account Billing and licensing, Actions usage, budgets with `Stop usage when budget limit is reached`, payment status, and repository Actions policy as directed by the annotation.
-3. After hosted jobs can start, reintroduce a one-use bounded preflight workflow or apply the listed source corrections in one controlled commit, run `pnpm install --no-frozen-lockfile` with pnpm `9.15.4`, commit the refreshed lockfile, and remove the temporary workflow in the same recovery sequence.
-4. Run the permanent Stage 18 CI gate including Playwright.
-5. Inspect failures under `ERROR_RECOVERY_PROTOCOL.md`, complete adversarial review, write the Stage 18 handoff and ledger update, then merge only after all mandatory gates pass.
+1. Open GitHub Actions run `29880640595` and read the single annotation attached to job `88800533958`.
+2. Resolve the annotation-directed account or repository restriction. Likely places to inspect, only as directed by the annotation, are personal account Billing and licensing, Actions usage, Actions budgets that stop usage at the limit, payment status, and repository Actions policy.
+3. After hosted jobs can start, use one bounded lock-refresh commit or an authorized local checkout to run `pnpm install --no-frozen-lockfile` with pnpm `9.15.4`, commit only the resulting lockfile and any evidence-backed repairs, and remove any temporary workflow in the same recovery sequence.
+4. Run the permanent CI gate and Playwright suite against the resulting head.
+5. Continue under `ERROR_RECOVERY_PROTOCOL.md` until all mandatory gates pass, then complete the Stage 18 ledger, handoff, review, and merge sequence.
 
 ## Last known-good state
 
 - `main` remains Stage 17 complete, verified, merged, and ledger-closed.
 - PR `#33` remains draft and mergeable but unverified.
-- No production deployment, database mutation, credential change, or user-data change occurred.
+- Helper PR `#37` is stale, based on an older Stage 18 head, and did not overcome the same pre-step runner failure.
+- No production deployment, production database mutation, credential change, or user-data change occurred.
