@@ -9,7 +9,7 @@ import {
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { TripPlanningClient } from './api-client.js';
-import { defaultTripDraft } from './model.js';
+import { defaultTripDraft, loadDraft } from './model.js';
 import type { StopForm, TripDraft } from './types.js';
 
 function json(body: unknown, status = 200): Response {
@@ -143,6 +143,7 @@ interface WorkflowServer {
 
 function workflowServer(options: {
   readonly blockedCalculation?: boolean;
+  readonly routeFailure?: boolean;
 } = {}): WorkflowServer {
   let revision = 1;
   let ruleSetVersion = 'reviewed-fixture-v1';
@@ -249,6 +250,18 @@ function workflowServer(options: {
         return json({ trip: tripBody(), stop: row }, 201);
       }
       if (url.pathname === '/api/routes/validate' && method === 'POST') {
+        if (options.routeFailure === true) {
+          return json(
+            {
+              error: {
+                code: 'ROUTING_PROVIDER_UNAVAILABLE',
+                message: 'The commercial routing provider is unavailable.',
+                details: { retryable: true },
+              },
+            },
+            503,
+          );
+        }
         const first = stops[0];
         const last = stops.at(-1);
         if (first === undefined || last === undefined) {
@@ -348,6 +361,30 @@ describe('Stage 18 planning API client', () => {
     expect(
       server.writes.filter((write) => write === 'POST /api/trips'),
     ).toHaveLength(1);
+  });
+
+  it('preserves server progress when the route provider fails', async () => {
+    const server = workflowServer({ routeFailure: true });
+    vi.stubGlobal('fetch', server.fetchMock);
+
+    const client = new TripPlanningClient({
+      baseUrl: 'https://trip.example',
+      token: 'test-bearer-token',
+    });
+
+    await expect(client.submitDraft(validDraft())).rejects.toMatchObject({
+      statusCode: 503,
+      code: 'ROUTING_PROVIDER_UNAVAILABLE',
+    });
+
+    const recovered = loadDraft();
+    expect(recovered?.tripId).toBe('trip-public-1');
+    expect(recovered?.driver.id).toBe('driver-public-1');
+    expect(recovered?.stops.map((stop) => stop.publicId)).toEqual([
+      'stop-public-1',
+      'stop-public-2',
+    ]);
+    expect(server.calculationTripIds).toEqual([]);
   });
 
   it('returns and preserves a structured blocked calculation response', async () => {
