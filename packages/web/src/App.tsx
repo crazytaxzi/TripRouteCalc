@@ -157,7 +157,7 @@ function focusNamedField(name: string | undefined): boolean {
 }
 
 export function App(): ReactNode {
-  const recoveredAtStart = useRef<TripDraft | undefined>(loadDraft());
+  const [initialRecovery] = useState(() => ({ draft: loadDraft() }));
   const [draft, dispatch] = useReducer(draftReducer, undefined, defaultTripDraft);
   const [token, setToken] = useState(
     () => sessionStorage.getItem('trip-route-calc.stage18.token') ?? '',
@@ -166,14 +166,15 @@ export function App(): ReactNode {
   const [connectionStatus, setConnectionStatus] = useState('Not connected');
   const [outcome, setOutcome] = useState<PlanningOutcome>(idleOutcome);
   const [recoveredDraft, setRecoveredDraft] = useState<TripDraft | undefined>(
-    recoveredAtStart.current,
+    initialRecovery.draft,
   );
   const [recoveryResolved, setRecoveryResolved] = useState(
-    recoveredAtStart.current === undefined,
+    initialRecovery.draft === undefined,
   );
   const [saveStatus, setSaveStatus] = useState('Not saved yet');
   const [newStopType, setNewStopType] = useState<StopType>('shipper');
   const [dirty, setDirty] = useState(false);
+  const [needsCalculation, setNeedsCalculation] = useState(false);
   const [stopAnnouncement, setStopAnnouncement] = useState('');
   const validationSummary = useRef<HTMLDivElement>(null);
   const abortRef = useRef<AbortController | undefined>(undefined);
@@ -186,6 +187,7 @@ export function App(): ReactNode {
 
   const update = (action: Parameters<typeof dispatch>[0]): void => {
     setDirty(true);
+    setNeedsCalculation(true);
     setOutcome(idleOutcome);
     dispatch(action);
   };
@@ -258,9 +260,10 @@ export function App(): ReactNode {
         warnings: currentErrors.map((issue) => issue.message),
       });
       if (!automatic) {
-        const focused = focusNamedField(
-          issueFieldName(currentErrors[0]!, draft),
-        );
+        const firstError = currentErrors[0];
+        const focused =
+          firstError !== undefined &&
+          focusNamedField(issueFieldName(firstError, draft));
         if (!focused) validationSummary.current?.focus();
       }
       return;
@@ -281,6 +284,7 @@ export function App(): ReactNode {
       dispatch({ type: 'replace', draft: result.draft });
       saveDraft(result.draft);
       setDirty(false);
+      setNeedsCalculation(false);
       setOutcome(result.outcome);
       const loaded = await client().loadProfiles();
       setProfiles(loaded);
@@ -315,9 +319,9 @@ export function App(): ReactNode {
       !recoveryResolved ||
       !draft.route.autoCalculate ||
       !connected ||
-      !dirty ||
+      !needsCalculation ||
       errors.length > 0 ||
-      outcome.status === 'submitting'
+      outcome.status !== 'idle'
     ) {
       return undefined;
     }
@@ -325,7 +329,14 @@ export function App(): ReactNode {
       void submit(true);
     }, 1_200);
     return () => window.clearTimeout(timer);
-  }, [connected, dirty, draft, errors.length, outcome.status, recoveryResolved]);
+  }, [
+    connected,
+    draft,
+    errors.length,
+    needsCalculation,
+    outcome.status,
+    recoveryResolved,
+  ]);
 
   const moveStopTo = (sourceId: string, targetId: string): void => {
     const source = draft.stops.findIndex((stop) => stop.localId === sourceId);
@@ -336,6 +347,7 @@ export function App(): ReactNode {
       dispatch({ type: 'move-stop', localId: sourceId, direction });
     }
     setDirty(true);
+    setNeedsCalculation(true);
     setOutcome(idleOutcome);
     setStopAnnouncement(`Moved stop ${String(source + 1)} to position ${String(target + 1)}.`);
   };
@@ -440,11 +452,13 @@ export function App(): ReactNode {
             dispatch({ type: 'replace', draft: recoveredDraft });
             setRecoveryResolved(true);
             setRecoveredDraft(undefined);
+            setNeedsCalculation(false);
           }}
           onDiscard={() => {
             clearDraft();
             setRecoveryResolved(true);
             setRecoveredDraft(undefined);
+            setNeedsCalculation(false);
           }}
         />
       ) : null}
@@ -466,10 +480,13 @@ export function App(): ReactNode {
               type="url"
               value={draft.apiBaseUrl}
               placeholder="Leave blank for the current host"
-              onChange={(value) => update({
-                type: 'replace',
-                draft: { ...draft, apiBaseUrl: value },
-              })}
+              onChange={(value) => {
+                setConnectionStatus('Not connected');
+                update({
+                  type: 'replace',
+                  draft: { ...draft, apiBaseUrl: value },
+                });
+              }}
             />
             <TextField
               name="bearer-token"
@@ -478,7 +495,10 @@ export function App(): ReactNode {
               value={token}
               required
               autoComplete="off"
-              onChange={setToken}
+              onChange={(value) => {
+                setConnectionStatus('Not connected');
+                setToken(value);
+              }}
               hint="Stored only in sessionStorage. It is excluded from local trip recovery."
             />
           </div>
@@ -751,6 +771,7 @@ export function App(): ReactNode {
               clearDraft();
               setOutcome(idleOutcome);
               setDirty(false);
+              setNeedsCalculation(false);
               setStopAnnouncement('Started a new local trip draft.');
             }}>Start a new draft</button>
           </div>
