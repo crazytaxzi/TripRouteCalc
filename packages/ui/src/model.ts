@@ -88,10 +88,19 @@ export interface ValidationIssue {
   severity: "ERROR" | "WARNING";
 }
 
+const dutyStatuses = ["OFF_DUTY", "SLEEPER_BERTH", "ON_DUTY_NOT_DRIVING", "DRIVING"] as const;
+const appointmentModes = ["NONE", "FIXED", "WINDOW"] as const;
+const serviceModes = ["EXACT", "EXPECTED", "RANGE"] as const;
+
+const isRecord = (value: unknown): value is Record<string, unknown> => typeof value === "object" && value !== null && !Array.isArray(value);
+const isString = (value: unknown): value is string => typeof value === "string";
+const isBoolean = (value: unknown): value is boolean => typeof value === "boolean";
+const isFiniteNumber = (value: unknown): value is number => typeof value === "number" && Number.isFinite(value);
+const isNullableFiniteNumber = (value: unknown): value is number | null => value === null || isFiniteNumber(value);
+const isOneOf = <T extends readonly string[]>(values: T, value: unknown): value is T[number] => isString(value) && values.includes(value as T[number]);
+
 const createId = (): string => {
-  if (typeof crypto !== "undefined" && "randomUUID" in crypto) {
-    return crypto.randomUUID();
-  }
+  if (typeof crypto !== "undefined" && "randomUUID" in crypto) return crypto.randomUUID();
   return `stop-${Date.now()}-${Math.random().toString(16).slice(2)}`;
 };
 
@@ -147,26 +156,40 @@ export const createInitialDraft = (): TripSetupDraft => ({
 
 export const duplicateStop = (stop: TripStop): TripStop => ({ ...stop, id: createId(), locked: false });
 
+const lockedPositionsArePreserved = (before: readonly TripStop[], after: readonly TripStop[]): boolean =>
+  before.every((stop, index) => !stop.locked || after[index]?.id === stop.id);
+
+export const canInsertStopAt = (stops: readonly TripStop[], index: number): boolean =>
+  index >= 0 && index <= stops.length && stops.every((stop, stopIndex) => !stop.locked || stopIndex < index);
+
+export const insertStop = (stops: readonly TripStop[], index: number, stop: TripStop = createStop()): TripStop[] => {
+  if (!canInsertStopAt(stops, index)) return [...stops];
+  const next = [...stops];
+  next.splice(index, 0, stop);
+  return next;
+};
+
 export const moveStop = (stops: readonly TripStop[], from: number, to: number): TripStop[] => {
-  if (from < 0 || from >= stops.length || to < 0 || to >= stops.length || from === to) return [...stops];
-  if (stops[from]?.locked || stops[to]?.locked) return [...stops];
+  if (from < 0 || from >= stops.length || to < 0 || to >= stops.length || from === to || stops[from]?.locked) return [...stops];
   const next = [...stops];
   const [moved] = next.splice(from, 1);
   if (!moved) return [...stops];
   next.splice(to, 0, moved);
-  return next;
+  return lockedPositionsArePreserved(stops, next) ? next : [...stops];
 };
 
 export const removeStop = (stops: readonly TripStop[], index: number): TripStop[] => {
   const stop = stops[index];
   if (!stop || stop.locked || stops.length <= 2) return [...stops];
-  return stops.filter((_, current) => current !== index);
+  const next = stops.filter((_, current) => current !== index);
+  return lockedPositionsArePreserved(stops, next) ? next : [...stops];
 };
 
 export const validateDraft = (draft: TripSetupDraft): ValidationIssue[] => {
   const issues: ValidationIssue[] = [];
   if (!draft.driver.id && !draft.driver.label.trim()) issues.push({ field: "driver", message: "Select or create a driver.", severity: "ERROR" });
   if (!draft.clocks.currentDutyStatus) issues.push({ field: "currentDutyStatus", message: "Current duty status must be explicit.", severity: "ERROR" });
+  if (!draft.clocks.dutyStatusBeganAt) issues.push({ field: "dutyStatusBeganAt", message: "The time the current duty status began is required.", severity: "ERROR" });
   if (!draft.clocks.departureAt) issues.push({ field: "departureAt", message: "Departure date and time are required.", severity: "ERROR" });
   if (!draft.clocks.departureTimeZone) issues.push({ field: "departureTimeZone", message: "Departure time zone is required.", severity: "ERROR" });
   for (const [field, value] of [
@@ -193,14 +216,69 @@ export const validateDraft = (draft: TripSetupDraft): ValidationIssue[] => {
   return issues;
 };
 
+const isProfileReference = (value: unknown): value is ProfileReference =>
+  isRecord(value) && isString(value.id) && isString(value.label);
+
+const isClockInput = (value: unknown): value is ClockInput =>
+  isRecord(value)
+  && isFiniteNumber(value.driveMinutesRemaining)
+  && isFiniteNumber(value.shiftMinutesRemaining)
+  && isFiniteNumber(value.cycleMinutesRemaining)
+  && (value.currentDutyStatus === "" || isOneOf(dutyStatuses, value.currentDutyStatus))
+  && isString(value.dutyStatusBeganAt)
+  && isString(value.departureAt)
+  && isString(value.departureTimeZone);
+
+const isLoadFacts = (value: unknown): value is LoadFacts =>
+  isRecord(value)
+  && isString(value.identifier)
+  && isString(value.commodity)
+  && isNullableFiniteNumber(value.cargoWeightPounds)
+  && isNullableFiniteNumber(value.totalCombinationWeightPounds)
+  && isNullableFiniteNumber(value.heightInches)
+  && isNullableFiniteNumber(value.widthInches)
+  && isNullableFiniteNumber(value.lengthInches)
+  && isBoolean(value.hazmat)
+  && isString(value.hazmatClass)
+  && isString(value.permitIdentifiers)
+  && isString(value.routeRestrictions);
+
+const isTripStop = (value: unknown): value is TripStop =>
+  isRecord(value)
+  && isString(value.id)
+  && isOneOf(stopTypes, value.type)
+  && isString(value.label)
+  && isString(value.location)
+  && isBoolean(value.required)
+  && isBoolean(value.locked)
+  && isOneOf(appointmentModes, value.appointmentMode)
+  && isString(value.appointmentStart)
+  && isString(value.appointmentEnd)
+  && isString(value.appointmentTimeZone)
+  && isOneOf(serviceModes, value.serviceMode)
+  && isFiniteNumber(value.serviceMinutes)
+  && isFiniteNumber(value.serviceMinimumMinutes)
+  && isFiniteNumber(value.serviceMaximumMinutes)
+  && isOneOf(dutyStatuses, value.serviceDutyStatus)
+  && isString(value.notes);
+
 export const serializeDraft = (draft: TripSetupDraft): string => JSON.stringify({ ...draft, updatedAt: new Date().toISOString() });
 
 export const deserializeDraft = (value: string | null): TripSetupDraft | null => {
   if (!value) return null;
   try {
-    const parsed = JSON.parse(value) as Partial<TripSetupDraft>;
-    if (!parsed.clocks || !parsed.load || !Array.isArray(parsed.stops)) return null;
-    return { ...createInitialDraft(), ...parsed, stops: parsed.stops.map((stop) => ({ ...createStop(), ...stop })) };
+    const parsed: unknown = JSON.parse(value);
+    if (!isRecord(parsed)
+      || !isProfileReference(parsed.driver)
+      || !isProfileReference(parsed.tractor)
+      || !isProfileReference(parsed.trailer)
+      || !isClockInput(parsed.clocks)
+      || !isLoadFacts(parsed.load)
+      || !Array.isArray(parsed.stops)
+      || !parsed.stops.every(isTripStop)
+      || !isBoolean(parsed.immediateRecalculation)
+      || !isString(parsed.updatedAt)) return null;
+    return parsed as unknown as TripSetupDraft;
   } catch {
     return null;
   }
