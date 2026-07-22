@@ -16,7 +16,6 @@ import {
 import type {
   EquipmentCombination,
   LoadProfile,
-  ResolvedCommercialLocation,
   TractorProfile,
   TrailerProfile,
 } from '@trip-route-calc/foundation';
@@ -373,9 +372,11 @@ export function loadDetailedDraft(): TripDraft | undefined {
   if (base === undefined) return undefined;
   const rawTractor = tractorDetailsSchema.safeParse(record(rawDraft.tractor));
   const rawTrailer = trailerDetailsSchema.safeParse(record(rawDraft.trailer));
-  const rawLoad = loadDetailsSchema.safeParse(record(rawDraft.load));
-  const legacyPermitIdentifiers = Array.isArray(record(rawDraft.load).permitIdentifiers)
-    ? record(rawDraft.load).permitIdentifiers.filter(
+  const rawLoadRecord = record(rawDraft.load);
+  const rawLoad = loadDetailsSchema.safeParse(rawLoadRecord);
+  const rawPermitIdentifiers = rawLoadRecord.permitIdentifiers;
+  const legacyPermitIdentifiers = Array.isArray(rawPermitIdentifiers)
+    ? rawPermitIdentifiers.filter(
         (value): value is string => typeof value === 'string',
       )
     : base.load.permitIdentifiers;
