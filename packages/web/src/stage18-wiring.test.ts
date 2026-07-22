@@ -23,5 +23,16 @@ describe('Stage 18 detailed evidence wiring', () => {
     expect(client).toContain('detailedRouteRequestFromDraft as routeRequestFromDraft');
     expect(client).toContain('const serverIds = new Set');
     expect(client).toContain('!serverIds.has(stop.publicId)');
+    expect(client).toContain(
+      "...(this.#signal === undefined ? {} : { signal: this.#signal })",
+    );
+  });
+
+  it('loads the assistive-only live-region utility', () => {
+    const main = source('./main.tsx');
+    const accessibility = source('./accessibility.css');
+
+    expect(main).toContain("import './accessibility.css';");
+    expect(accessibility).toContain('.visually-hidden');
   });
 });
