@@ -177,6 +177,7 @@ export interface RouteForm {
 export interface TripDraft {
   readonly version: 2;
   readonly draftId: string;
+  readonly tripId?: string | undefined;
   readonly apiBaseUrl: string;
   readonly driver: DriverForm;
   readonly hos: HosForm;
