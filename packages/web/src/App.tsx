@@ -107,7 +107,11 @@ function RecoveryBanner(props: {
       <div>
         <strong>Saved setup found</strong>
         <p>
-          A local draft from {props.draft.savedAt === undefined ? 'an earlier session' : new Date(props.draft.savedAt).toLocaleString()} is available. Authentication was not stored.
+          A local draft from{' '}
+          {props.draft.savedAt === undefined
+            ? 'an earlier session'
+            : new Date(props.draft.savedAt).toLocaleString()}{' '}
+          is available. Authentication was not stored.
         </p>
       </div>
       <div className="button-row">
@@ -118,23 +122,67 @@ function RecoveryBanner(props: {
   );
 }
 
+function issueFieldName(issue: ValidationIssue, draft: TripDraft): string | undefined {
+  const stopMatch = /^stops\.(\d+)\.(.+)$/u.exec(issue.path);
+  if (stopMatch !== null) {
+    const index = Number(stopMatch[1]);
+    const stop = draft.stops[index];
+    const suffix = stopMatch[2];
+    if (stop === undefined || suffix === undefined) return undefined;
+    if (suffix === 'locationDescription') return `${stop.localId}-location`;
+    if (suffix === 'coordinates') return `${stop.localId}-latitude`;
+    if (suffix === 'type') return `${stop.localId}-type`;
+    return `${stop.localId}-location`;
+  }
+  const fields: Readonly<Record<string, string>> = {
+    'driver.displayName': 'driver-name',
+    'tractor.unitNumber': 'tractor-number',
+    'trailer.unitNumber': 'trailer-number',
+    'load.referenceNumber': 'load-reference',
+    'load.commodityDescription': 'commodity',
+    'route.ruleSetVersion': 'rule-set-version',
+    hos: 'departure-time',
+    equipment: 'tractor-number',
+    stops: 'new-stop-type',
+  };
+  return fields[issue.path];
+}
+
+function focusNamedField(name: string | undefined): boolean {
+  if (name === undefined) return false;
+  const field = document.getElementsByName(name).item(0);
+  if (!(field instanceof HTMLElement)) return false;
+  field.focus();
+  return true;
+}
+
 export function App(): ReactNode {
+  const recoveredAtStart = useRef<TripDraft | undefined>(loadDraft());
   const [draft, dispatch] = useReducer(draftReducer, undefined, defaultTripDraft);
-  const [token, setToken] = useState(() => sessionStorage.getItem('trip-route-calc.stage18.token') ?? '');
+  const [token, setToken] = useState(
+    () => sessionStorage.getItem('trip-route-calc.stage18.token') ?? '',
+  );
   const [profiles, setProfiles] = useState<ProfileLists>(emptyProfiles);
   const [connectionStatus, setConnectionStatus] = useState('Not connected');
   const [outcome, setOutcome] = useState<PlanningOutcome>(idleOutcome);
-  const [recoveredDraft, setRecoveredDraft] = useState<TripDraft | undefined>(() => loadDraft());
-  const [recoveryResolved, setRecoveryResolved] = useState(() => loadDraft() === undefined);
+  const [recoveredDraft, setRecoveredDraft] = useState<TripDraft | undefined>(
+    recoveredAtStart.current,
+  );
+  const [recoveryResolved, setRecoveryResolved] = useState(
+    recoveredAtStart.current === undefined,
+  );
   const [saveStatus, setSaveStatus] = useState('Not saved yet');
   const [newStopType, setNewStopType] = useState<StopType>('shipper');
   const [dirty, setDirty] = useState(false);
+  const [stopAnnouncement, setStopAnnouncement] = useState('');
   const validationSummary = useRef<HTMLDivElement>(null);
   const abortRef = useRef<AbortController | undefined>(undefined);
+  const pendingStopFocus = useRef<number | undefined>(undefined);
 
   const issues = useMemo(() => validateDraft(draft), [draft]);
   const errors = issues.filter((issue) => issue.severity === 'error');
   const warnings = issues.filter((issue) => issue.severity !== 'error');
+  const connected = connectionStatus === 'Connected to authenticated carrier account';
 
   const update = (action: Parameters<typeof dispatch>[0]): void => {
     setDirty(true);
@@ -155,6 +203,16 @@ export function App(): ReactNode {
     }, 650);
     return () => window.clearTimeout(timer);
   }, [draft, recoveryResolved]);
+
+  useEffect(() => {
+    const index = pendingStopFocus.current;
+    if (index === undefined) return;
+    pendingStopFocus.current = undefined;
+    const stop = draft.stops[index];
+    window.requestAnimationFrame(() => {
+      focusNamedField(stop === undefined ? undefined : `${stop.localId}-location`);
+    });
+  }, [draft.stops]);
 
   useEffect(() => {
     const listener = (event: BeforeUnloadEvent): void => {
@@ -188,20 +246,36 @@ export function App(): ReactNode {
     }
   };
 
-  const submit = async (): Promise<void> => {
-    if (errors.length > 0) {
+  const submit = async (automatic = false): Promise<void> => {
+    const currentIssues = validateDraft(draft);
+    const currentErrors = currentIssues.filter(
+      (issue) => issue.severity === 'error',
+    );
+    if (currentErrors.length > 0) {
       setOutcome({
         status: 'failed',
         message: 'Correct the blocking setup errors before calculation.',
-        warnings: errors.map((issue) => issue.message),
+        warnings: currentErrors.map((issue) => issue.message),
       });
-      validationSummary.current?.focus();
+      if (!automatic) {
+        const focused = focusNamedField(
+          issueFieldName(currentErrors[0]!, draft),
+        );
+        if (!focused) validationSummary.current?.focus();
+      }
       return;
     }
+    if (automatic && !connected) return;
     abortRef.current?.abort();
     const controller = new AbortController();
     abortRef.current = controller;
-    setOutcome({ status: 'submitting', message: 'Saving and validating the trip…', warnings: [] });
+    setOutcome({
+      status: 'submitting',
+      message: automatic
+        ? 'Changes settled. Recalculating the saved trip…'
+        : 'Saving and validating the trip…',
+      warnings: [],
+    });
     try {
       const result = await client(controller.signal).submitDraft(draft);
       dispatch({ type: 'replace', draft: result.draft });
@@ -236,6 +310,23 @@ export function App(): ReactNode {
     }
   };
 
+  useEffect(() => {
+    if (
+      !recoveryResolved ||
+      !draft.route.autoCalculate ||
+      !connected ||
+      !dirty ||
+      errors.length > 0 ||
+      outcome.status === 'submitting'
+    ) {
+      return undefined;
+    }
+    const timer = window.setTimeout(() => {
+      void submit(true);
+    }, 1_200);
+    return () => window.clearTimeout(timer);
+  }, [connected, dirty, draft, errors.length, outcome.status, recoveryResolved]);
+
   const moveStopTo = (sourceId: string, targetId: string): void => {
     const source = draft.stops.findIndex((stop) => stop.localId === sourceId);
     const target = draft.stops.findIndex((stop) => stop.localId === targetId);
@@ -246,6 +337,7 @@ export function App(): ReactNode {
     }
     setDirty(true);
     setOutcome(idleOutcome);
+    setStopAnnouncement(`Moved stop ${String(source + 1)} to position ${String(target + 1)}.`);
   };
 
   const selectDriver = (id: string | undefined): void => {
@@ -268,7 +360,11 @@ export function App(): ReactNode {
     if (option?.profile !== undefined) {
       update({
         type: 'tractor',
-        value: tractorFormFromProfile(id, option.profile, draft.tractor.fallbackSpeedMph),
+        value: tractorFormFromProfile(
+          id,
+          option.profile,
+          draft.tractor.fallbackSpeedMph,
+        ),
       });
     }
   };
@@ -280,7 +376,10 @@ export function App(): ReactNode {
     }
     const option = profiles.trailers.find((profile) => profile.id === id);
     if (option?.profile !== undefined) {
-      update({ type: 'trailer', value: trailerFormFromProfile(id, option.profile) });
+      update({
+        type: 'trailer',
+        value: trailerFormFromProfile(id, option.profile),
+      });
     }
   };
 
@@ -307,8 +406,10 @@ export function App(): ReactNode {
     key: Key,
     value: TrailerForm[Key],
   ): void => update({ type: 'trailer', value: { ...draft.trailer, [key]: value } });
-  const updateLoad = <Key extends keyof LoadForm>(key: Key, value: LoadForm[Key]): void =>
-    update({ type: 'load', value: { ...draft.load, [key]: value } });
+  const updateLoad = <Key extends keyof LoadForm>(
+    key: Key,
+    value: LoadForm[Key],
+  ): void => update({ type: 'load', value: { ...draft.load, [key]: value } });
   const updateRoute = <Key extends keyof RouteForm>(
     key: Key,
     value: RouteForm[Key],
@@ -365,7 +466,10 @@ export function App(): ReactNode {
               type="url"
               value={draft.apiBaseUrl}
               placeholder="Leave blank for the current host"
-              onChange={(value) => update({ type: 'replace', draft: { ...draft, apiBaseUrl: value } })}
+              onChange={(value) => update({
+                type: 'replace',
+                draft: { ...draft, apiBaseUrl: value },
+              })}
             />
             <TextField
               name="bearer-token"
@@ -388,50 +492,12 @@ export function App(): ReactNode {
           description="Enter the clocks as evidence. The UI validates them but never silently grants an exception."
         >
           <div className="form-grid">
-            <ProfileSelect
-              name="driver-profile"
-              label="Saved driver"
-              selectedId={draft.driver.id}
-              options={profiles.drivers}
-              onSelect={selectDriver}
-            />
-            <TextField
-              name="driver-name"
-              label="Driver name or identifier"
-              required
-              value={draft.driver.displayName}
-              onChange={(value) => update({ type: 'driver', value: { ...draft.driver, displayName: value } })}
-            />
-            <TextField
-              name="departure-time"
-              label="Planned departure"
-              type="datetime-local"
-              required
-              value={draft.hos.departureLocal}
-              onChange={(value) => updateHos('departureLocal', value)}
-            />
-            <TextField
-              name="departure-timezone"
-              label="Departure IANA time zone"
-              required
-              value={draft.hos.departureTimeZone}
-              onChange={(value) => updateHos('departureTimeZone', value)}
-            />
-            <SelectField
-              name="duty-status"
-              label="Current duty status"
-              value={draft.hos.currentDutyStatus}
-              options={dutyStatusOptions}
-              onChange={(value) => updateHos('currentDutyStatus', value)}
-            />
-            <TextField
-              name="duty-status-started"
-              label="Current status began"
-              type="datetime-local"
-              required
-              value={draft.hos.currentDutyStatusStartedLocal}
-              onChange={(value) => updateHos('currentDutyStatusStartedLocal', value)}
-            />
+            <ProfileSelect name="driver-profile" label="Saved driver" selectedId={draft.driver.id} options={profiles.drivers} onSelect={selectDriver} />
+            <TextField name="driver-name" label="Driver name or identifier" required value={draft.driver.displayName} onChange={(value) => update({ type: 'driver', value: { ...draft.driver, displayName: value } })} />
+            <TextField name="departure-time" label="Planned departure" type="datetime-local" required value={draft.hos.departureLocal} onChange={(value) => updateHos('departureLocal', value)} />
+            <TextField name="departure-timezone" label="Departure IANA time zone" required value={draft.hos.departureTimeZone} onChange={(value) => updateHos('departureTimeZone', value)} />
+            <SelectField name="duty-status" label="Current duty status" value={draft.hos.currentDutyStatus} options={dutyStatusOptions} onChange={(value) => updateHos('currentDutyStatus', value)} />
+            <TextField name="duty-status-started" label="Current status began" type="datetime-local" required value={draft.hos.currentDutyStatusStartedLocal} onChange={(value) => updateHos('currentDutyStatusStartedLocal', value)} />
             <NumberField name="drive-remaining" label="Drive remaining" unit="minutes" min={0} max={660} value={draft.hos.drivingMinutesRemaining} onChange={(value) => updateHos('drivingMinutesRemaining', numberValue(value))} />
             <NumberField name="shift-remaining" label="Shift remaining" unit="minutes" min={0} max={840} value={draft.hos.shiftMinutesRemaining} onChange={(value) => updateHos('shiftMinutesRemaining', numberValue(value))} />
             <NumberField name="cycle-remaining" label="Cycle remaining" unit="minutes" min={0} max={4_200} value={draft.hos.cycleMinutesRemaining} onChange={(value) => updateHos('cycleMinutesRemaining', numberValue(value))} />
@@ -450,8 +516,14 @@ export function App(): ReactNode {
                   value: {
                     ...draft.hos,
                     cycleType: value,
-                    priorDutyMinutes: Array.from({ length: days }, (_, index) => draft.hos.priorDutyMinutes[index] ?? 0),
-                    cycleMinutesRemaining: Math.min(draft.hos.cycleMinutesRemaining, value === 'SEVENTY_HOURS_EIGHT_DAYS' ? 4_200 : 3_600),
+                    priorDutyMinutes: Array.from(
+                      { length: days },
+                      (_, index) => draft.hos.priorDutyMinutes[index] ?? 0,
+                    ),
+                    cycleMinutesRemaining: Math.min(
+                      draft.hos.cycleMinutesRemaining,
+                      value === 'SEVENTY_HOURS_EIGHT_DAYS' ? 4_200 : 3_600,
+                    ),
                   },
                 });
               }}
@@ -584,15 +656,20 @@ export function App(): ReactNode {
           id="step-4"
           eyebrow="Step 4"
           title="Ordered stops"
-          description="The first and final positions are locked. Add as many intermediate operational or freight stops as the trip requires."
+          description="The first and final positions are structural. Intermediate stops may be required, optional, locked, duplicated, inserted, or reordered."
           actions={
             <div className="add-stop-controls">
               <SelectField name="new-stop-type" label="New stop type" value={newStopType} options={newStopTypeOptions} onChange={setNewStopType} />
-              <button type="button" onClick={() => update({ type: 'add-stop', stopType: newStopType })}>Add stop</button>
+              <button type="button" onClick={() => {
+                pendingStopFocus.current = draft.stops.length - 1;
+                update({ type: 'add-stop', stopType: newStopType });
+                setStopAnnouncement(`Added a ${newStopType.replaceAll('-', ' ')} stop before the final consignee.`);
+              }}>Add stop</button>
             </div>
           }
         >
-          <div className="stop-list" aria-live="polite">
+          <p className="visually-hidden" aria-live="polite">{stopAnnouncement}</p>
+          <div className="stop-list">
             {draft.stops.map((stop, index) => (
               <StopCard
                 key={stop.localId}
@@ -600,15 +677,31 @@ export function App(): ReactNode {
                 index={index}
                 count={draft.stops.length}
                 onChange={(value) => update({ type: 'stop', stop: value })}
-                onRemove={() => update({ type: 'remove-stop', localId: stop.localId })}
-                onMove={(direction) => update({ type: 'move-stop', localId: stop.localId, direction })}
+                onRemove={() => {
+                  update({ type: 'remove-stop', localId: stop.localId });
+                  setStopAnnouncement(`Removed stop ${String(index + 1)}.`);
+                }}
+                onDuplicate={() => {
+                  pendingStopFocus.current = index + 1;
+                  update({ type: 'duplicate-stop', localId: stop.localId });
+                  setStopAnnouncement(`Duplicated stop ${String(index + 1)}.`);
+                }}
+                onInsertAfter={() => {
+                  pendingStopFocus.current = index + 1;
+                  update({ type: 'insert-stop', afterLocalId: stop.localId });
+                  setStopAnnouncement(`Inserted a new stop after stop ${String(index + 1)}.`);
+                }}
+                onMove={(direction) => {
+                  update({ type: 'move-stop', localId: stop.localId, direction });
+                  setStopAnnouncement(`Moved stop ${String(index + 1)} ${direction < 0 ? 'earlier' : 'later'}.`);
+                }}
                 onDropStop={moveStopTo}
               />
             ))}
           </div>
         </Section>
 
-        <Section id="review" eyebrow="Review" title="Validation and calculation" description="Calculation is explicit. Editing does not hammer the API or recompute legal results behind your back.">
+        <Section id="review" eyebrow="Review" title="Validation and calculation" description="Calculation is explicit by default. Optional immediate recalculation waits for changes to settle, aborts superseded requests, and never runs while required input is invalid.">
           <div className="form-grid">
             <TextField name="rule-set-version" label="Regulatory rule-set version" required value={draft.route.ruleSetVersion} onChange={(value) => updateRoute('ruleSetVersion', value)} hint="Use a reviewed, active rule-set version supplied by the carrier or compliance administrator." />
             <SelectField name="route-policy" label="Commercial route policy" value={draft.route.policy} options={[
@@ -619,6 +712,7 @@ export function App(): ReactNode {
             <CheckField name="avoid-tolls" label="Avoid tolls where compliant" checked={draft.route.avoidTolls} onChange={(value) => updateRoute('avoidTolls', value)} />
             <CheckField name="avoid-ferries" label="Avoid ferries" checked={draft.route.avoidFerries} onChange={(value) => updateRoute('avoidFerries', value)} />
             <CheckField name="avoid-tunnels" label="Avoid tunnels" checked={draft.route.avoidTunnels} onChange={(value) => updateRoute('avoidTunnels', value)} />
+            <CheckField name="auto-calculate" label="Recalculate after valid changes settle" checked={draft.route.autoCalculate} onChange={(value) => updateRoute('autoCalculate', value)} hint="Requires a connected authenticated account. Changes are debounced for 1.2 seconds and superseded requests are aborted." />
           </div>
 
           <div className="validation-summary" ref={validationSummary} tabIndex={-1} aria-labelledby="validation-title">
@@ -647,7 +741,7 @@ export function App(): ReactNode {
             )}
           </div>
           <div className="button-row button-row--primary">
-            <button type="button" className="button--large" disabled={outcome.status === 'submitting'} onClick={() => void submit()}>
+            <button type="button" className="button--large" disabled={outcome.status === 'submitting'} onClick={() => void submit(false)}>
               {outcome.status === 'submitting' ? 'Saving and validating…' : 'Save and calculate trip'}
             </button>
             <button type="button" className="button--quiet" onClick={() => {
@@ -657,6 +751,7 @@ export function App(): ReactNode {
               clearDraft();
               setOutcome(idleOutcome);
               setDirty(false);
+              setStopAnnouncement('Started a new local trip draft.');
             }}>Start a new draft</button>
           </div>
         </Section>
