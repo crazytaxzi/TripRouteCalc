@@ -11,6 +11,7 @@ import {
   PlanningApiError,
   TripPlanningClient,
 } from './api-client.js';
+import { EquipmentDetailEditor } from './equipment-detail-editor.js';
 import {
   CheckField,
   NumberField,
@@ -27,15 +28,17 @@ import {
   clearDraft,
   defaultTripDraft,
   draftReducer,
-  loadDraft,
-  saveDraft,
-  validateDraft,
 } from './model.js';
 import {
   loadFormFromProfile,
   tractorFormFromProfile,
   trailerFormFromProfile,
 } from './profile-mapping.js';
+import {
+  loadDraft,
+  saveDraft,
+  validateDraft,
+} from './trip-form-model.js';
 import type {
   HosForm,
   LoadForm,
@@ -727,13 +730,25 @@ export function App(): ReactNode {
             <SelectField name="permit-requirement" label="Permit requirement" value={draft.load.permitRequirement} options={[
               { value: 'not-required', label: 'Carrier says not required' }, { value: 'required', label: 'Required' }, { value: 'unknown', label: 'Unknown, verify' },
             ]} onChange={(value) => updateLoad('permitRequirement', value)} />
-            <TextField name="permit-identifiers" label="Permit identifiers" value={draft.load.permitIdentifiers.join(', ')} onChange={(value) => updateLoad('permitIdentifiers', value.split(',').map((item) => item.trim()).filter(Boolean))} hint="Separate multiple permit identifiers with commas." />
           </div>
           <div className="check-grid">
             <CheckField name="load-hazmat" label="Hazardous material" checked={draft.load.hazmat} onChange={(value) => updateLoad('hazmat', value)} />
           </div>
           {!draft.load.hazmat ? null : <TextField name="hazmat-class" label="Hazmat class" required value={draft.load.hazmatClass} onChange={(value) => updateLoad('hazmatClass', value)} />}
         </Section>
+
+        <EquipmentDetailEditor
+          tractor={draft.tractor}
+          trailer={draft.trailer}
+          load={draft.load}
+          onTractorChange={(tractor) =>
+            update({ type: 'tractor', value: tractor })
+          }
+          onTrailerChange={(trailer) =>
+            update({ type: 'trailer', value: trailer })
+          }
+          onLoadChange={(load) => update({ type: 'load', value: load })}
+        />
 
         <Section
           id="step-4"
