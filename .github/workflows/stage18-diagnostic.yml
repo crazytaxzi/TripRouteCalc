@@ -2,6 +2,8 @@ name: Stage 18 Diagnostic
 on:
   push:
     branches: [agent/stage-18-mobile-trip-setup]
+  pull_request:
+    branches: [main]
   workflow_dispatch:
 permissions:
   contents: read
