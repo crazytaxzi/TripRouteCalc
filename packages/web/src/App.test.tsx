@@ -135,6 +135,36 @@ describe('Stage 18 mobile trip setup UI', () => {
     expect(screen.getAllByRole('article')).toHaveLength(4);
   });
 
+  it('prevents structural edits from shifting a locked intermediate stop', async () => {
+    const user = userEvent.setup();
+    render(<App />);
+
+    await user.click(screen.getByRole('button', { name: /^add stop$/iu }));
+    await user.click(screen.getByRole('button', { name: /^add stop$/iu }));
+    expect(screen.getAllByRole('article')).toHaveLength(4);
+
+    const lockedCard = screen.getAllByRole('article')[2];
+    if (lockedCard === undefined) throw new Error('Missing lock target stop.');
+    await user.click(within(lockedCard).getByLabelText('Lock this position'));
+
+    await user.click(
+      screen.getByRole('button', { name: /duplicate stop 2/iu }),
+    );
+    expect(screen.getAllByRole('article')).toHaveLength(4);
+    expect(
+      screen.getByText(/locked stop positions cannot be shifted by this edit/iu),
+    ).toBeDefined();
+
+    await user.click(
+      screen.getByRole('button', { name: /remove stop 2/iu }),
+    );
+    expect(screen.getAllByRole('article')).toHaveLength(4);
+    expect(
+      within(screen.getAllByRole('article')[2] as HTMLElement)
+        .getByLabelText('Lock this position'),
+    ).toBeChecked();
+  });
+
   it('shows the complete appointment and service-duration controls on demand', async () => {
     const user = userEvent.setup();
     render(<App />);
