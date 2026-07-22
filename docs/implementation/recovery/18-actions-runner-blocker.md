@@ -5,7 +5,7 @@
 - Repository: `crazytaxzi/TripRouteCalc`
 - Branch: `agent/stage-18-mobile-trip-setup-ui`
 - Pull request: `#33`
-- Source state before this checkpoint update: `a701b4dd9a9575190b51e7fe80060358c8e937aa`
+- Source state before this checkpoint update: `9751b0419da49101be5eddb8742e19e7678b42f0`
 - Base: `main` at `94a890d6761c21489b1b48d9e4376657b8cd1687`
 - Stage status: source integration complete; mandatory dependency-backed verification unavailable; not eligible to merge
 
@@ -49,7 +49,7 @@ The lockfile was not edited manually because doing so without package resolution
 7. Removed the obsolete flat permit field and the applied integration helper script.
 8. Hardened malformed local recovery and stale public-stop recovery.
 9. Preserved immutable trip revisions, structured blockers, provider-failure continuation IDs, profile-refresh isolation, controlled recalculation, and locked-stop invariants.
-10. Added accessibility-only live announcement styling.
+10. Added accessibility-only live announcement styling and a source wiring guard for its entry-point import.
 11. Added focused model, wiring, recovery, and mounted-App regressions.
 
 The previously recorded Source 18 implementation gaps are now addressed in source. No map or detailed Source 19 timeline work was introduced.
