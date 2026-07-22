@@ -204,6 +204,60 @@ describe('Stage 18 mobile trip setup UI', () => {
     expect(within(card).getByLabelText('Historical sample size')).toBeDefined();
   });
 
+  it('adds and autosaves recap and sleeper evidence rows', async () => {
+    const user = userEvent.setup();
+    render(<App />);
+
+    await user.click(
+      screen.getByText(/prior duty, recap, sleeper, and rule evidence/iu),
+    );
+    await user.click(
+      screen.getByRole('button', { name: /add recap return/iu }),
+    );
+    await user.type(screen.getByLabelText('Source duty date'), '2026-07-14');
+    await user.type(screen.getByLabelText('Available at'), '2026-07-22T13:00');
+    const returned = screen.getByLabelText('Time returned');
+    await user.clear(returned);
+    await user.type(returned, '480');
+
+    await user.click(
+      screen.getByRole('button', { name: /add sleeper period/iu }),
+    );
+    await user.type(screen.getByLabelText('Period begins'), '2026-07-22T04:00');
+    await user.type(screen.getByLabelText('Period ends'), '2026-07-22T11:00');
+    const duration = screen.getByLabelText('Recorded duration');
+    await user.clear(duration);
+    await user.type(duration, '420');
+    await user.type(
+      screen.getByLabelText('Evidence explanation'),
+      'Driver entered completed sleeper evidence.',
+    );
+
+    await waitFor(
+      () => {
+        const raw = localStorage.getItem(DRAFT_STORAGE_KEY);
+        if (raw === null) throw new Error('Draft was not autosaved.');
+        const saved = JSON.parse(raw) as TripDraft;
+        expect(saved.hos.recapReturns).toHaveLength(1);
+        expect(saved.hos.recapReturns[0]).toMatchObject({
+          sourceDate: '2026-07-14',
+          availableLocal: '2026-07-22T13:00',
+          returnedMinutes: 480,
+        });
+        expect(saved.hos.existingSleeperPeriods).toHaveLength(1);
+        expect(saved.hos.existingSleeperPeriods[0]).toMatchObject({
+          startLocal: '2026-07-22T04:00',
+          endLocal: '2026-07-22T11:00',
+          durationMinutes: 420,
+          candidateRole: 'LONG_PERIOD',
+          source: 'USER_ENTERED',
+          explanation: 'Driver entered completed sleeper evidence.',
+        });
+      },
+      { timeout: 2_000 },
+    );
+  });
+
   it('keeps a successful calculation visible when profile refresh fails', async () => {
     const saved = validDraft();
     const persisted: TripDraft = {
