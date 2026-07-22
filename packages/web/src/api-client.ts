@@ -171,6 +171,10 @@ function hydratePersistedPrefix(
   });
 }
 
+function clearPersistedStopIds(stops: readonly StopForm[]): readonly StopForm[] {
+  return stops.map((stop) => ({ ...stop, publicId: undefined }));
+}
+
 export class TripPlanningClient {
   readonly #baseUrl: string;
   readonly #token: string;
@@ -316,6 +320,28 @@ export class TripPlanningClient {
       },
     );
     return string(response[`${kind}Id`], `${kind}Id`);
+  }
+
+  async #createTrip(
+    draft: TripDraft,
+    driverId: string,
+    reason: 'initial' | 'missing' | 'driver-change',
+  ): Promise<string> {
+    const payload = {
+      driverId,
+      ruleSetVersion: draft.route.ruleSetVersion,
+    };
+    const response = await this.#request('/api/trips', {
+      method: 'POST',
+      payload,
+      idempotencyKey: await idempotencyKey('trip-create', {
+        draftId: draft.draftId,
+        previousTripId: draft.tripId ?? null,
+        reason,
+        payload,
+      }),
+    });
+    return string(response.tripId, 'tripId');
   }
 
   async #syncStops(
@@ -519,31 +545,41 @@ export class TripPlanningClient {
       load: { ...draft.load, id: loadId },
     };
 
-    const createTripPayload = {
-      driverId,
-      ruleSetVersion: savedDraft.route.ruleSetVersion,
-    };
-    const createdTrip = await this.#request('/api/trips', {
-      method: 'POST',
-      payload: createTripPayload,
-      idempotencyKey: await idempotencyKey('trip-create', {
-        draftId: savedDraft.draftId,
-        ...createTripPayload,
-      }),
-    });
-    const tripId = string(createdTrip.tripId, 'tripId');
-    let trip = await this.#request(`/api/trips/${tripId}`);
-    let revision = revisionNumber(trip);
-
-    if (string(trip.driverId, 'trip.driverId') !== driverId) {
-      throw new PlanningApiError(
-        409,
-        'REVISION_CONFLICT',
-        'The saved trip belongs to a different driver. Start a new draft before changing the trip driver.',
-        { tripId },
-      );
+    let tripId: string;
+    let startsNewTrip = false;
+    if (savedDraft.tripId === undefined) {
+      tripId = await this.#createTrip(savedDraft, driverId, 'initial');
+      startsNewTrip = true;
+    } else {
+      tripId = savedDraft.tripId;
     }
 
+    let trip: Record<string, unknown>;
+    try {
+      trip = await this.#request(`/api/trips/${tripId}`);
+    } catch (error) {
+      if (!(error instanceof PlanningApiError) || error.statusCode !== 404) {
+        throw error;
+      }
+      tripId = await this.#createTrip(savedDraft, driverId, 'missing');
+      startsNewTrip = true;
+      trip = await this.#request(`/api/trips/${tripId}`);
+    }
+
+    if (string(trip.driverId, 'trip.driverId') !== driverId) {
+      tripId = await this.#createTrip(savedDraft, driverId, 'driver-change');
+      startsNewTrip = true;
+      trip = await this.#request(`/api/trips/${tripId}`);
+    }
+
+    const workingDraft: TripDraft = {
+      ...savedDraft,
+      tripId,
+      stops: startsNewTrip
+        ? clearPersistedStopIds(savedDraft.stops)
+        : savedDraft.stops,
+    };
+    let revision = revisionNumber(trip);
     const equipment = object(trip.equipment, 'trip.equipment');
     const patch: Record<string, unknown> = {};
     if (nullableString(equipment.tractorId, 'trip.equipment.tractorId') !== tractorId) {
@@ -555,8 +591,8 @@ export class TripPlanningClient {
     if (nullableString(equipment.loadId, 'trip.equipment.loadId') !== loadId) {
       patch.loadId = loadId;
     }
-    if (trip.ruleSetVersion !== savedDraft.route.ruleSetVersion) {
-      patch.ruleSetVersion = savedDraft.route.ruleSetVersion;
+    if (trip.ruleSetVersion !== workingDraft.route.ruleSetVersion) {
+      patch.ruleSetVersion = workingDraft.route.ruleSetVersion;
     }
     if (Object.keys(patch).length > 0) {
       const payload = { expectedRevisionNumber: revision, ...patch };
@@ -571,11 +607,15 @@ export class TripPlanningClient {
       trip = tripFromOperation(response, 'patched trip');
     }
 
-    const synchronized = await this.#syncStops(tripId, trip, savedDraft.stops);
+    const synchronized = await this.#syncStops(
+      tripId,
+      trip,
+      workingDraft.stops,
+    );
     trip = synchronized.trip;
     revision = revisionNumber(trip);
     const persistedDraft: TripDraft = {
-      ...savedDraft,
+      ...workingDraft,
       stops: synchronized.stops,
     };
 
