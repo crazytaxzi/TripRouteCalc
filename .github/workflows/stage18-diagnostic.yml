@@ -1,0 +1,39 @@
+name: Stage 18 Diagnostic
+
+on:
+  push:
+    branches:
+      - agent/stage-18-mobile-trip-setup
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  lint-diagnostic:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Enable pnpm
+        run: corepack enable
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+      - name: Capture lint output
+        id: lint
+        continue-on-error: true
+        run: |
+          set -o pipefail
+          pnpm lint:source > stage18-lint.txt 2>&1
+          echo "exit_code=$?" >> "$GITHUB_OUTPUT"
+      - name: Upload lint diagnostics
+        uses: actions/upload-artifact@v4
+        with:
+          name: stage18-lint-diagnostics
+          path: stage18-lint.txt
+          if-no-files-found: error
+      - name: Fail when lint failed
+        if: steps.lint.outputs.exit_code != '0'
+        run: exit 1
