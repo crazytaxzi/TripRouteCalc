@@ -2,10 +2,15 @@
 
 import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it } from 'vitest';
 
 import { App } from './App.js';
 import { DRAFT_STORAGE_KEY, defaultTripDraft, saveDraft } from './model.js';
+
+beforeEach(() => {
+  localStorage.clear();
+  sessionStorage.clear();
+});
 
 describe('Stage 18 mobile trip setup UI', () => {
   it('renders the complete sequence, blocks invalid submission, and focuses the first blocker', async () => {
