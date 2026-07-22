@@ -152,9 +152,9 @@ describe('Stage 18 trip draft model', () => {
     expect(ranged.appointment.mode).toBe('open-window');
     expect(ranged.serviceDuration).toMatchObject({
       mode: 'range',
-      minimum: { minutes: 30 },
-      expected: { minutes: 45 },
-      maximum: { minutes: 90 },
+      minimum: { value: 30, unit: 'minute' },
+      expected: { value: 45, unit: 'minute' },
+      maximum: { value: 90, unit: 'minute' },
     });
 
     const historical = stopPlan(
@@ -170,7 +170,7 @@ describe('Stage 18 trip draft model', () => {
     );
     expect(historical.serviceDuration).toMatchObject({
       mode: 'historical-average',
-      duration: { minutes: 72 },
+      duration: { value: 72, unit: 'minute' },
       sourceName: 'Carrier facility history',
       sampleSize: 14,
     });
