@@ -361,7 +361,14 @@ export function saveDetailedDraft(draft: TripDraft): void {
 
 export function loadDetailedDraft(): TripDraft | undefined {
   const raw = localStorage.getItem(DRAFT_STORAGE_KEY);
-  const rawDraft = raw === null ? {} : record(JSON.parse(raw));
+  let rawDraft: Record<string, unknown> = {};
+  if (raw !== null) {
+    try {
+      rawDraft = record(JSON.parse(raw));
+    } catch {
+      return loadDraft();
+    }
+  }
   const base = loadDraft();
   if (base === undefined) return undefined;
   const rawTractor = tractorDetailsSchema.safeParse(record(rawDraft.tractor));
