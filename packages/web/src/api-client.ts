@@ -212,7 +212,7 @@ export class TripPlanningClient {
     }
     const response = await fetch(`${this.#baseUrl}${path}`, {
       method: options.method ?? 'GET',
-      signal: this.#signal,
+      ...(this.#signal === undefined ? {} : { signal: this.#signal }),
       headers: {
         authorization: `Bearer ${this.#token}`,
         ...(options.payload === undefined
