@@ -36,10 +36,12 @@ import type {
 import { z } from 'zod';
 
 import type {
+  CycleRecapReturnForm,
   DriverForm,
   HosForm,
   LoadForm,
   RouteForm,
+  SleeperPeriodForm,
   StopForm,
   StopType,
   TractorForm,
@@ -57,6 +59,14 @@ const dutyStatusSchema = z.enum([
   'DRIVING',
   'ON_DUTY_NOT_DRIVING',
 ]);
+const dutyEventSourceSchema = z.enum([
+  'USER_ENTERED',
+  'ELD_PROVIDER',
+  'CARRIER_SYSTEM',
+  'CALCULATED',
+  'VERIFIED_RECORD',
+]);
+const sleeperCandidateRoleSchema = z.enum(['SHORT_PERIOD', 'LONG_PERIOD']);
 const stopTypeSchema = z.enum([
   'start-location',
   'tractor-pickup',
@@ -82,6 +92,22 @@ const driverFormSchema = z.object({
   id: optionalId,
   displayName: z.string(),
 });
+const cycleRecapReturnFormSchema = z.object({
+  localId: z.string().trim().min(1),
+  sourceDate: z.string(),
+  availableLocal: z.string(),
+  returnedMinutes: finiteNumber,
+});
+const sleeperPeriodFormSchema = z.object({
+  id: z.string().trim().min(1),
+  startLocal: z.string(),
+  endLocal: z.string(),
+  durationMinutes: finiteNumber,
+  candidateRole: sleeperCandidateRoleSchema,
+  pairId: z.string(),
+  source: dutyEventSourceSchema,
+  explanation: z.string(),
+});
 const hosFormSchema = z.object({
   departureLocal: z.string(),
   departureTimeZone: z.string(),
@@ -96,7 +122,9 @@ const hosFormSchema = z.object({
   offDutyMinutesBeforeDeparture: finiteNumber,
   qualifyingTenHourBreakCompleted: z.boolean(),
   priorDutyMinutes: z.array(finiteNumber),
+  recapReturns: z.array(cycleRecapReturnFormSchema),
   sleeperBerthEligible: z.boolean(),
+  existingSleeperPeriods: z.array(sleeperPeriodFormSchema),
   splitSleeperEnabled: z.boolean(),
   restart34HourPlanned: z.boolean(),
   adverseConditionSelected: z.boolean(),
@@ -337,7 +365,9 @@ export function defaultTripDraft(): TripDraft {
       offDutyMinutesBeforeDeparture: 600,
       qualifyingTenHourBreakCompleted: true,
       priorDutyMinutes,
+      recapReturns: Object.freeze([]),
       sleeperBerthEligible: true,
+      existingSleeperPeriods: Object.freeze([]),
       splitSleeperEnabled: false,
       restart34HourPlanned: false,
       adverseConditionSelected: false,
@@ -806,6 +836,33 @@ export function stopPlan(stop: StopForm, sequence: number): TripStopPlan {
   });
 }
 
+function recapReturnFromForm(
+  form: CycleRecapReturnForm,
+  timeZone: string,
+): Readonly<Record<string, unknown>> {
+  return {
+    sourceDate: form.sourceDate,
+    availableAt: localToInstant(form.availableLocal, timeZone),
+    returnedTime: durationInMinutes(form.returnedMinutes),
+  };
+}
+
+function sleeperPeriodFromForm(
+  form: SleeperPeriodForm,
+  timeZone: string,
+): Readonly<Record<string, unknown>> {
+  return {
+    id: form.id,
+    startAt: localToInstant(form.startLocal, timeZone),
+    endAt: localToInstant(form.endLocal, timeZone),
+    duration: durationInMinutes(form.durationMinutes),
+    candidateRole: form.candidateRole,
+    ...(form.pairId.trim() === '' ? {} : { pairId: form.pairId }),
+    source: form.source,
+    explanation: form.explanation,
+  };
+}
+
 export function hosFromDraft(
   draft: TripDraft,
   driverId?: string,
@@ -837,7 +894,13 @@ export function hosFromDraft(
     qualifyingTenHourBreakCompleted:
       draft.hos.qualifyingTenHourBreakCompleted,
     priorDutyMinutes: draft.hos.priorDutyMinutes,
+    recapReturns: draft.hos.recapReturns.map((entry) =>
+      recapReturnFromForm(entry, draft.hos.departureTimeZone),
+    ),
     sleeperBerthEligible: draft.hos.sleeperBerthEligible,
+    existingSleeperPeriods: draft.hos.existingSleeperPeriods.map((period) =>
+      sleeperPeriodFromForm(period, draft.hos.departureTimeZone),
+    ),
     splitSleeperEnabled: draft.hos.splitSleeperEnabled,
     restart34HourPlanned: draft.hos.restart34HourPlanned,
     carrierMaxDailyDrivingMinutes: draft.hos.carrierMaxDailyDrivingMinutes,
