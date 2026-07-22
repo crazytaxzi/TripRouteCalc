@@ -26,13 +26,16 @@ describe('Stage 18 mounted advanced equipment editor', () => {
     expect(screen.queryByLabelText('Permit identifiers')).toBeNull();
     expect(screen.getByRole('button', { name: 'Add permit' })).toBeDefined();
 
-    await waitFor(() => {
-      const raw = localStorage.getItem(DRAFT_STORAGE_KEY);
-      expect(raw).not.toBeNull();
-      const saved = JSON.parse(raw ?? '{}') as {
-        readonly tractor?: { readonly vin?: string };
-      };
-      expect(saved.tractor?.vin).toBe('1M8GDM9AXKP042788');
-    });
+    await waitFor(
+      () => {
+        const raw = localStorage.getItem(DRAFT_STORAGE_KEY);
+        expect(raw).not.toBeNull();
+        const saved = JSON.parse(raw ?? '{}') as {
+          readonly tractor?: { readonly vin?: string };
+        };
+        expect(saved.tractor?.vin).toBe('1M8GDM9AXKP042788');
+      },
+      { timeout: 2_000 },
+    );
   });
 });
