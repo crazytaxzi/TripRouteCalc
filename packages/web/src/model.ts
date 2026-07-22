@@ -218,6 +218,7 @@ const routeFormSchema = z.object({
 const tripDraftSchema = z.object({
   version: z.literal(2),
   draftId: z.string().trim().min(1),
+  tripId: optionalId,
   apiBaseUrl: z.string(),
   driver: driverFormSchema,
   hos: hosFormSchema,
