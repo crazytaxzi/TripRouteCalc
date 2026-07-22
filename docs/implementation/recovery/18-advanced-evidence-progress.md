@@ -97,7 +97,7 @@ The first strict pass found and caused repairs for real defects:
 - an unused foundation type import;
 - invalid repeated narrowing of an `unknown` legacy permit identifier value.
 
-After those repairs, the strict clean-room semantic compile was rerun on the final source and completed with no diagnostics. All three new regression files also completed their TypeScript parser checks with no diagnostics.
+After those repairs, the strict clean-room semantic compile was rerun on the final source and completed with no diagnostics. All three new regression files also completed their TypeScript parser checks with no diagnostics. The final wiring guard was reformatted to remain compatible with the repository's strict style expectations.
 
 This is genuine source verification, but it is intentionally not described as the repository's full `pnpm typecheck` because unavailable third-party packages were represented at their public boundaries.
 
