@@ -7,38 +7,38 @@ import type {
 } from './model.js';
 import { validateTripSetup } from './model.js';
 
-export type ApiProblem = {
+export interface ApiProblem {
   readonly status: number;
   readonly code: string;
   readonly message: string;
   readonly details?: unknown;
-};
+}
 
-export type CalculationResponse = {
+export interface CalculationResponse {
   readonly calculationId: string;
   readonly revisionNumber: number;
   readonly status: string;
   readonly warnings?: readonly unknown[];
-};
+}
 
-type DriverResponse = {
+interface DriverResponse {
   readonly driverId: string;
   readonly displayName: string;
-};
+}
 
-type TripRevisionResponse = {
+interface TripRevisionResponse {
   readonly revisionNumber: number;
-};
+}
 
-type TripResponse = {
+interface TripResponse {
   readonly tripId: string;
   readonly currentRevision: TripRevisionResponse;
-};
+}
 
-type AddedStopResponse = {
+interface AddedStopResponse {
   readonly trip: TripResponse;
   readonly stop: { readonly id: string };
-};
+}
 
 function duration(minutes: number): Readonly<{ value: number; unit: 'minute' }> {
   return { value: minutes, unit: 'minute' };
@@ -121,6 +121,20 @@ export function createStopPayload(stop: TripStopDraft): Readonly<Record<string, 
   };
 }
 
+class ApiProblemError extends Error implements ApiProblem {
+  public readonly status: number;
+  public readonly code: string;
+  public readonly details?: unknown;
+
+  public constructor(problem: ApiProblem) {
+    super(problem.message);
+    this.name = 'ApiProblemError';
+    this.status = problem.status;
+    this.code = problem.code;
+    this.details = problem.details;
+  }
+}
+
 export class TripSetupApiClient {
   readonly #baseUrl: string;
   readonly #getToken: () => string;
@@ -131,26 +145,20 @@ export class TripSetupApiClient {
   }
 
   async #request<T>(path: string, init: RequestInit): Promise<T> {
-    const response = await fetch(`${this.#baseUrl}${path}`, {
-      ...init,
-      headers: {
-        'content-type': 'application/json',
-        authorization: `Bearer ${this.#getToken()}`,
-        ...init.headers,
-      },
-    });
+    const headers = new Headers(init.headers);
+    headers.set('content-type', 'application/json');
+    headers.set('authorization', `Bearer ${this.#getToken()}`);
+    const response = await fetch(`${this.#baseUrl}${path}`, { ...init, headers });
     const payload = (await response.json()) as unknown;
     if (!response.ok) {
-      const envelope = payload as {
-        readonly error?: Partial<ApiProblem>;
-      };
+      const envelope = payload as { readonly error?: Partial<ApiProblem> };
       const problem = envelope.error ?? (payload as Partial<ApiProblem>);
-      throw {
+      throw new ApiProblemError({
         status: response.status,
         code: problem.code ?? 'request_failed',
         message: problem.message ?? 'The server rejected the request.',
         details: problem.details,
-      } satisfies ApiProblem;
+      });
     }
     return payload as T;
   }
@@ -179,7 +187,7 @@ export class TripSetupApiClient {
 
     let tripId = state.tripId;
     let revisionNumber = state.revisionNumber;
-    let stops = [...state.stops];
+    const stops = [...state.stops];
     if (tripId === undefined) {
       const created = await this.#write<TripResponse>('/trips', 'POST', {
         driverId: driver.selectedId,
