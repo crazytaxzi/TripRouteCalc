@@ -77,7 +77,11 @@ Executed checks:
    - `packages/web/src/App.tsx`;
    - `packages/web/src/api-client.ts`;
    - `packages/web/src/equipment-detail-model.ts`.
-2. A strict clean-room semantic compile using the real Stage 18 form contracts and controlled declarations only for unavailable external package boundaries, with:
+2. TypeScript parser checks for the newly committed regression files:
+   - `packages/web/src/equipment-detail-recovery.test.ts`;
+   - `packages/web/src/stage18-wiring.test.ts`;
+   - `packages/web/src/App.advanced.test.tsx`.
+3. A strict clean-room semantic compile using the real Stage 18 form contracts and controlled declarations only for unavailable external package boundaries, with:
    - `strict`;
    - `exactOptionalPropertyTypes`;
    - `noUncheckedIndexedAccess`;
@@ -92,7 +96,7 @@ The first strict pass found and caused repairs for real defects:
 - an unused foundation type import;
 - invalid repeated narrowing of an `unknown` legacy permit identifier value.
 
-After those repairs, the strict clean-room semantic compile completed with no diagnostics.
+After those repairs, the strict clean-room semantic compile was rerun on the final source and completed with no diagnostics. All three new regression files also completed their TypeScript parser checks with no diagnostics.
 
 This is genuine source verification, but it is intentionally not described as the repository's full `pnpm typecheck` because unavailable third-party packages were represented at their public boundaries.
 
@@ -100,7 +104,7 @@ This is genuine source verification, but it is intentionally not described as th
 
 GitHub Actions continues to fail before checkout with zero job steps and no log archive. The latest previously inspected run was `29886457427`, job `88817901032`.
 
-The local runtime has Node.js 22 and TypeScript 5.8.3, but no pnpm, React, Zod, Vitest, Vite, ESLint, Prisma, PostgreSQL harness, or Playwright installation. The only reachable package registry endpoint repeatedly returned HTTP `503`, including three bounded retries on 2026-07-22. External npm and GitHub download routes are blocked from the runtime.
+The local runtime has Node.js 22 and TypeScript 5.8.3, but no pnpm, React, Zod, Vitest, Vite, ESLint, Prisma, PostgreSQL harness, or Playwright installation. The only reachable package registry endpoint repeatedly returned HTTP `503`, including three bounded retries on 2026-07-22. External npm and GitHub download routes are blocked from the runtime. No useful npm or pnpm cache was present.
 
 Therefore these gates remain unavailable and are not marked passed:
 
