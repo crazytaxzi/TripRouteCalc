@@ -322,6 +322,7 @@ describe('Stage 18 planning API client', () => {
     expect(first.outcome.status).toBe('complete');
     expect(first.outcome.tripId).toBe('trip-public-1');
     expect(first.outcome.revisionNumber).toBe(5);
+    expect(first.draft.tripId).toBe('trip-public-1');
     expect(first.draft.driver.id).toBe('driver-public-1');
     expect(first.draft.stops.map((stop) => stop.publicId)).toEqual([
       'stop-public-1',
@@ -338,6 +339,7 @@ describe('Stage 18 planning API client', () => {
     expect(second.outcome.status).toBe('complete');
     expect(second.outcome.tripId).toBe('trip-public-1');
     expect(second.outcome.revisionNumber).toBe(6);
+    expect(second.draft.tripId).toBe('trip-public-1');
     expect(server.stopWrites).toHaveLength(stopWriteCount);
     expect(server.calculationTripIds).toEqual([
       'trip-public-1',
@@ -345,7 +347,7 @@ describe('Stage 18 planning API client', () => {
     ]);
     expect(
       server.writes.filter((write) => write === 'POST /api/trips'),
-    ).toHaveLength(2);
+    ).toHaveLength(1);
   });
 
   it('returns and preserves a structured blocked calculation response', async () => {
@@ -364,6 +366,7 @@ describe('Stage 18 planning API client', () => {
       'Production regulatory evidence is unavailable.',
     );
     expect(result.outcome.revisionNumber).toBe(server.revision());
+    expect(result.draft.tripId).toBe('trip-public-1');
     expect(result.draft.stops.every((stop) => stop.publicId !== undefined)).toBe(
       true,
     );
