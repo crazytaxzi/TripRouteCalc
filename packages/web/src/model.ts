@@ -22,12 +22,14 @@ import {
   weightInPounds,
 } from '@trip-route-calc/foundation';
 import type {
+  CycleRecapReturn,
   DriverHosDepartureState,
   EquipmentCombination,
   EtaSimulationInput,
   LoadProfile,
   NormalizedCommercialRouteResult,
   ResolvedCommercialLocation,
+  SleeperPeriodEvidence,
   TractorProfile,
   TrailerProfile,
   TripStopPlan,
@@ -839,7 +841,7 @@ export function stopPlan(stop: StopForm, sequence: number): TripStopPlan {
 function recapReturnFromForm(
   form: CycleRecapReturnForm,
   timeZone: string,
-): Readonly<Record<string, unknown>> {
+): CycleRecapReturn {
   return {
     sourceDate: form.sourceDate,
     availableAt: localToInstant(form.availableLocal, timeZone),
@@ -850,7 +852,7 @@ function recapReturnFromForm(
 function sleeperPeriodFromForm(
   form: SleeperPeriodForm,
   timeZone: string,
-): Readonly<Record<string, unknown>> {
+): SleeperPeriodEvidence {
   return {
     id: form.id,
     startAt: localToInstant(form.startLocal, timeZone),
