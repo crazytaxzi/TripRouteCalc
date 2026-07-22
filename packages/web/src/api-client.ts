@@ -9,13 +9,15 @@ import type {
 import { z } from 'zod';
 
 import {
-  loadFromForm,
-  routeRequestFromDraft,
-  saveDraft,
+  detailedLoadFromForm as loadFromForm,
+  detailedRouteRequestFromDraft as routeRequestFromDraft,
+  saveDetailedDraft as saveDraft,
+  detailedTractorFromForm as tractorFromForm,
+  detailedTrailerFromForm as trailerFromForm,
+} from './equipment-detail-model.js';
+import {
   simulationInputFromDraft,
   stopPlan,
-  tractorFromForm,
-  trailerFromForm,
 } from './model.js';
 import type {
   PlanningOutcome,
@@ -179,7 +181,7 @@ function clearPersistedStopIds(stops: readonly StopForm[]): readonly StopForm[] 
 export class TripPlanningClient {
   readonly #baseUrl: string;
   readonly #token: string;
-  readonly #signal?: AbortSignal;
+  readonly #signal: AbortSignal | undefined;
 
   public constructor(options: {
     readonly baseUrl: string;
@@ -357,6 +359,12 @@ export class TripPlanningClient {
     let revision = revisionNumber(trip);
     let rows = stopRows(trip);
     let stops = hydratePersistedPrefix(rows, sourceStops);
+    const serverIds = new Set(rows.map((row, index) => stopId(row, index)));
+    stops = stops.map((stop) =>
+      stop.publicId !== undefined && !serverIds.has(stop.publicId)
+        ? { ...stop, publicId: undefined }
+        : stop,
+    );
 
     const desiredIds = new Set(
       stops.flatMap((stop) =>
