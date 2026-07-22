@@ -1,10 +1,12 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  canInsertStopAt,
   createInitialDraft,
   createStop,
   deserializeDraft,
   duplicateStop,
+  insertStop,
   moveStop,
   removeStop,
   serializeDraft,
@@ -25,11 +27,12 @@ describe("trip setup draft", () => {
     });
   });
 
-  it("requires explicit duty status and legal-data inputs", () => {
+  it("requires explicit duty status, duty start, and legal-data inputs", () => {
     const issues = validateDraft(createInitialDraft());
 
     expect(issues).toEqual(expect.arrayContaining([
       expect.objectContaining({ field: "currentDutyStatus", severity: "ERROR" }),
+      expect.objectContaining({ field: "dutyStatusBeganAt", severity: "ERROR" }),
       expect.objectContaining({ field: "load.totalCombinationWeightPounds", severity: "WARNING" }),
       expect.objectContaining({ field: "load.dimensions", severity: "WARNING" }),
     ]));
@@ -42,6 +45,7 @@ describe("trip setup draft", () => {
     draft.trailer.label = "R-220";
     draft.load.identifier = "LOAD-7";
     draft.clocks.currentDutyStatus = "OFF_DUTY";
+    draft.clocks.dutyStatusBeganAt = "2026-07-22T06:00";
     draft.clocks.departureAt = "2026-07-22T08:00";
     draft.clocks.departureTimeZone = "America/Boise";
     draft.stops.forEach((stop) => { stop.location = "Known location"; });
@@ -59,22 +63,26 @@ describe("trip setup draft", () => {
     ]));
   });
 
-  it("prevents moving or removing locked stops", () => {
+  it("preserves every locked stop at its exact index", () => {
     const first = createStop("START");
-    const second = createStop("SHIPPER");
+    const locked = createStop("SHIPPER");
     const third = createStop("FINAL_CONSIGNEE");
-    second.locked = true;
-    const stops = [first, second, third];
+    locked.locked = true;
+    const stops = [first, locked, third];
 
-    expect(moveStop(stops, 0, 1)).toEqual(stops);
+    expect(moveStop(stops, 0, 2)).toEqual(stops);
     expect(moveStop(stops, 1, 2)).toEqual(stops);
+    expect(removeStop(stops, 0)).toEqual(stops);
     expect(removeStop(stops, 1)).toEqual(stops);
+    expect(canInsertStopAt(stops, 1)).toBe(false);
+    expect(insertStop(stops, 1)).toEqual(stops);
+    expect(canInsertStopAt(stops, 2)).toBe(true);
   });
 
-  it("supports duplicate, reorder, and removal without mutating the source", () => {
+  it("supports duplicate, reorder, insertion, and removal without mutating the source", () => {
     const source = [createStop("START"), createStop("SHIPPER"), createStop("FINAL_CONSIGNEE")];
     const copy = duplicateStop(source[1]!);
-    const expanded = [...source.slice(0, 2), copy, ...source.slice(2)];
+    const expanded = insertStop(source, 2, copy);
     const moved = moveStop(expanded, 2, 1);
     const removed = removeStop(moved, 2);
 
@@ -84,7 +92,7 @@ describe("trip setup draft", () => {
     expect(source).toHaveLength(3);
   });
 
-  it("recovers valid saved work and rejects malformed storage", () => {
+  it("recovers fully valid saved work and rejects malformed nested storage", () => {
     const draft = createInitialDraft();
     draft.driver.label = "Recovered Driver";
     const saved = serializeDraft(draft);
@@ -92,5 +100,8 @@ describe("trip setup draft", () => {
     expect(deserializeDraft(saved)?.driver.label).toBe("Recovered Driver");
     expect(deserializeDraft("not-json")).toBeNull();
     expect(deserializeDraft(JSON.stringify({ stops: [] }))).toBeNull();
+    expect(deserializeDraft(JSON.stringify({ ...draft, driver: null }))).toBeNull();
+    expect(deserializeDraft(JSON.stringify({ ...draft, clocks: { ...draft.clocks, driveMinutesRemaining: "eleven" } }))).toBeNull();
+    expect(deserializeDraft(JSON.stringify({ ...draft, stops: [{ nonsense: true }] }))).toBeNull();
   });
 });
