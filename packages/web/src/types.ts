@@ -4,6 +4,15 @@ export type DutyStatus =
   | 'DRIVING'
   | 'ON_DUTY_NOT_DRIVING';
 
+export type DutyEventSource =
+  | 'USER_ENTERED'
+  | 'ELD_PROVIDER'
+  | 'CARRIER_SYSTEM'
+  | 'CALCULATED'
+  | 'VERIFIED_RECORD';
+
+export type SleeperCandidateRole = 'SHORT_PERIOD' | 'LONG_PERIOD';
+
 export type StopType =
   | 'start-location'
   | 'tractor-pickup'
@@ -42,6 +51,24 @@ export interface DriverForm {
   readonly displayName: string;
 }
 
+export interface CycleRecapReturnForm {
+  readonly localId: string;
+  readonly sourceDate: string;
+  readonly availableLocal: string;
+  readonly returnedMinutes: number;
+}
+
+export interface SleeperPeriodForm {
+  readonly id: string;
+  readonly startLocal: string;
+  readonly endLocal: string;
+  readonly durationMinutes: number;
+  readonly candidateRole: SleeperCandidateRole;
+  readonly pairId: string;
+  readonly source: DutyEventSource;
+  readonly explanation: string;
+}
+
 export interface HosForm {
   readonly departureLocal: string;
   readonly departureTimeZone: string;
@@ -58,7 +85,9 @@ export interface HosForm {
   readonly offDutyMinutesBeforeDeparture: number;
   readonly qualifyingTenHourBreakCompleted: boolean;
   readonly priorDutyMinutes: readonly number[];
+  readonly recapReturns: readonly CycleRecapReturnForm[];
   readonly sleeperBerthEligible: boolean;
+  readonly existingSleeperPeriods: readonly SleeperPeriodForm[];
   readonly splitSleeperEnabled: boolean;
   readonly restart34HourPlanned: boolean;
   readonly adverseConditionSelected: boolean;
