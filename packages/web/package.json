@@ -1,0 +1,11 @@
+{
+  "name": "@trip-route-calc/web",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "tsc -b",
+    "typecheck": "tsc -p tsconfig.json --noEmit --pretty false",
+    "test": "vitest run"
+  }
+}
