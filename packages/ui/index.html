@@ -1,0 +1,19 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light">
+  <title>TripRouteCalc Trip Setup</title>
+</head>
+<body>
+  <trip-route-planner></trip-route-planner>
+  <script type="module" src="./dist/index.js"></script>
+  <script type="module">
+    const planner = document.querySelector("trip-route-planner");
+    planner?.addEventListener("trip-calculation-requested", (event) => {
+      console.info("Calculation request ready for API integration", event.detail);
+    });
+  </script>
+</body>
+</html>
