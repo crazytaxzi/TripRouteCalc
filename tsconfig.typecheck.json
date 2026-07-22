@@ -13,7 +13,9 @@
       "@trip-route-calc/compliance": ["packages/compliance/src/index.ts"],
       "@trip-route-calc/compliance/*": ["packages/compliance/src/*.ts"],
       "@trip-route-calc/api": ["packages/api/src/index.ts"],
-      "@trip-route-calc/api/*": ["packages/api/src/*.ts"]
+      "@trip-route-calc/api/*": ["packages/api/src/*.ts"],
+      "@trip-route-calc/ui": ["packages/ui/src/index.ts"],
+      "@trip-route-calc/ui/*": ["packages/ui/src/*.ts"]
     },
     "types": ["node", "vitest/globals"]
   },
