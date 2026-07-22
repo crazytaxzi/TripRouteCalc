@@ -13,10 +13,12 @@ import type {
 } from './equipment.js';
 import { validateDriverHosDepartureState } from './hos.js';
 import type {
+  CycleRecapReturn,
   DriverHosDepartureState,
   DriverHosProvenance,
   HosCycleType,
   HosDutyStatus,
+  SleeperPeriodEvidence,
 } from './hos.js';
 import { validateOrderedStops } from './stops.js';
 import type { TripStopPlan } from './stops.js';
@@ -52,7 +54,9 @@ export interface Stage18HosFormInput {
   readonly offDutyMinutesImmediatelyBeforeDeparture: number;
   readonly qualifyingTenHourBreakCompleted: boolean;
   readonly priorDutyMinutes: readonly number[];
+  readonly recapReturns?: readonly CycleRecapReturn[] | undefined;
   readonly sleeperBerthEligible: boolean;
+  readonly existingSleeperPeriods?: readonly SleeperPeriodEvidence[] | undefined;
   readonly splitSleeperEnabled: boolean;
   readonly restart34HourPlanned: boolean;
   readonly carrierMaxDailyDrivingMinutes: number;
@@ -164,9 +168,9 @@ export function buildStage18HosDepartureState(
     ),
     qualifyingTenHourBreakCompleted: input.qualifyingTenHourBreakCompleted,
     priorDutyDays,
-    recapReturns: [],
+    recapReturns: freezeArray(input.recapReturns ?? []),
     sleeperBerthEligible: input.sleeperBerthEligible,
-    existingSleeperPeriods: [],
+    existingSleeperPeriods: freezeArray(input.existingSleeperPeriods ?? []),
     splitSleeperEnabled: input.splitSleeperEnabled,
     restart34HourPlanned: input.restart34HourPlanned,
     carrierMaxDailyDriving: durationInMinutes(
