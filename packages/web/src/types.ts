@@ -113,11 +113,11 @@ export interface HosForm {
 export interface TractorForm {
   readonly id?: string | undefined;
   readonly unitNumber: string;
-  readonly vin: string;
+  readonly vin?: string | undefined;
   readonly tractorType: 'day-cab' | 'sleeper' | 'cabover' | 'other';
   readonly axleCount: number;
   readonly overallLengthFeet: number;
-  readonly wheelbaseFeet: number;
+  readonly wheelbaseFeet?: number | undefined;
   readonly heightFeet: number;
   readonly widthInches: number;
   readonly emptyWeightPounds: number;
@@ -128,13 +128,13 @@ export interface TractorForm {
   readonly planningSpeedMph: number;
   readonly fallbackSpeedMph: number;
   readonly hazmatEquipped: boolean;
-  readonly californiaComplianceStatus: CaliforniaComplianceStatus;
-  readonly californiaComplianceSourceName: string;
-  readonly californiaComplianceVerifiedAt: string;
-  readonly californiaComplianceExplanation: string;
+  readonly californiaComplianceStatus?: CaliforniaComplianceStatus | undefined;
+  readonly californiaComplianceSourceName?: string | undefined;
+  readonly californiaComplianceVerifiedAt?: string | undefined;
+  readonly californiaComplianceExplanation?: string | undefined;
   readonly apuAvailable: boolean;
   readonly idleAllowed: boolean;
-  readonly notes: string;
+  readonly notes?: string | undefined;
 }
 
 export interface TrailerRailPositionMappingForm {
@@ -163,14 +163,14 @@ export interface TrailerForm {
   readonly currentKpraFeet: number;
   readonly minimumKpraFeet: number;
   readonly maximumKpraFeet: number;
-  readonly currentRailPosition: string;
-  readonly railPositionMappings: readonly TrailerRailPositionMappingForm[];
+  readonly currentRailPosition?: string | undefined;
+  readonly railPositionMappings?: readonly TrailerRailPositionMappingForm[] | undefined;
   readonly emptyWeightPounds: number;
   readonly maximumPayloadPounds: number;
   readonly reefer: boolean;
-  readonly liftgate: boolean;
-  readonly specialEquipment: readonly string[];
-  readonly notes: string;
+  readonly liftgate?: boolean | undefined;
+  readonly specialEquipment?: readonly string[] | undefined;
+  readonly notes?: string | undefined;
 }
 
 export interface LoadPermitForm {
@@ -194,19 +194,20 @@ export interface LoadForm {
   readonly lengthFeet: number;
   readonly heightFeet: number;
   readonly widthFeet: number;
-  readonly frontOverhangFeet: number;
-  readonly rearOverhangFeet: number;
-  readonly temperatureReeferRequired: boolean;
-  readonly temperatureMinimumFahrenheit: number | null;
-  readonly temperatureMaximumFahrenheit: number | null;
-  readonly temperatureSetPointFahrenheit: number | null;
-  readonly temperatureExplanation: string;
+  readonly frontOverhangFeet?: number | undefined;
+  readonly rearOverhangFeet?: number | undefined;
+  readonly temperatureReeferRequired?: boolean | undefined;
+  readonly temperatureMinimumFahrenheit?: number | null | undefined;
+  readonly temperatureMaximumFahrenheit?: number | null | undefined;
+  readonly temperatureSetPointFahrenheit?: number | null | undefined;
+  readonly temperatureExplanation?: string | undefined;
   readonly permitRequirement: 'not-required' | 'required' | 'unknown';
-  readonly permits: readonly LoadPermitForm[];
-  readonly escortRequirements: readonly string[];
-  readonly routeRestrictions: readonly string[];
-  readonly secureParkingRequirement: SecureParkingRequirement;
-  readonly notes: string;
+  readonly permitIdentifiers: readonly string[];
+  readonly permits?: readonly LoadPermitForm[] | undefined;
+  readonly escortRequirements?: readonly string[] | undefined;
+  readonly routeRestrictions?: readonly string[] | undefined;
+  readonly secureParkingRequirement?: SecureParkingRequirement | undefined;
+  readonly notes?: string | undefined;
 }
 
 export interface StopForm {
