@@ -8,6 +8,7 @@ import {
   createStopForm,
   defaultTripDraft,
   draftReducer,
+  hosFromDraft,
   loadDraft,
   saveDraft,
   stopPlan,
@@ -105,7 +106,7 @@ describe('Stage 18 trip draft model', () => {
     expect(loadDraft()).toBeUndefined();
   });
 
-  it('migrates an older v1 draft and fills newly required stop fields', () => {
+  it('migrates an older v1 draft and fills newly required evidence fields', () => {
     const current = defaultTripDraft();
     const legacy = JSON.parse(JSON.stringify(current)) as Record<string, unknown>;
     legacy.version = 1;
@@ -113,6 +114,9 @@ describe('Stage 18 trip draft model', () => {
     const route = legacy.route as Record<string, unknown>;
     delete route.ruleSetVersion;
     delete route.autoCalculate;
+    const hos = legacy.hos as Record<string, unknown>;
+    delete hos.recapReturns;
+    delete hos.existingSleeperPeriods;
     const stops = legacy.stops as Record<string, unknown>[];
     for (const stop of stops) {
       delete stop.serviceMode;
@@ -131,6 +135,8 @@ describe('Stage 18 trip draft model', () => {
     expect(migrated?.draftId).toMatch(/^draft-/u);
     expect(migrated?.route.ruleSetVersion).toBe('');
     expect(migrated?.route.autoCalculate).toBe(false);
+    expect(migrated?.hos.recapReturns).toEqual([]);
+    expect(migrated?.hos.existingSleeperPeriods).toEqual([]);
     expect(migrated?.stops[0]?.serviceMode).toBe('expected');
     expect(migrated?.stops[0]?.lockedPosition).toBe(true);
     expect(migrated?.stops.at(-1)?.type).toBe('final-consignee');
@@ -180,6 +186,62 @@ describe('Stage 18 trip draft model', () => {
       sourceName: 'Carrier facility history',
       sampleSize: 14,
     });
+  });
+
+  it('maps recap returns and sleeper periods into validated departure evidence', () => {
+    const base = defaultTripDraft();
+    const draft = {
+      ...base,
+      driver: { displayName: 'Evidence Driver' },
+      hos: {
+        ...base.hos,
+        departureLocal: '2026-07-22T12:00',
+        departureTimeZone: 'America/Denver',
+        currentDutyStatusStartedLocal: '2026-07-22T11:30',
+        recapReturns: [
+          {
+            localId: 'recap-form-1',
+            sourceDate: '2026-07-14',
+            availableLocal: '2026-07-22T13:00',
+            returnedMinutes: 480,
+          },
+        ],
+        existingSleeperPeriods: [
+          {
+            id: 'sleeper-form-1',
+            startLocal: '2026-07-22T04:00',
+            endLocal: '2026-07-22T11:00',
+            durationMinutes: 420,
+            candidateRole: 'LONG_PERIOD' as const,
+            pairId: 'split-pair-1',
+            source: 'USER_ENTERED' as const,
+            explanation: 'Driver entered a completed seven-hour sleeper period.',
+          },
+        ],
+        splitSleeperEnabled: true,
+      },
+    };
+
+    const state = hosFromDraft(draft);
+    expect(state.recapReturns).toEqual([
+      {
+        sourceDate: '2026-07-14',
+        availableAt: '2026-07-22T19:00:00Z',
+        returnedTime: { value: 480, unit: 'minute' },
+      },
+    ]);
+    expect(state.existingSleeperPeriods).toEqual([
+      {
+        id: 'sleeper-form-1',
+        startAt: '2026-07-22T10:00:00Z',
+        endAt: '2026-07-22T17:00:00Z',
+        duration: { value: 420, unit: 'minute' },
+        candidateRole: 'LONG_PERIOD',
+        pairId: 'split-pair-1',
+        source: 'USER_ENTERED',
+        explanation: 'Driver entered a completed seven-hour sleeper period.',
+      },
+    ]);
   });
 
   it('reports missing route-critical evidence before submission', () => {
