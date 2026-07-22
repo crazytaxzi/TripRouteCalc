@@ -48,6 +48,7 @@ Detailed local recovery now handles malformed JSON through the core recovery cle
 
 - Locked intermediate positions remain absolute across all structural editing paths.
 - The stop-editor live announcement now uses an actual assistive-only CSS utility.
+- A wiring regression verifies the assistive stylesheet is loaded by the web entry point.
 - The temporary advanced-integration patch script was removed after its changes were applied.
 
 ## Regression coverage committed
@@ -61,7 +62,7 @@ The branch contains focused coverage for:
 - malformed JSON recovery cleanup;
 - mounted advanced editor autosave;
 - absence of the obsolete flat permit field;
-- detailed App and API wiring;
+- detailed App, API, abort-signal, stale-stop, and assistive-stylesheet wiring;
 - HOS recap and sleeper evidence;
 - immutable trip revisions, provider failure recovery, structured blockers, profile-refresh isolation, and locked-stop structural edits.
 
