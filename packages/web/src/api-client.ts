@@ -1,19 +1,33 @@
 import type { TripSetupState, ValidationIssue } from './model.js';
 import { validateTripSetup } from './model.js';
 
-export type ApiProblem = {
+export interface ApiProblem {
   readonly status: number;
   readonly code: string;
   readonly message: string;
   readonly details?: unknown;
-};
+}
 
-export type CalculationResponse = {
+export interface CalculationResponse {
   readonly calculationId: string;
   readonly revisionNumber: number;
   readonly status: string;
   readonly warnings?: readonly unknown[];
-};
+}
+
+export class ApiProblemError extends Error implements ApiProblem {
+  public readonly status: number;
+  public readonly code: string;
+  public readonly details?: unknown;
+
+  public constructor(problem: ApiProblem) {
+    super(problem.message);
+    this.name = 'ApiProblemError';
+    this.status = problem.status;
+    this.code = problem.code;
+    this.details = problem.details;
+  }
+}
 
 export class TripSetupApiClient {
   readonly #baseUrl: string;
@@ -25,31 +39,31 @@ export class TripSetupApiClient {
   }
 
   async #request<T>(path: string, init: RequestInit): Promise<T> {
-    const response = await fetch(`${this.#baseUrl}${path}`, {
-      ...init,
-      headers: {
-        'content-type': 'application/json',
-        authorization: `Bearer ${this.#getToken()}`,
-        ...init.headers,
-      },
-    });
+    const headers = new Headers(init.headers);
+    headers.set('content-type', 'application/json');
+    headers.set('authorization', `Bearer ${this.#getToken()}`);
+    const response = await fetch(`${this.#baseUrl}${path}`, { ...init, headers });
     const payload = (await response.json()) as unknown;
     if (!response.ok) {
       const problem = payload as Partial<ApiProblem>;
-      throw {
+      throw new ApiProblemError({
         status: response.status,
         code: problem.code ?? 'request_failed',
         message: problem.message ?? 'The server rejected the request.',
         details: problem.details,
-      } satisfies ApiProblem;
+      });
     }
     return payload as T;
   }
 
   public async calculate(state: TripSetupState): Promise<CalculationResponse> {
-    const issues = validateTripSetup(state).filter((issue) => issue.severity === 'error');
+    const issues = validateTripSetup(state).filter((issue): boolean => issue.severity === 'error');
     if (issues.length > 0) throw new TripSetupValidationError(issues);
-    if (state.tripId === undefined) throw new TripSetupValidationError([{ path: 'tripId', message: 'Save the trip before calculation.', severity: 'error' }]);
+    if (state.tripId === undefined) {
+      throw new TripSetupValidationError([
+        { path: 'tripId', message: 'Save the trip before calculation.', severity: 'error' },
+      ]);
+    }
     return this.#request<CalculationResponse>(`/trips/${encodeURIComponent(state.tripId)}/calculations`, {
       method: 'POST',
       headers: { 'idempotency-key': crypto.randomUUID() },
@@ -75,7 +89,7 @@ export function createSimulationPayload(state: TripSetupState): Record<string, u
     currentDutyStatus: state.currentDutyStatus,
     currentDutyStatusBeganAt: state.currentDutyStatusBeganAt,
     clocks: state.clocks,
-    stops: state.stops.map((stop) => ({
+    stops: state.stops.map((stop): Record<string, unknown> => ({
       type: stop.type,
       sequence: stop.sequence,
       address: stop.address,
@@ -102,7 +116,7 @@ export class RecalculationController {
 
   public request(): void {
     if (this.#timer !== undefined) clearTimeout(this.#timer);
-    this.#timer = setTimeout(() => {
+    this.#timer = setTimeout((): void => {
       this.#timer = undefined;
       void this.#run();
     }, this.#delayMs);
