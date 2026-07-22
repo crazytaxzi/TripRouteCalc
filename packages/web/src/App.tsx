@@ -156,6 +156,20 @@ function focusNamedField(name: string | undefined): boolean {
   return true;
 }
 
+function preservesLockedIntermediatePositions(
+  before: readonly TripDraft['stops'][number][],
+  after: readonly TripDraft['stops'][number][],
+): boolean {
+  return before.every((stop, index) => {
+    const intermediate = index > 0 && index < before.length - 1;
+    return (
+      !intermediate ||
+      !stop.lockedPosition ||
+      after[index]?.localId === stop.localId
+    );
+  });
+}
+
 export function App(): ReactNode {
   const [initialRecovery] = useState(() => ({ draft: loadDraft() }));
   const [draft, dispatch] = useReducer(draftReducer, undefined, defaultTripDraft);
@@ -190,6 +204,29 @@ export function App(): ReactNode {
     setNeedsCalculation(true);
     setOutcome(idleOutcome);
     dispatch(action);
+  };
+
+  const applyStopAction = (
+    action: Parameters<typeof dispatch>[0],
+    announcement: string,
+    focusIndex?: number,
+  ): boolean => {
+    const next = draftReducer(draft, action);
+    if (
+      next === draft ||
+      !preservesLockedIntermediatePositions(draft.stops, next.stops)
+    ) {
+      pendingStopFocus.current = undefined;
+      setStopAnnouncement('Locked stop positions cannot be shifted by this edit.');
+      return false;
+    }
+    if (focusIndex !== undefined) pendingStopFocus.current = focusIndex;
+    setDirty(true);
+    setNeedsCalculation(true);
+    setOutcome(idleOutcome);
+    dispatch({ type: 'replace', draft: next });
+    setStopAnnouncement(announcement);
+    return true;
   };
 
   useEffect(() => {
@@ -351,12 +388,25 @@ export function App(): ReactNode {
     const target = draft.stops.findIndex((stop) => stop.localId === targetId);
     if (source < 0 || target < 0 || source === target) return;
     const direction: -1 | 1 = source < target ? 1 : -1;
+    let next = draft;
     for (let index = source; index !== target; index += direction) {
-      dispatch({ type: 'move-stop', localId: sourceId, direction });
+      next = draftReducer(next, {
+        type: 'move-stop',
+        localId: sourceId,
+        direction,
+      });
+    }
+    if (
+      next === draft ||
+      !preservesLockedIntermediatePositions(draft.stops, next.stops)
+    ) {
+      setStopAnnouncement('Locked stop positions cannot be shifted by this edit.');
+      return;
     }
     setDirty(true);
     setNeedsCalculation(true);
     setOutcome(idleOutcome);
+    dispatch({ type: 'replace', draft: next });
     setStopAnnouncement(`Moved stop ${String(source + 1)} to position ${String(target + 1)}.`);
   };
 
@@ -689,9 +739,11 @@ export function App(): ReactNode {
             <div className="add-stop-controls">
               <SelectField name="new-stop-type" label="New stop type" value={newStopType} options={newStopTypeOptions} onChange={setNewStopType} />
               <button type="button" onClick={() => {
-                pendingStopFocus.current = draft.stops.length - 1;
-                update({ type: 'add-stop', stopType: newStopType });
-                setStopAnnouncement(`Added a ${newStopType.replaceAll('-', ' ')} stop before the final consignee.`);
+                applyStopAction(
+                  { type: 'add-stop', stopType: newStopType },
+                  `Added a ${newStopType.replaceAll('-', ' ')} stop before the final consignee.`,
+                  draft.stops.length - 1,
+                );
               }}>Add stop</button>
             </div>
           }
@@ -706,22 +758,30 @@ export function App(): ReactNode {
                 count={draft.stops.length}
                 onChange={(value) => update({ type: 'stop', stop: value })}
                 onRemove={() => {
-                  update({ type: 'remove-stop', localId: stop.localId });
-                  setStopAnnouncement(`Removed stop ${String(index + 1)}.`);
+                  applyStopAction(
+                    { type: 'remove-stop', localId: stop.localId },
+                    `Removed stop ${String(index + 1)}.`,
+                  );
                 }}
                 onDuplicate={() => {
-                  pendingStopFocus.current = index + 1;
-                  update({ type: 'duplicate-stop', localId: stop.localId });
-                  setStopAnnouncement(`Duplicated stop ${String(index + 1)}.`);
+                  applyStopAction(
+                    { type: 'duplicate-stop', localId: stop.localId },
+                    `Duplicated stop ${String(index + 1)}.`,
+                    index + 1,
+                  );
                 }}
                 onInsertAfter={() => {
-                  pendingStopFocus.current = index + 1;
-                  update({ type: 'insert-stop', afterLocalId: stop.localId });
-                  setStopAnnouncement(`Inserted a new stop after stop ${String(index + 1)}.`);
+                  applyStopAction(
+                    { type: 'insert-stop', afterLocalId: stop.localId },
+                    `Inserted a new stop after stop ${String(index + 1)}.`,
+                    index + 1,
+                  );
                 }}
                 onMove={(direction) => {
-                  update({ type: 'move-stop', localId: stop.localId, direction });
-                  setStopAnnouncement(`Moved stop ${String(index + 1)} ${direction < 0 ? 'earlier' : 'later'}.`);
+                  applyStopAction(
+                    { type: 'move-stop', localId: stop.localId, direction },
+                    `Moved stop ${String(index + 1)} ${direction < 0 ? 'earlier' : 'later'}.`,
+                  );
                 }}
                 onDropStop={moveStopTo}
               />
