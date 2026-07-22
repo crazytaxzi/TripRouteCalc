@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 
-import { describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it } from 'vitest';
 
 import {
   DRAFT_STORAGE_KEY,
@@ -13,6 +13,10 @@ import {
   stopPlan,
   validateDraft,
 } from './model.js';
+
+beforeEach(() => {
+  localStorage.clear();
+});
 
 describe('Stage 18 trip draft model', () => {
   it('preserves locked endpoint stops while moving intermediate stops', () => {
@@ -82,9 +86,10 @@ describe('Stage 18 trip draft model', () => {
     expect(inserted.stops.at(-1)?.type).toBe('final-consignee');
   });
 
-  it('stores a versioned non-secret draft and restores it', () => {
+  it('stores a versioned non-secret draft and restores its trip reference', () => {
     const draft = {
       ...defaultTripDraft(),
+      tripId: 'trp.public-trip-reference',
       driver: { displayName: 'Saved Driver' },
     };
     saveDraft(draft);
@@ -93,6 +98,7 @@ describe('Stage 18 trip draft model', () => {
     expect(raw).not.toBeNull();
     expect(raw).not.toContain('bearer');
     expect(loadDraft()?.version).toBe(2);
+    expect(loadDraft()?.tripId).toBe('trp.public-trip-reference');
     expect(loadDraft()?.driver.displayName).toBe('Saved Driver');
 
     clearDraft();
