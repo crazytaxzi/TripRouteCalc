@@ -2,7 +2,7 @@
 
 ## Status
 
-IN PROGRESS. Implementation is present on `stage-18-mobile-trip-setup-ui`, but the stage is not complete because the required repository validation gate has not been run successfully in the available environment.
+IN PROGRESS. The environment-level pnpm blocker has been bypassed with a dependency-free local TypeScript and Node validation path, and two correctness defects found during that validation have been fixed. The stage is not yet complete because full repository regression checks and the manual browser workflow gate remain unavailable in this execution environment.
 
 ## Governance reopened
 
@@ -16,15 +16,16 @@ IN PROGRESS. Implementation is present on `stage-18-mobile-trip-setup-ui`, but t
 
 - Added a dependency-free TypeScript mobile-first trip setup custom element.
 - Kept drive, shift, and cycle clocks independent.
-- Requires explicit current duty status rather than silently defaulting it.
+- Requires explicit current duty status and the time that duty status began.
 - Added driver, tractor, trailer, load, dimension, weight, hazmat, permit, and restriction inputs.
-- Added unlimited stops with add, insert, duplicate, remove, drag reorder, button reorder, required/optional, and locked-position controls.
+- Added unlimited stops with add, insert, duplicate, remove, drag reorder, button reorder, required/optional, and exact locked-position controls.
+- Prevents moves, removals, insertions, and duplications that would indirectly shift a locked stop.
 - Added independent appointment mode, appointment time zone, service mode, service range, service duty status, and notes for every stop.
 - Added visible blocking errors and non-blocking missing-legal-data warnings.
-- Added local unsaved-draft recovery and malformed-draft rejection.
+- Added strict nested saved-draft validation so malformed local storage is rejected rather than reaching the renderer.
 - Added controlled 600 ms automatic recalculation requests and explicit manual calculation requests.
 - Added native labels, large touch targets, screen-reader ordering, text severity labels, focusable validation summary, mobile layout, and reduced-motion support.
-- Added pure workflow tests for clock independence, explicit legal inputs, stop validation, locked-stop behavior, mutation safety, and draft recovery.
+- Added workflow tests for clock independence, explicit legal inputs, stop validation, exact locked positions, mutation safety, and malformed draft recovery.
 - Added a browser entry page and UI integration documentation.
 
 ## Files changed
@@ -50,61 +51,57 @@ No database migration or data-model change was made.
 - Branch: `stage-18-mobile-trip-setup-ui`
 - Base commit: `94a890d6761c21489b1b48d9e4376657b8cd1687`
 
-### Failure
+### Original environment failure
 
 - `git clone --branch stage-18-mobile-trip-setup-ui https://github.com/crazytaxzi/TripRouteCalc.git ...`
 - Exit code: 128
 - Signature: `Could not resolve host: github.com`
-
-A materially different recovery strategy used the connected GitHub repository interface to inspect and modify the isolated branch.
-
-### Secondary failure
-
-- `corepack pnpm --version`
-- `corepack prepare pnpm@9.15.4 --activate`
-- Result: failed because `registry.npmjs.org` could not be resolved.
+- `corepack prepare pnpm@9.15.4 --activate` also failed because `registry.npmjs.org` could not be resolved.
 - Local fingerprint: Node `v22.16.0`, npm `10.9.2`, TypeScript `5.8.3`, pnpm unavailable.
 
-A temporary `packages/ui/package.json` was removed after inspection showed that adding a workspace manifest without a regenerated lockfile would make `pnpm install --frozen-lockfile` fail. The UI remains a root TypeScript project reference, requiring no dependency or lockfile mutation.
+The connected GitHub repository interface preserved and updated the isolated branch. Because the Stage 18 package has no third-party runtime dependencies, ERP recovery used the available global TypeScript compiler and Node built-in assertions for a narrow local validation path rather than weakening source checks or invoking prohibited GitHub Actions.
 
-### Validation status
+### Defects discovered and corrected
 
-- Source and configuration inspection: performed
-- Branch comparison against `main`: performed; branch contained only expected Stage 18 files
-- `pnpm install --frozen-lockfile`: blocked by unavailable pnpm and outbound DNS
-- `pnpm db:generate`: not run
-- `pnpm db:validate`: not run
-- `pnpm lint:source`: not run
-- `pnpm typecheck:source`: not run
-- `pnpm test:source`: not run
-- `pnpm build:source`: not run
-- Browser workflow test: not run
+1. A locked stop could be shifted indirectly when another stop crossed, was removed before, or was inserted before it. Model operations now verify that every locked stop retains its exact index.
+2. Draft deserialization previously validated only top-level presence. Nested malformed driver, clock, load, or stop data could reach rendering code. Deserialization now validates the complete nested shape and supported enum values.
+3. The duty-status start time was displayed but not required by local validation. It is now a blocking input and required control.
 
-No skipped check is reported as passing.
+### Local validation actually run
+
+- Strict TypeScript compile of the complete Stage 18 UI source surface using NodeNext, DOM libraries, `strict`, `noUncheckedIndexedAccess`, `exactOptionalPropertyTypes`, `noImplicitOverride`, `noImplicitReturns`, and `verbatimModuleSyntax`: PASSED.
+- Node regression harness covering exact locked-position preservation, insertion boundaries, removal boundaries, valid draft recovery, malformed nested draft rejection, and required duty-status start: PASSED (`model validation passed`).
+- Changed source reopened and adversarially reviewed after correction: performed.
+
+### Validation still unavailable
+
+- `pnpm install --frozen-lockfile`: unavailable because pnpm cannot be provisioned without DNS.
+- Complete prior-stage repository lint, type-check, test, database, and build regressions: not run.
+- Interactive browser, touch, keyboard, focus, local-storage, and emitted-event workflow: not run.
+
+No unavailable check is reported as passing.
 
 ## Requirement traceability
 
 | Requirement | Implementation | Validation | Status |
 |---|---|---|---|
-| Mobile-first workflow | `packages/ui/src/trip-planner.ts` | Browser and accessibility run pending | not_evaluated |
-| Independent clocks | model and clock cards | unit test added, not run | not_evaluated |
-| Driver/equipment/load entry | trip planner sections | browser workflow pending | not_evaluated |
-| Unlimited accessible stops | model and stop editor | unit/browser checks pending | not_evaluated |
-| Local plus server authority validation | `validateDraft`; calculation event boundary | API adapter verification pending | not_evaluated |
-| Missing legal data visible | warning summary | unit/browser checks pending | not_evaluated |
-| Controlled recalculation | 600 ms debounce and manual request | timer/event test pending | not_evaluated |
-| Preserve unsaved work | local storage serialization | unit test added, not run | not_evaluated |
-| Accessibility requirements | native controls and responsive CSS | manual/automated audit pending | not_evaluated |
-| Component/workflow tests | `packages/ui/test/model.test.ts` | test runner unavailable | blocked |
+| Mobile-first workflow | `packages/ui/src/trip-planner.ts` | strict TypeScript compile passed; browser run pending | partially_satisfied |
+| Independent clocks | model and clock cards | local compile and regression harness passed | satisfied |
+| Driver/equipment/load entry | trip planner sections | strict TypeScript compile passed; browser workflow pending | partially_satisfied |
+| Unlimited accessible stops | model and stop editor | exact lock regression passed; browser checks pending | partially_satisfied |
+| Local plus server authority validation | `validateDraft`; calculation event boundary | source boundary inspected; API adapter verification pending | partially_satisfied |
+| Missing legal data visible | warning summary | model regression passed; browser checks pending | partially_satisfied |
+| Controlled recalculation | 600 ms debounce and manual request | compile passed; timer/event browser test pending | partially_satisfied |
+| Preserve unsaved work | strict local-storage serialization | valid and malformed recovery regression passed | satisfied |
+| Accessibility requirements | native controls and responsive CSS | compile/source review passed; manual audit pending | partially_satisfied |
+| Component/workflow tests | `packages/ui/test/model.test.ts` | equivalent dependency-free model regression passed; Vitest suite pending | partially_satisfied |
 | No Source 19 map/timeline invention | no map or results timeline code | source inspection performed | satisfied |
 
 ## Exact next action
 
-Run the repository locally in an environment with the existing lockfile dependencies available:
+In a checkout with the locked repository dependencies already available, run:
 
 ```bash
-corepack enable
-corepack prepare pnpm@9.15.4 --activate
 pnpm install --frozen-lockfile
 pnpm db:generate
 pnpm db:validate
@@ -114,4 +111,4 @@ pnpm test:source
 pnpm build:source
 ```
 
-Then serve `packages/ui/index.html`, exercise the full mobile and keyboard workflow, inspect emitted calculation payloads, correct any evidenced defects, add missing component-level event tests if the existing test environment supports DOM execution, and only then update the ledger and mark Stage 18 complete.
+Then serve `packages/ui/index.html` over HTTP and exercise the full mobile and keyboard workflow, including exact locked positions, malformed draft recovery, validation focus, manual calculation, and debounced automatic calculation. Only after those remaining gates pass may Stage 18 be marked complete and merged.
