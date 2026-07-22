@@ -49,8 +49,13 @@ afterEach((): void => {
 
 describe('Stage 18 API transport', () => {
   it('uses the accepted singular calculate endpoint', async (): Promise<void> => {
-    const fetchMock = vi.fn(async (): Promise<Response> =>
-      jsonResponse({ calculationId: 'calc-1', revisionNumber: 8, status: 'AVAILABLE' }, 201),
+    const fetchMock = vi.fn((): Promise<Response> =>
+      Promise.resolve(
+        jsonResponse(
+          { calculationId: 'calc-1', revisionNumber: 8, status: 'AVAILABLE' },
+          201,
+        ),
+      ),
     );
     vi.stubGlobal('fetch', fetchMock);
     const client = new TripSetupApiClient('/api', (): string => 'token');
@@ -58,21 +63,46 @@ describe('Stage 18 API transport', () => {
     await client.calculate(completeState());
 
     expect(fetchMock).toHaveBeenCalledTimes(1);
-    expect(fetchMock.mock.calls[0]?.[0]).toBe('/api/trips/trip-public-id/calculate');
+    expect(fetchMock.mock.calls[0]?.[0]).toBe(
+      '/api/trips/trip-public-id/calculate',
+    );
   });
 
   it('creates driver, trip, and stops while chaining revisions', async (): Promise<void> => {
     const responses = [
       jsonResponse({ driverId: 'driver-1', displayName: 'Driver One' }, 201),
-      jsonResponse({ tripId: 'trip-1', currentRevision: { revisionNumber: 1 } }, 201),
-      jsonResponse({ trip: { tripId: 'trip-1', currentRevision: { revisionNumber: 2 } }, stop: { id: 'stop-1' } }, 201),
-      jsonResponse({ trip: { tripId: 'trip-1', currentRevision: { revisionNumber: 3 } }, stop: { id: 'stop-2' } }, 201),
-      jsonResponse({ trip: { tripId: 'trip-1', currentRevision: { revisionNumber: 4 } }, stop: { id: 'stop-3' } }, 201),
+      jsonResponse(
+        { tripId: 'trip-1', currentRevision: { revisionNumber: 1 } },
+        201,
+      ),
+      jsonResponse(
+        {
+          trip: { tripId: 'trip-1', currentRevision: { revisionNumber: 2 } },
+          stop: { id: 'stop-1' },
+        },
+        201,
+      ),
+      jsonResponse(
+        {
+          trip: { tripId: 'trip-1', currentRevision: { revisionNumber: 3 } },
+          stop: { id: 'stop-2' },
+        },
+        201,
+      ),
+      jsonResponse(
+        {
+          trip: { tripId: 'trip-1', currentRevision: { revisionNumber: 4 } },
+          stop: { id: 'stop-3' },
+        },
+        201,
+      ),
     ];
-    const fetchMock = vi.fn(async (): Promise<Response> => {
+    const fetchMock = vi.fn((): Promise<Response> => {
       const response = responses.shift();
-      if (response === undefined) throw new Error('Unexpected request.');
-      return response;
+      if (response === undefined) {
+        return Promise.reject(new Error('Unexpected request.'));
+      }
+      return Promise.resolve(response);
     });
     vi.stubGlobal('fetch', fetchMock);
     const client = new TripSetupApiClient('/api', (): string => 'token');
@@ -89,17 +119,22 @@ describe('Stage 18 API transport', () => {
     expect(saved.tripId).toBe('trip-1');
     expect(saved.revisionNumber).toBe(4);
     expect(saved.driver.selectedId).toBe('driver-1');
-    expect(saved.stops.map((stop) => stop.serverId)).toEqual(['stop-1', 'stop-2', 'stop-3']);
+    expect(saved.stops.map((stop) => stop.serverId)).toEqual([
+      'stop-1',
+      'stop-2',
+      'stop-3',
+    ]);
     expect(fetchMock).toHaveBeenCalledTimes(5);
   });
 
   it('serializes stop fields into the accepted Stage 17 contract', (): void => {
+    const initialStop = createInitialTripSetupState().stops[0];
+    if (initialStop === undefined) throw new Error('Initial stop missing.');
     const stop = {
-      ...createInitialTripSetupState().stops[0],
+      ...initialStop,
       address: '123 Main St',
       label: 'Origin',
     };
-    if (stop === undefined) throw new Error('Initial stop missing.');
     const payload = createStopPayload(stop);
 
     expect(payload).toMatchObject({
