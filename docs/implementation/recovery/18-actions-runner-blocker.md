@@ -5,7 +5,7 @@
 - Repository: `crazytaxzi/TripRouteCalc`
 - Branch: `agent/stage-18-mobile-trip-setup-ui`
 - Pull request: `#33`
-- Source state before this checkpoint update: `644fd0c115c14e6ff1f2ae1d8f4f47a311cd6047`
+- Source state before this checkpoint update: `a701b4dd9a9575190b51e7fe80060358c8e937aa`
 - Base: `main` at `94a890d6761c21489b1b48d9e4376657b8cd1687`
 - Stage status: source integration complete; mandatory dependency-backed verification unavailable; not eligible to merge
 
@@ -62,17 +62,18 @@ Completed:
 
 - TSX parser check for `App.tsx`;
 - TypeScript parser checks for `api-client.ts` and `equipment-detail-model.ts`;
+- TypeScript parser checks for the three newly added recovery, wiring, and mounted-App regression files;
 - strict clean-room semantic compilation using the real Stage 18 form contracts and controlled declarations at unavailable external-package boundaries;
 - strict options included exact optional properties, unchecked indexed access, unused local and parameter detection, ES2022, DOM, and bundler module resolution;
 - source review of the mounted editor, profile round-trip mapping, detailed domain serializer, API submission flow, and regression files.
 
-The strict pass found three genuine defects, which were repaired and rechecked:
+The first strict pass found three genuine defects, which were repaired and rechecked:
 
 - `fetch` received an explicitly undefined abort signal;
 - one foundation type import was unused;
 - legacy permit recovery attempted to narrow one expression and then read a fresh `unknown` expression.
 
-The strict clean-room semantic compile completed without diagnostics after these repairs.
+The strict clean-room semantic compile was rerun against the final repaired source and completed without diagnostics. The three new regression files also passed their TypeScript parser checks without diagnostics.
 
 This verification is stronger than a syntax-only review but is not a substitute for dependency-backed repository commands. Controlled declarations were used only where packages could not be installed.
 
