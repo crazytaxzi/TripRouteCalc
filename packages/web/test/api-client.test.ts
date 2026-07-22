@@ -49,13 +49,14 @@ afterEach((): void => {
 
 describe('Stage 18 API transport', () => {
   it('uses the accepted singular calculate endpoint', async (): Promise<void> => {
-    const fetchMock = vi.fn((): Promise<Response> =>
-      Promise.resolve(
-        jsonResponse(
-          { calculationId: 'calc-1', revisionNumber: 8, status: 'AVAILABLE' },
-          201,
+    const fetchMock = vi.fn(
+      (_input: RequestInfo | URL, _init?: RequestInit): Promise<Response> =>
+        Promise.resolve(
+          jsonResponse(
+            { calculationId: 'calc-1', revisionNumber: 8, status: 'AVAILABLE' },
+            201,
+          ),
         ),
-      ),
     );
     vi.stubGlobal('fetch', fetchMock);
     const client = new TripSetupApiClient('/api', (): string => 'token');
@@ -97,13 +98,15 @@ describe('Stage 18 API transport', () => {
         201,
       ),
     ];
-    const fetchMock = vi.fn((): Promise<Response> => {
-      const response = responses.shift();
-      if (response === undefined) {
-        return Promise.reject(new Error('Unexpected request.'));
-      }
-      return Promise.resolve(response);
-    });
+    const fetchMock = vi.fn(
+      (_input: RequestInfo | URL, _init?: RequestInit): Promise<Response> => {
+        const response = responses.shift();
+        if (response === undefined) {
+          return Promise.reject(new Error('Unexpected request.'));
+        }
+        return Promise.resolve(response);
+      },
+    );
     vi.stubGlobal('fetch', fetchMock);
     const client = new TripSetupApiClient('/api', (): string => 'token');
     const initial = createInitialTripSetupState();
