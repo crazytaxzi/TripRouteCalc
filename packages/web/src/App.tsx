@@ -286,8 +286,16 @@ export function App(): ReactNode {
       setDirty(false);
       setNeedsCalculation(false);
       setOutcome(result.outcome);
-      const loaded = await client().loadProfiles();
-      setProfiles(loaded);
+      try {
+        const loaded = await client().loadProfiles();
+        setProfiles(loaded);
+      } catch (refreshError) {
+        setConnectionStatus(
+          refreshError instanceof Error
+            ? `Trip saved; profile refresh failed: ${refreshError.message}`
+            : 'Trip saved; profile refresh failed.',
+        );
+      }
     } catch (error) {
       if (controller.signal.aborted) return;
       if (error instanceof PlanningApiError) {
