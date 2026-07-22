@@ -11,7 +11,9 @@ describe('Stage 18 detailed evidence wiring', () => {
     const app = source('./App.tsx');
 
     expect(app).toContain("from './trip-form-model.js'");
-    expect(app).toContain("import { EquipmentDetailEditor } from './equipment-detail-editor.js';");
+    expect(app).toContain(
+      "import { EquipmentDetailEditor } from './equipment-detail-editor.js';",
+    );
     expect(app).toContain('<EquipmentDetailEditor');
     expect(app).not.toContain('name="permit-identifiers"');
   });
@@ -20,7 +22,9 @@ describe('Stage 18 detailed evidence wiring', () => {
     const client = source('./api-client.ts');
 
     expect(client).toContain("from './equipment-detail-model.js'");
-    expect(client).toContain('detailedRouteRequestFromDraft as routeRequestFromDraft');
+    expect(client).toContain(
+      'detailedRouteRequestFromDraft as routeRequestFromDraft',
+    );
     expect(client).toContain('const serverIds = new Set');
     expect(client).toContain('!serverIds.has(stop.publicId)');
     expect(client).toContain(
