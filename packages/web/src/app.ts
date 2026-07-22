@@ -27,8 +27,8 @@ function minutesInput(name: string, label: string, value: number): string {
   return `<label class="field"><span>${label}</span><input name="${name}" type="number" min="0" step="1" inputmode="numeric" value="${String(value)}"></label>`;
 }
 
-function profileField(name: string, label: string, value: string): string {
-  return `<label class="field"><span>${label}</span><input name="${name}" autocomplete="off" value="${escapeHtml(value)}" placeholder="Select or create"></label>`;
+function profileField(name: string, label: string, value: string, hint: string): string {
+  return `<label class="field"><span>${label}</span><input name="${name}" autocomplete="off" value="${escapeHtml(value)}" placeholder="${hint}"></label>`;
 }
 
 function renderStop(stop: TripSetupState['stops'][number], count: number): string {
@@ -36,7 +36,7 @@ function renderStop(stop: TripSetupState['stops'][number], count: number): strin
   const types = STOP_TYPES.map((type): string => `<option value="${type}"${type === stop.type ? ' selected' : ''}>${type.replaceAll('_', ' ')}</option>`).join('');
   return `<article class="stop-card" data-stop-id="${stop.localId}" draggable="${stop.lockedPosition ? 'false' : 'true'}" aria-label="Stop ${sequence} of ${String(count)}">
     <header><div><strong>Stop ${sequence}</strong><span class="badge">${stop.required ? 'Required' : 'Optional'}</span>${stop.lockedPosition ? '<span class="badge">Position locked</span>' : ''}</div>
-      <div class="button-row"><button type="button" data-action="move-up" aria-label="Move stop up">Up</button><button type="button" data-action="move-down" aria-label="Move stop down">Down</button><button type="button" data-action="duplicate">Duplicate</button><button type="button" data-action="insert-after">Insert</button><button type="button" data-action="remove"${stop.lockedPosition ? ' disabled' : ''}>Remove</button></div></header>
+      <div class="button-row"><button type="button" data-action="move-up">Up</button><button type="button" data-action="move-down">Down</button><button type="button" data-action="duplicate">Duplicate</button><button type="button" data-action="insert-after">Insert</button><button type="button" data-action="remove"${stop.lockedPosition ? ' disabled' : ''}>Remove</button></div></header>
     <div class="grid two"><label class="field"><span>Stop type</span><select data-field="type">${types}</select></label><label class="field"><span>Label</span><input data-field="label" value="${escapeHtml(stop.label)}"></label></div>
     <label class="field"><span>Location or address</span><input data-field="address" value="${escapeHtml(stop.address)}" autocomplete="street-address"></label>
     <div class="grid two"><label class="check"><input data-field="required" type="checkbox"${stop.required ? ' checked' : ''}> Required stop</label><label class="check"><input data-field="lockedPosition" type="checkbox"${stop.lockedPosition ? ' checked' : ''}> Lock position</label></div>
@@ -55,8 +55,7 @@ export class TripSetupApp {
 
   public constructor(root: HTMLElement) {
     this.#root = root;
-    const restored = restoreDraft(localStorage.getItem(STORAGE_KEY) ?? '');
-    this.#state = restored ?? createInitialTripSetupState();
+    this.#state = restoreDraft(localStorage.getItem(STORAGE_KEY) ?? '') ?? createInitialTripSetupState();
     this.#api = new TripSetupApiClient(root.dataset.apiBaseUrl ?? '/api', (): string => sessionStorage.getItem('trip-route-calc-token') ?? '');
     this.#recalculate = new RecalculationController(async (): Promise<void> => { await this.#calculate(); });
     this.#render();
@@ -72,12 +71,13 @@ export class TripSetupApp {
 
   #render(): void {
     const issues = validateTripSetup(this.#state);
-    this.#root.innerHTML = `<main class="shell"><header class="page-header"><div><p class="eyebrow">TripRouteCalc</p><h1>Trip setup</h1><p>Enter the facts. The server remains the legal authority.</p></div><div class="status" role="status" aria-live="polite">${this.#state.calculationPending ? 'Calculating...' : this.#state.lastError !== undefined ? escapeHtml(this.#state.lastError) : this.#state.lastCalculationAt !== undefined ? `Calculated ${escapeHtml(this.#state.lastCalculationAt)}` : 'Draft saved on this device'}</div></header>
+    const status = this.#state.calculationPending ? 'Saving and calculating...' : this.#state.lastError ?? (this.#state.tripId === undefined ? 'Draft saved on this device' : `Server trip saved at revision ${String(this.#state.revisionNumber)}`);
+    this.#root.innerHTML = `<main class="shell"><header class="page-header"><div><p class="eyebrow">TripRouteCalc</p><h1>Trip setup</h1><p>Enter the facts. The server remains the legal authority.</p></div><div class="status" role="status" aria-live="polite">${escapeHtml(status)}</div></header>
       ${issues.length > 0 ? `<section class="issues" aria-labelledby="issues-heading"><h2 id="issues-heading">Before calculation</h2><ul>${issues.map((issue): string => `<li><strong>${issue.severity === 'error' ? 'Required' : 'Check'}:</strong> ${escapeHtml(issue.message)}</li>`).join('')}</ul></section>` : ''}
-      <form novalidate><section class="panel"><h2>1. Driver and departure</h2><div class="grid two">${profileField('driver', 'Driver', this.#state.driver.displayName)}<label class="field"><span>Departure date and time</span><input name="departureAt" type="datetime-local" value="${escapeHtml(this.#state.departureAt)}"></label><label class="field"><span>Departure time zone</span><input name="departureTimeZone" value="${escapeHtml(this.#state.departureTimeZone)}"></label><label class="field"><span>Current duty status</span><select name="currentDutyStatus"><option value="">Choose status</option><option value="off_duty"${this.#state.currentDutyStatus === 'off_duty' ? ' selected' : ''}>Off duty</option><option value="sleeper_berth"${this.#state.currentDutyStatus === 'sleeper_berth' ? ' selected' : ''}>Sleeper berth</option><option value="driving"${this.#state.currentDutyStatus === 'driving' ? ' selected' : ''}>Driving</option><option value="on_duty_not_driving"${this.#state.currentDutyStatus === 'on_duty_not_driving' ? ' selected' : ''}>On duty, not driving</option></select></label><label class="field"><span>Status began at</span><input name="currentDutyStatusBeganAt" type="datetime-local" value="${escapeHtml(this.#state.currentDutyStatusBeganAt)}"></label></div><div class="clock-grid">${minutesInput('driveMinutesRemaining', 'Drive remaining (minutes)', this.#state.clocks.driveMinutesRemaining)}${minutesInput('shiftMinutesRemaining', 'Shift remaining (minutes)', this.#state.clocks.shiftMinutesRemaining)}${minutesInput('cycleMinutesRemaining', 'Cycle remaining (minutes)', this.#state.clocks.cycleMinutesRemaining)}</div></section>
-      <section class="panel"><h2>2. Equipment and load</h2><div class="grid three">${profileField('tractor', 'Tractor', this.#state.tractor.displayName)}${profileField('trailer', 'Trailer', this.#state.trailer.displayName)}${profileField('load', 'Load profile', this.#state.load.displayName)}</div><p class="hint">Profiles are selected independently. Missing axle, dimension, hazmat, or permit facts must be completed on the authoritative profile before calculation.</p></section>
+      <form novalidate><section class="panel"><h2>1. Driver and departure</h2><div class="grid two">${profileField('driver', 'Driver name', this.#state.driver.displayName, 'Create or enter driver') }<label class="field"><span>Departure date and time</span><input name="departureAt" type="datetime-local" value="${escapeHtml(this.#state.departureAt)}"></label><label class="field"><span>Departure time zone</span><input name="departureTimeZone" value="${escapeHtml(this.#state.departureTimeZone)}"></label><label class="field"><span>Current duty status</span><select name="currentDutyStatus"><option value="">Choose status</option><option value="off_duty"${this.#state.currentDutyStatus === 'off_duty' ? ' selected' : ''}>Off duty</option><option value="sleeper_berth"${this.#state.currentDutyStatus === 'sleeper_berth' ? ' selected' : ''}>Sleeper berth</option><option value="driving"${this.#state.currentDutyStatus === 'driving' ? ' selected' : ''}>Driving</option><option value="on_duty_not_driving"${this.#state.currentDutyStatus === 'on_duty_not_driving' ? ' selected' : ''}>On duty, not driving</option></select></label><label class="field"><span>Status began at</span><input name="currentDutyStatusBeganAt" type="datetime-local" value="${escapeHtml(this.#state.currentDutyStatusBeganAt)}"></label></div><div class="clock-grid">${minutesInput('driveMinutesRemaining', 'Drive remaining (minutes)', this.#state.clocks.driveMinutesRemaining)}${minutesInput('shiftMinutesRemaining', 'Shift remaining (minutes)', this.#state.clocks.shiftMinutesRemaining)}${minutesInput('cycleMinutesRemaining', 'Cycle remaining (minutes)', this.#state.clocks.cycleMinutesRemaining)}</div></section>
+      <section class="panel"><h2>2. Equipment and load</h2><div class="grid three">${profileField('tractor', 'Tractor public ID', this.#state.tractor.displayName, 'Existing tractor ID')}${profileField('trailer', 'Trailer public ID', this.#state.trailer.displayName, 'Existing trailer ID')}${profileField('load', 'Load public ID', this.#state.load.displayName, 'Existing load ID')}</div><p class="hint">Stage 17 exposes profile creation but not profile listing. Existing opaque IDs are accepted here; missing legal-critical data remains blocking.</p></section>
       <section class="panel"><div class="section-heading"><div><h2>3. Stops</h2><p>Appointments and service are separate for every stop.</p></div><button type="button" data-global-action="add-stop">Add stop</button></div><div class="stop-list">${this.#state.stops.map((stop): string => renderStop(stop, this.#state.stops.length)).join('')}</div></section>
-      <section class="action-bar"><label class="check"><input name="autoRecalculate" type="checkbox"${this.#state.autoRecalculate ? ' checked' : ''}> Recalculate after settled changes</label><button type="button" data-global-action="calculate" class="primary">Calculate trip</button></section></form></main>`;
+      <section class="action-bar"><label class="check"><input name="autoRecalculate" type="checkbox"${this.#state.autoRecalculate ? ' checked' : ''}> Recalculate after settled changes</label><button type="button" data-global-action="save">Save trip</button><button type="button" data-global-action="calculate" class="primary">Save and calculate</button></section></form></main>`;
     this.#bind();
   }
 
@@ -85,35 +85,36 @@ export class TripSetupApp {
     const form = this.#root.querySelector('form');
     form?.addEventListener('input', (event): void => { this.#handleFormInput(event); });
     form?.addEventListener('change', (event): void => { this.#handleFormInput(event); });
-    this.#root.querySelector('[data-global-action="add-stop"]')?.addEventListener('click', (): void => { this.#setState(insertStop(this.#state, this.#state.stops.length - 1), '.stop-card:nth-last-child(2) input[data-field="address"]'); });
+    this.#root.querySelector('[data-global-action="add-stop"]')?.addEventListener('click', (): void => { this.#setState(insertStop(this.#state, this.#state.stops.length - 1)); });
+    this.#root.querySelector('[data-global-action="save"]')?.addEventListener('click', (): void => { void this.#save(); });
     this.#root.querySelector('[data-global-action="calculate"]')?.addEventListener('click', (): void => { void this.#calculate(); });
     this.#root.querySelectorAll<HTMLElement>('.stop-card').forEach((card): void => {
       const localId = card.dataset.stopId;
       if (localId === undefined) return;
-      card.querySelector('[data-action="move-up"]')?.addEventListener('click', (): void => { this.#setState(moveStop(this.#state, localId, -1), `[data-stop-id="${localId}"]`); });
-      card.querySelector('[data-action="move-down"]')?.addEventListener('click', (): void => { this.#setState(moveStop(this.#state, localId, 1), `[data-stop-id="${localId}"]`); });
+      card.querySelector('[data-action="move-up"]')?.addEventListener('click', (): void => { this.#setState(moveStop(this.#state, localId, -1)); });
+      card.querySelector('[data-action="move-down"]')?.addEventListener('click', (): void => { this.#setState(moveStop(this.#state, localId, 1)); });
       card.querySelector('[data-action="duplicate"]')?.addEventListener('click', (): void => { this.#setState(duplicateStop(this.#state, localId)); });
-      card.querySelector('[data-action="insert-after"]')?.addEventListener('click', (): void => { this.#setState(insertStop(this.#state, Number(card.getAttribute('aria-label')?.match(/Stop (\d+)/)?.[1] ?? 1))); });
+      card.querySelector('[data-action="insert-after"]')?.addEventListener('click', (): void => { this.#setState(insertStop(this.#state, stopIndex(card) + 1)); });
       card.querySelector('[data-action="remove"]')?.addEventListener('click', (): void => { this.#setState(removeStop(this.#state, localId)); });
       card.addEventListener('dragstart', (): void => { this.#draggedStopId = localId; });
       card.addEventListener('dragover', (event): void => { event.preventDefault(); });
-      card.addEventListener('drop', (event): void => {
-        event.preventDefault();
-        const dragged = this.#draggedStopId;
-        this.#draggedStopId = undefined;
-        if (dragged === undefined || dragged === localId) return;
-        const from = this.#state.stops.findIndex((stop): boolean => stop.localId === dragged);
-        const to = this.#state.stops.findIndex((stop): boolean => stop.localId === localId);
-        let next = this.#state;
-        const direction: -1 | 1 = from < to ? 1 : -1;
-        while (next.stops.findIndex((stop): boolean => stop.localId === dragged) !== to) {
-          const moved = moveStop(next, dragged, direction);
-          if (moved === next) break;
-          next = moved;
-        }
-        this.#setState(next, `[data-stop-id="${dragged}"]`);
-      });
+      card.addEventListener('drop', (event): void => { event.preventDefault(); this.#dropStop(localId); });
     });
+  }
+
+  #dropStop(targetId: string): void {
+    const dragged = this.#draggedStopId;
+    this.#draggedStopId = undefined;
+    if (dragged === undefined || dragged === targetId) return;
+    const targetIndex = this.#state.stops.findIndex((stop): boolean => stop.localId === targetId);
+    let next = this.#state;
+    const direction: -1 | 1 = next.stops.findIndex((stop): boolean => stop.localId === dragged) < targetIndex ? 1 : -1;
+    while (next.stops.findIndex((stop): boolean => stop.localId === dragged) !== targetIndex) {
+      const moved = moveStop(next, dragged, direction);
+      if (moved === next) break;
+      next = moved;
+    }
+    this.#setState(next);
   }
 
   #handleFormInput(event: Event): void {
@@ -123,15 +124,15 @@ export class TripSetupApp {
     if (card !== null) {
       const localId = card.dataset.stopId;
       const field = target.dataset.field;
-      if (localId === undefined || field === undefined) return;
-      this.#updateStopField(localId, field, target);
+      if (localId !== undefined && field !== undefined) this.#updateStopField(localId, field, target);
       return;
     }
     const name = target.name;
     if (name === 'autoRecalculate' && target instanceof HTMLInputElement) this.#setState({ ...this.#state, autoRecalculate: target.checked });
     else if (name === 'departureAt' || name === 'departureTimeZone' || name === 'currentDutyStatusBeganAt') this.#setState({ ...this.#state, [name]: target.value, dirty: true });
     else if (name === 'currentDutyStatus') this.#setState({ ...this.#state, currentDutyStatus: target.value as TripSetupState['currentDutyStatus'], dirty: true });
-    else if (name === 'driver' || name === 'tractor' || name === 'trailer' || name === 'load') this.#setState({ ...this.#state, [name]: { selectedId: target.value.trim(), displayName: target.value }, dirty: true });
+    else if (name === 'driver') this.#setState({ ...this.#state, driver: { selectedId: '', displayName: target.value }, dirty: true });
+    else if (name === 'tractor' || name === 'trailer' || name === 'load') this.#setState({ ...this.#state, [name]: { selectedId: target.value.trim(), displayName: target.value }, dirty: true });
     else if (name in this.#state.clocks) this.#setState({ ...this.#state, clocks: { ...this.#state.clocks, [name]: Number(target.value) }, dirty: true });
   }
 
@@ -152,14 +153,34 @@ export class TripSetupApp {
     }
   }
 
+  async #save(): Promise<void> {
+    this.#setState({ ...this.#state, calculationPending: true, lastError: undefined });
+    try {
+      const saved = await this.#api.save(this.#state);
+      this.#setState({ ...saved, calculationPending: false });
+    } catch (error) {
+      this.#setFailure(error);
+    }
+  }
+
   async #calculate(): Promise<void> {
     this.#setState({ ...this.#state, calculationPending: true, lastError: undefined });
     try {
-      await this.#api.calculate(this.#state);
-      this.#setState({ ...this.#state, calculationPending: false, dirty: false, lastCalculationAt: new Date().toLocaleString(), lastError: undefined });
+      const saved = await this.#api.save(this.#state);
+      await this.#api.calculate(saved);
+      this.#setState({ ...saved, calculationPending: false, lastCalculationAt: new Date().toLocaleString(), lastError: undefined });
     } catch (error) {
-      const message = error instanceof TripSetupValidationError ? error.issues.map((issue): string => issue.message).join(' ') : error instanceof Error ? error.message : 'Calculation failed. Your draft is preserved.';
-      this.#setState({ ...this.#state, calculationPending: false, lastError: message });
+      this.#setFailure(error);
     }
   }
+
+  #setFailure(error: unknown): void {
+    const message = error instanceof TripSetupValidationError ? error.issues.map((issue): string => issue.message).join(' ') : error instanceof Error ? error.message : 'The request failed. Your draft is preserved.';
+    this.#setState({ ...this.#state, calculationPending: false, lastError: message });
+  }
+}
+
+function stopIndex(card: HTMLElement): number {
+  const value = card.getAttribute('aria-label')?.match(/Stop (\d+)/u)?.[1];
+  return value === undefined ? 0 : Number(value) - 1;
 }
