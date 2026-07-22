@@ -112,6 +112,7 @@ export function trailerFormFromProfile(
 export function loadFormFromProfile(id: string, value: unknown): LoadForm {
   const profile = LoadProfileSchema.parse(value);
   const temperature = profile.temperatureRequirements;
+  const permitIdentifiers = profile.permits.map((permit) => permit.identifier);
   return {
     id,
     referenceNumber: profile.loadIdentifier,
@@ -145,6 +146,7 @@ export function loadFormFromProfile(id: string, value: unknown): LoadForm {
         : toFahrenheit(temperature.setPoint),
     temperatureExplanation: temperature?.explanation ?? '',
     permitRequirement: profile.permitRequirement,
+    permitIdentifiers,
     permits: profile.permits.map((permit) => ({
       ...createLoadPermitForm(permit.identifier),
       jurisdictionCode: permit.jurisdictionCode ?? '',
