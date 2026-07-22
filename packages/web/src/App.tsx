@@ -22,6 +22,7 @@ import {
   dutyStatusOptions,
   newStopTypeOptions,
 } from './form-components.js';
+import { HosEvidenceEditor } from './hos-evidence-editor.js';
 import {
   clearDraft,
   defaultTripDraft,
@@ -613,7 +614,7 @@ export function App(): ReactNode {
             <NumberField name="carrier-duty-cap" label="Carrier duty cap" unit="minutes" min={1} max={840} value={draft.hos.carrierMaxDutyMinutes} onChange={(value) => updateHos('carrierMaxDutyMinutes', numberValue(value, 1))} />
           </div>
           <details className="advanced-block">
-            <summary>Prior duty totals and rule selections</summary>
+            <summary>Prior duty, recap, sleeper, and rule evidence</summary>
             <div className="form-grid">
               {draft.hos.priorDutyMinutes.map((minutes, index) => (
                 <NumberField
@@ -646,6 +647,10 @@ export function App(): ReactNode {
                 <TextField name="night-rest-end" label="Preferred rest ends" type="time" value={draft.hos.nightlyRestEnd} onChange={(value) => updateHos('nightlyRestEnd', value)} />
               </div>
             )}
+            <HosEvidenceEditor
+              value={draft.hos}
+              onChange={(value) => update({ type: 'hos', value })}
+            />
           </details>
         </Section>
 
