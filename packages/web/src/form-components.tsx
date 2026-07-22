@@ -24,7 +24,7 @@ export function Section(props: {
   readonly actions?: ReactNode;
 }): ReactNode {
   return (
-    <section className="panel" aria-labelledby={`${props.id}-title`}>
+    <section className="panel" id={props.id} aria-labelledby={`${props.id}-title`}>
       <header className="panel__header">
         <div>
           <p className="eyebrow">{props.eyebrow}</p>
@@ -46,6 +46,7 @@ export function TextField(props: {
   readonly value: string;
   readonly onChange: (value: string) => void;
   readonly required?: boolean;
+  readonly disabled?: boolean;
   readonly placeholder?: string;
   readonly type?: 'text' | 'datetime-local' | 'time' | 'password' | 'url';
   readonly hint?: string;
@@ -64,6 +65,7 @@ export function TextField(props: {
         type={props.type ?? 'text'}
         value={props.value}
         required={props.required}
+        disabled={props.disabled}
         placeholder={props.placeholder}
         autoComplete={props.autoComplete}
         onChange={(event) => props.onChange(event.currentTarget.value)}
@@ -82,6 +84,7 @@ export function NumberField(props: {
   readonly unit: string;
   readonly onChange: (value: number | null) => void;
   readonly required?: boolean;
+  readonly disabled?: boolean;
   readonly min?: number;
   readonly max?: number;
   readonly step?: number;
@@ -102,6 +105,7 @@ export function NumberField(props: {
           inputMode="decimal"
           value={props.value ?? ''}
           required={props.required}
+          disabled={props.disabled}
           min={props.min}
           max={props.max}
           step={props.step ?? 1}
@@ -125,6 +129,7 @@ export function SelectField<T extends string>(props: {
   readonly value: T;
   readonly options: readonly Readonly<{ value: T; label: string }>[];
   readonly onChange: (value: T) => void;
+  readonly disabled?: boolean;
   readonly hint?: string;
 }): ReactNode {
   const id = fieldId(props.name);
@@ -135,6 +140,7 @@ export function SelectField<T extends string>(props: {
         id={id}
         name={props.name}
         value={props.value}
+        disabled={props.disabled}
         onChange={(event: ChangeEvent<HTMLSelectElement>) =>
           props.onChange(event.currentTarget.value as T)
         }
@@ -157,6 +163,7 @@ export function CheckField(props: {
   readonly label: string;
   readonly checked: boolean;
   readonly onChange: (value: boolean) => void;
+  readonly disabled?: boolean;
   readonly hint?: string;
 }): ReactNode {
   const id = fieldId(props.name);
@@ -167,6 +174,7 @@ export function CheckField(props: {
         name={props.name}
         type="checkbox"
         checked={props.checked}
+        disabled={props.disabled}
         onChange={(event) => props.onChange(event.currentTarget.checked)}
       />
       <span>
@@ -180,7 +188,7 @@ export function CheckField(props: {
 export function ProfileSelect(props: {
   readonly name: string;
   readonly label: string;
-  readonly selectedId?: string;
+  readonly selectedId?: string | undefined;
   readonly options: readonly ProfileOption[];
   readonly onSelect: (id: string | undefined) => void;
 }): ReactNode {
@@ -249,10 +257,13 @@ export function StopCard(props: {
   readonly count: number;
   readonly onChange: (stop: StopForm) => void;
   readonly onRemove: () => void;
+  readonly onDuplicate: () => void;
+  readonly onInsertAfter: () => void;
   readonly onMove: (direction: -1 | 1) => void;
   readonly onDropStop: (sourceId: string, targetId: string) => void;
 }): ReactNode {
   const stop = props.stop;
+  const structuralEndpoint = props.index === 0 || props.index === props.count - 1;
   const patch = <Key extends keyof StopForm>(
     key: Key,
     value: StopForm[Key],
@@ -271,6 +282,14 @@ export function StopCard(props: {
       props.onDropStop(sourceId, stop.localId);
     }
   };
+
+  const needsAppointmentStart = stop.appointmentMode !== 'none';
+  const needsAppointmentEnd =
+    stop.appointmentMode === 'window' || stop.appointmentMode === 'open-window';
+  const needsLateTolerance =
+    stop.appointmentMode === 'latest' ||
+    stop.appointmentMode === 'fixed' ||
+    needsAppointmentEnd;
 
   return (
     <article
@@ -294,8 +313,9 @@ export function StopCard(props: {
           </h3>
           <p>
             {stop.lockedPosition
-              ? 'Position locked by trip structure'
+              ? 'Position locked'
               : 'Drag this card or use the move buttons'}
+            {stop.required ? ' · Required' : ' · Optional'}
           </p>
         </div>
         <div className="stop-card__controls">
@@ -319,6 +339,24 @@ export function StopCard(props: {
           </button>
           <button
             type="button"
+            className="icon-button"
+            disabled={structuralEndpoint || stop.lockedPosition}
+            onClick={props.onDuplicate}
+            aria-label={`Duplicate stop ${String(props.index + 1)}`}
+          >
+            ⧉
+          </button>
+          <button
+            type="button"
+            className="icon-button"
+            disabled={props.index === props.count - 1}
+            onClick={props.onInsertAfter}
+            aria-label={`Insert stop after stop ${String(props.index + 1)}`}
+          >
+            +
+          </button>
+          <button
+            type="button"
             className="icon-button icon-button--danger"
             disabled={stop.lockedPosition}
             onClick={props.onRemove}
@@ -329,12 +367,32 @@ export function StopCard(props: {
         </div>
       </header>
 
+      <div className="check-grid">
+        <CheckField
+          name={`${stop.localId}-required`}
+          label="Required stop"
+          checked={stop.required}
+          disabled={structuralEndpoint}
+          onChange={(value) => patch('required', value)}
+          hint="Optional stops remain in the plan but may be skipped by later operational decisions."
+        />
+        <CheckField
+          name={`${stop.localId}-locked`}
+          label="Lock this position"
+          checked={stop.lockedPosition}
+          disabled={structuralEndpoint}
+          onChange={(value) => patch('lockedPosition', value)}
+          hint="Locked stops cannot be moved or removed."
+        />
+      </div>
+
       <div className="form-grid">
         <SelectField
           name={`${stop.localId}-type`}
           label="Stop type"
           value={stop.type}
           options={stopTypeOptions}
+          disabled={structuralEndpoint}
           onChange={(value) => patch('type', value)}
         />
         <TextField
@@ -387,22 +445,33 @@ export function StopCard(props: {
           value={stop.appointmentMode}
           options={[
             { value: 'none', label: 'No appointment' },
+            { value: 'earliest', label: 'Earliest appointment' },
+            { value: 'latest', label: 'Latest appointment' },
             { value: 'fixed', label: 'Fixed appointment' },
             { value: 'window', label: 'Appointment window' },
+            { value: 'open-window', label: 'Open appointment window' },
           ]}
           onChange={(value) => patch('appointmentMode', value)}
         />
-        {stop.appointmentMode === 'none' ? null : (
+        {!needsAppointmentStart ? null : (
           <TextField
             name={`${stop.localId}-appointment-start`}
-            label={stop.appointmentMode === 'fixed' ? 'Appointment time' : 'Window opens'}
+            label={
+              stop.appointmentMode === 'fixed'
+                ? 'Appointment time'
+                : needsAppointmentEnd
+                  ? 'Window opens'
+                  : stop.appointmentMode === 'earliest'
+                    ? 'Earliest service time'
+                    : 'Latest service time'
+            }
             type="datetime-local"
             required
             value={stop.appointmentStartLocal}
             onChange={(value) => patch('appointmentStartLocal', value)}
           />
         )}
-        {stop.appointmentMode !== 'window' ? null : (
+        {!needsAppointmentEnd ? null : (
           <TextField
             name={`${stop.localId}-appointment-end`}
             label="Window closes"
@@ -412,14 +481,16 @@ export function StopCard(props: {
             onChange={(value) => patch('appointmentEndLocal', value)}
           />
         )}
-        <NumberField
-          name={`${stop.localId}-late-tolerance`}
-          label="Late tolerance"
-          unit="minutes"
-          min={0}
-          value={stop.lateToleranceMinutes}
-          onChange={(value) => patch('lateToleranceMinutes', value ?? 0)}
-        />
+        {!needsLateTolerance ? null : (
+          <NumberField
+            name={`${stop.localId}-late-tolerance`}
+            label="Late tolerance"
+            unit="minutes"
+            min={0}
+            value={stop.lateToleranceMinutes}
+            onChange={(value) => patch('lateToleranceMinutes', value ?? 0)}
+          />
+        )}
         <NumberField
           name={`${stop.localId}-check-in`}
           label="Check-in duration"
@@ -428,14 +499,73 @@ export function StopCard(props: {
           value={stop.checkInMinutes}
           onChange={(value) => patch('checkInMinutes', value ?? 0)}
         />
+        <SelectField
+          name={`${stop.localId}-service-mode`}
+          label="Service duration source"
+          value={stop.serviceMode}
+          options={[
+            { value: 'exact', label: 'Exact duration' },
+            { value: 'expected', label: 'Expected duration' },
+            { value: 'range', label: 'Minimum / expected / maximum' },
+            { value: 'historical-average', label: 'Historical facility average' },
+          ]}
+          onChange={(value) => patch('serviceMode', value)}
+        />
+        {stop.serviceMode !== 'range' ? null : (
+          <NumberField
+            name={`${stop.localId}-service-minimum`}
+            label="Minimum service"
+            unit="minutes"
+            min={0}
+            value={stop.serviceMinimumMinutes}
+            onChange={(value) => patch('serviceMinimumMinutes', value ?? 0)}
+          />
+        )}
         <NumberField
           name={`${stop.localId}-service`}
-          label="Expected service"
+          label={
+            stop.serviceMode === 'range'
+              ? 'Expected service'
+              : stop.serviceMode === 'historical-average'
+                ? 'Historical average'
+                : stop.serviceMode === 'exact'
+                  ? 'Exact service'
+                  : 'Expected service'
+          }
           unit="minutes"
           min={0}
           value={stop.serviceMinutes}
           onChange={(value) => patch('serviceMinutes', value ?? 0)}
         />
+        {stop.serviceMode !== 'range' ? null : (
+          <NumberField
+            name={`${stop.localId}-service-maximum`}
+            label="Maximum service"
+            unit="minutes"
+            min={0}
+            value={stop.serviceMaximumMinutes}
+            onChange={(value) => patch('serviceMaximumMinutes', value ?? 0)}
+          />
+        )}
+        {stop.serviceMode !== 'historical-average' ? null : (
+          <>
+            <TextField
+              name={`${stop.localId}-historical-source`}
+              label="Historical source"
+              required
+              value={stop.historicalSourceName}
+              onChange={(value) => patch('historicalSourceName', value)}
+            />
+            <NumberField
+              name={`${stop.localId}-historical-sample`}
+              label="Historical sample size"
+              unit="visits"
+              min={1}
+              value={stop.historicalSampleSize}
+              onChange={(value) => patch('historicalSampleSize', value)}
+            />
+          </>
+        )}
         <SelectField
           name={`${stop.localId}-waiting-duty`}
           label="Waiting duty status"
