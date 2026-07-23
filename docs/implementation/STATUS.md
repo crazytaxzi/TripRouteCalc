@@ -53,7 +53,7 @@ Adversarial review rejected Stage 18 closure because the current browser workflo
 - synchronization of edits, deletes, and reorders for already-persisted stops;
 - a server-authoritative operation that converts entered facts into commercial routing, compliance, operational-event, and ETA inputs without caller-authored legal JSON.
 
-Decision `D18-001` in `docs/implementation/decisions/18-trip-planning-orchestration.md` requires the browser to submit facts and the server to assemble and execute the legal planning pipeline. Stage 19 remains blocked until this boundary and the Stage 18 exit gate are complete.
+Decision `D18-001` in `docs/implementation/decisions/18-trip-planning-orchestration.md` requires the browser to submit facts and the server to assemble and execute the legal planning pipeline. The exact continuation sequence and closure checklist are in `docs/implementation/handoffs/18-mobile-trip-setup.md`. Stage 19 remains blocked until this boundary and the Stage 18 exit gate are complete.
 
 ## Stage 17 implementation
 
@@ -71,7 +71,7 @@ Decision `D18-001` in `docs/implementation/decisions/18-trip-planning-orchestrat
 
 ## Verification evidence
 
-Stage 18 partial implementation and documentation have passed the permanent repository gate, including clean run `1544` (`29947818779`) on the draft branch head before the latest documentation updates. That evidence verifies repository health and the implemented subset only; it is not Stage 18 exit-gate evidence.
+Stage 18 partial implementation and documentation have passed the permanent repository gate, including clean run `1544` (`29947818779`) on the draft branch head before the latest continuation-document updates. That evidence verifies repository health and the implemented subset only; it is not Stage 18 exit-gate evidence.
 
 The verified gates include:
 
@@ -117,4 +117,4 @@ The local environment did not provide a usable private-repository checkout, pnpm
 
 ## Next action
 
-Continue `docs/specification/18_MOBILE_TRIP_SETUP_UI.md` on draft PR `#39`. Implement the server-authoritative trip-planning orchestration boundary defined by `D18-001`, then complete the HOS, equipment, load, stop-resolution, persisted-edit synchronization, and workflow acceptance tests. Do not begin Stage 19 until the Stage 18 exit gate is verified, the handoff and ledger are closed, and PR `#39` is merged.
+Continue `docs/specification/18_MOBILE_TRIP_SETUP_UI.md` on draft PR `#39` using `docs/implementation/handoffs/18-mobile-trip-setup.md`. Implement the server-authoritative trip-planning orchestration boundary defined by `D18-001`, then complete the HOS, equipment, load, stop-resolution, persisted-edit synchronization, and workflow acceptance tests. Do not begin Stage 19 until the Stage 18 exit gate is verified, the handoff and ledger are closed, and PR `#39` is merged.
