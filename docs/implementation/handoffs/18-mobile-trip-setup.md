@@ -23,7 +23,8 @@ The implemented subset is repository-green but the Stage 18 exit gate is not yet
   - independent drive, shift, and cycle clocks;
   - local trip setup state;
   - accessible stop add, insert, duplicate, remove, and reorder operations;
-  - local validation and draft serialization.
+  - persisted-stop deletion tracking;
+  - backward-compatible local draft restoration.
 - `packages/web/src/app.ts`
   - mobile-first form shell;
   - driver/departure, equipment references, stops, appointments, service, warnings, focus management, and controlled recalculation UI;
@@ -33,12 +34,14 @@ The implemented subset is repository-green but the Stage 18 exit gate is not yet
   - driver and trip creation;
   - equipment-reference patching;
   - sequential stop creation with immutable revision tracking;
+  - persisted stop patch, delete, and reorder synchronization;
   - correct singular `/calculate` transport.
 - `packages/web/test/model.test.ts`
   - stop-editor state behavior.
 - `packages/web/test/api-client.test.ts`
   - accepted calculation endpoint;
   - driver/trip/stop creation and revision chaining;
+  - persisted delete, patch, and reorder revision chaining;
   - stop payload serialization.
 - `packages/web/index.html`, `packages/web/styles.css`, `packages/web/tsconfig.json`, and root TypeScript reference integration.
 
@@ -47,6 +50,7 @@ The implemented subset is repository-green but the Stage 18 exit gate is not yet
 - Replaced the invalid `/calculations` URL with `/calculate`.
 - Added actual driver creation, trip creation, stop persistence, and revision chaining instead of requiring a preexisting trip identifier.
 - Added structured Stage 17 API error-envelope handling.
+- Added immutable persisted-stop patch, delete, and reorder synchronization without discarding the local draft on failure.
 - Removed all temporary diagnostic workflows after extracting exact lint and compiler evidence.
 
 ## Required remaining implementation
@@ -105,27 +109,15 @@ Add:
 - check-in duration;
 - instructions distinct from notes.
 
-### 5. Persisted stop synchronization
-
-For stops with server identifiers, support immutable-revision:
-
-- patch;
-- delete;
-- reorder;
-- stale-conflict recovery;
-- local draft preservation after failure.
-
-Do not recreate every persisted stop as a new stop.
-
-### 6. Stage 18 exit-gate acceptance
+### 5. Stage 18 exit-gate acceptance
 
 Add a browser workflow acceptance test proving a user can enter a complete real-world plan and submit it without editing raw JSON. Test mobile and desktop layout behavior, keyboard reorder, focus management, non-color severity cues, reduced motion, and provider/calculation errors.
 
 ## Verification evidence to date
 
-Permanent CI run `1544` (`29947818779`) passed frozen install, Prisma generation and validation, clean PostgreSQL migration deployment, lint, type-check, complete tests, and build for the verified partial implementation and adversarial-review documentation.
+Permanent CI run `1562` (`29997269820`) passed frozen install, Prisma generation and validation, clean PostgreSQL migration deployment, lint, type-check, complete tests, and build on commit `897388c3405932c4a9c4066045b497634910b09f`.
 
-That run is repository-health evidence only. It is not Stage 18 exit-gate evidence.
+This verifies the persisted-stop synchronization slice and prior implemented work. It is not Stage 18 exit-gate evidence.
 
 ## Closure checklist
 
