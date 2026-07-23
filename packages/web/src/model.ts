@@ -59,6 +59,7 @@ export interface TripSetupState {
   readonly currentDutyStatusBeganAt: string;
   readonly clocks: ClockInputs;
   readonly stops: readonly TripStopDraft[];
+  readonly deletedServerStopIds: readonly string[];
   readonly autoRecalculate: boolean;
   readonly dirty: boolean;
   readonly calculationPending: boolean;
@@ -75,13 +76,13 @@ export function createStop(type: StopType, sequence: number): TripStopDraft {
 }
 
 export function createInitialTripSetupState(): TripSetupState {
-  return { revisionNumber: 0, driver: { selectedId: '', displayName: '' }, tractor: { selectedId: '', displayName: '' }, trailer: { selectedId: '', displayName: '' }, load: { selectedId: '', displayName: '' }, departureAt: '', departureTimeZone: 'America/Boise', currentDutyStatus: '', currentDutyStatusBeganAt: '', clocks: { driveMinutesRemaining: 0, shiftMinutesRemaining: 0, cycleMinutesRemaining: 0 }, stops: [createStop('start_location', 0), createStop('shipper', 1), createStop('final_consignee', 2)], autoRecalculate: false, dirty: false, calculationPending: false };
+  return { revisionNumber: 0, driver: { selectedId: '', displayName: '' }, tractor: { selectedId: '', displayName: '' }, trailer: { selectedId: '', displayName: '' }, load: { selectedId: '', displayName: '' }, departureAt: '', departureTimeZone: 'America/Boise', currentDutyStatus: '', currentDutyStatusBeganAt: '', clocks: { driveMinutesRemaining: 0, shiftMinutesRemaining: 0, cycleMinutesRemaining: 0 }, stops: [createStop('start_location', 0), createStop('shipper', 1), createStop('final_consignee', 2)], deletedServerStopIds: [], autoRecalculate: false, dirty: false, calculationPending: false };
 }
 
 function resequence(stops: readonly TripStopDraft[]): readonly TripStopDraft[] { return stops.map((stop, sequence): TripStopDraft => ({ ...stop, sequence })); }
 export function insertStop(state: TripSetupState, index: number, type: StopType = 'other'): TripSetupState { const boundedIndex = Math.max(0, Math.min(index, state.stops.length)); const stops = [...state.stops]; stops.splice(boundedIndex, 0, createStop(type, boundedIndex)); return { ...state, stops: resequence(stops), dirty: true }; }
 export function duplicateStop(state: TripSetupState, localId: string): TripSetupState { const index = state.stops.findIndex((stop): boolean => stop.localId === localId); const source = state.stops[index]; if (index < 0 || source === undefined) return state; const copy: TripStopDraft = { ...source, localId: `local-stop-${String(nextLocalStopId++)}`, serverId: undefined, lockedPosition: false, label: source.label === '' ? '' : `${source.label} copy` }; const stops = [...state.stops]; stops.splice(index + 1, 0, copy); return { ...state, stops: resequence(stops), dirty: true }; }
-export function removeStop(state: TripSetupState, localId: string): TripSetupState { const stop = state.stops.find((candidate): boolean => candidate.localId === localId); if (stop === undefined || stop.lockedPosition) return state; return { ...state, stops: resequence(state.stops.filter((candidate): boolean => candidate.localId !== localId)), dirty: true }; }
+export function removeStop(state: TripSetupState, localId: string): TripSetupState { const stop = state.stops.find((candidate): boolean => candidate.localId === localId); if (stop === undefined || stop.lockedPosition) return state; const deletedServerStopIds = stop.serverId === undefined || state.deletedServerStopIds.includes(stop.serverId) ? state.deletedServerStopIds : [...state.deletedServerStopIds, stop.serverId]; return { ...state, stops: resequence(state.stops.filter((candidate): boolean => candidate.localId !== localId)), deletedServerStopIds, dirty: true }; }
 export function moveStop(state: TripSetupState, localId: string, direction: -1 | 1): TripSetupState { const from = state.stops.findIndex((stop): boolean => stop.localId === localId); const to = from + direction; if (from < 0 || to < 0 || to >= state.stops.length) return state; const current = state.stops[from]; const target = state.stops[to]; if (current === undefined || target === undefined || current.lockedPosition || target.lockedPosition) return state; const stops = [...state.stops]; stops[from] = target; stops[to] = current; return { ...state, stops: resequence(stops), dirty: true }; }
 export function updateStop(state: TripSetupState, localId: string, patch: Partial<Omit<TripStopDraft, 'localId' | 'sequence'>>): TripSetupState { return { ...state, dirty: true, stops: state.stops.map((stop): TripStopDraft => stop.localId === localId ? { ...stop, ...patch } : stop) }; }
 
@@ -103,4 +104,4 @@ export function validateTripSetup(state: TripSetupState): readonly ValidationIss
 }
 
 export function serializeDraft(state: TripSetupState): string { return JSON.stringify(state); }
-export function restoreDraft(serialized: string): TripSetupState | undefined { try { const value = JSON.parse(serialized) as unknown; if (typeof value !== 'object' || value === null || !('stops' in value) || !Array.isArray((value as { stops?: unknown }).stops)) return undefined; return value as TripSetupState; } catch { return undefined; } }
+export function restoreDraft(serialized: string): TripSetupState | undefined { try { const value = JSON.parse(serialized) as unknown; if (typeof value !== 'object' || value === null || !('stops' in value) || !Array.isArray((value as { stops?: unknown }).stops)) return undefined; const state = value as TripSetupState; return { ...state, deletedServerStopIds: Array.isArray(state.deletedServerStopIds) ? state.deletedServerStopIds : [] }; } catch { return undefined; } }
