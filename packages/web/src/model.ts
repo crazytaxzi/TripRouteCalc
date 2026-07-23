@@ -12,7 +12,11 @@ export type DutyStatus =
   | 'driving'
   | 'on_duty_not_driving';
 export type CycleType = '70_in_8' | '60_in_7' | '';
-export type FactProvenance = 'user_entered' | 'imported_eld' | 'carrier_record' | '';
+export type FactProvenance =
+  | 'user_entered'
+  | 'imported_eld'
+  | 'carrier_record'
+  | '';
 
 export interface DailyDutyTotal {
   readonly date: string;
@@ -167,15 +171,14 @@ function defaultHosInputs(): DriverHosInputs {
   };
 }
 
+function defaultServiceMinutes(type: StopType): number {
+  if (type === 'fuel') return 30;
+  if (type === 'scale') return 15;
+  if (type === 'start_location') return 30;
+  return 60;
+}
+
 export function createStop(type: StopType, sequence: number): TripStopDraft {
-  const defaultMinutes =
-    type === 'fuel'
-      ? 30
-      : type === 'scale'
-        ? 15
-        : type === 'start_location'
-          ? 30
-          : 60;
   return {
     localId: `local-stop-${String(nextLocalStopId++)}`,
     sequence,
@@ -193,7 +196,7 @@ export function createStop(type: StopType, sequence: number): TripStopDraft {
     },
     service: {
       mode: 'expected',
-      expectedMinutes: defaultMinutes,
+      expectedMinutes: defaultServiceMinutes(type),
       dutyStatus: 'on_duty_not_driving',
     },
     notes: '',
@@ -318,102 +321,38 @@ export function updateStop(
   };
 }
 
+function issue(path: string, message: string): ValidationIssue {
+  return { path, message, severity: 'error' };
+}
+
 function validateNonnegativeMinutes(
   issues: ValidationIssue[],
   path: string,
   value: number,
 ): void {
   if (!Number.isFinite(value) || value < 0) {
-    issues.push({
-      path,
-      message: 'Enter a nonnegative duration in minutes.',
-      severity: 'error',
-    });
+    issues.push(issue(path, 'Enter a nonnegative duration in minutes.'));
   }
 }
 
-function validateHos(state: TripSetupState): readonly ValidationIssue[] {
-  const issues: ValidationIssue[] = [];
-  if (state.hos.cycleType === '') {
-    issues.push({
-      path: 'hos.cycleType',
-      message: 'Choose the 60-hour/7-day or 70-hour/8-day cycle.',
-      severity: 'error',
-    });
+function validatePriorDutyTotals(
+  hos: DriverHosInputs,
+  issues: ValidationIssue[],
+): void {
+  const expectedPriorDays = hos.cycleType === '60_in_7' ? 6 : 7;
+  if (hos.cycleType !== '' && hos.priorDutyTotals.length !== expectedPriorDays) {
+    issues.push(
+      issue(
+        'hos.priorDutyTotals',
+        `Enter ${String(expectedPriorDays)} prior daily on-duty totals for the selected cycle.`,
+      ),
+    );
   }
-  if (state.hos.provenance === '') {
-    issues.push({
-      path: 'hos.provenance',
-      message: 'Identify whether the HOS facts were user-entered or imported.',
-      severity: 'error',
-    });
-  }
-  validateNonnegativeMinutes(
-    issues,
-    'hos.drivenSinceQualifyingInterruptionMinutes',
-    state.hos.drivenSinceQualifyingInterruptionMinutes,
-  );
-  validateNonnegativeMinutes(
-    issues,
-    'hos.onDutyCurrentShiftMinutes',
-    state.hos.onDutyCurrentShiftMinutes,
-  );
-  validateNonnegativeMinutes(
-    issues,
-    'hos.offDutyBeforeDepartureMinutes',
-    state.hos.offDutyBeforeDepartureMinutes,
-  );
-  validateNonnegativeMinutes(
-    issues,
-    'hos.carrierMaximumDrivingMinutes',
-    state.hos.carrierMaximumDrivingMinutes,
-  );
-  validateNonnegativeMinutes(
-    issues,
-    'hos.carrierMaximumDutyMinutes',
-    state.hos.carrierMaximumDutyMinutes,
-  );
-  if (state.hos.carrierMaximumDrivingMinutes === 0) {
-    issues.push({
-      path: 'hos.carrierMaximumDrivingMinutes',
-      message: 'Carrier maximum driving time must be greater than zero.',
-      severity: 'error',
-    });
-  }
-  if (state.hos.carrierMaximumDutyMinutes === 0) {
-    issues.push({
-      path: 'hos.carrierMaximumDutyMinutes',
-      message: 'Carrier maximum duty time must be greater than zero.',
-      severity: 'error',
-    });
-  }
-  if (
-    state.hos.carrierMaximumDrivingMinutes > state.hos.carrierMaximumDutyMinutes
-  ) {
-    issues.push({
-      path: 'hos.carrierMaximumDrivingMinutes',
-      message: 'Carrier driving target cannot exceed the carrier duty target.',
-      severity: 'error',
-    });
-  }
-  const expectedPriorDays = state.hos.cycleType === '60_in_7' ? 6 : 7;
-  if (
-    state.hos.cycleType !== '' &&
-    state.hos.priorDutyTotals.length !== expectedPriorDays
-  ) {
-    issues.push({
-      path: 'hos.priorDutyTotals',
-      message: `Enter ${String(expectedPriorDays)} prior daily on-duty totals for the selected cycle.`,
-      severity: 'error',
-    });
-  }
-  state.hos.priorDutyTotals.forEach((day, index): void => {
+  hos.priorDutyTotals.forEach((day, index): void => {
     if (day.date === '') {
-      issues.push({
-        path: `hos.priorDutyTotals.${String(index)}.date`,
-        message: 'Enter the duty-total date.',
-        severity: 'error',
-      });
+      issues.push(
+        issue(`hos.priorDutyTotals.${String(index)}.date`, 'Enter the duty-total date.'),
+      );
     }
     validateNonnegativeMinutes(
       issues,
@@ -421,13 +360,70 @@ function validateHos(state: TripSetupState): readonly ValidationIssue[] {
       day.onDutyMinutes,
     );
   });
-  state.hos.cycleRecaps.forEach((recap, index): void => {
+}
+
+function validateHos(state: TripSetupState): readonly ValidationIssue[] {
+  const issues: ValidationIssue[] = [];
+  const { hos } = state;
+  if (hos.cycleType === '') {
+    issues.push(
+      issue('hos.cycleType', 'Choose the 60-hour/7-day or 70-hour/8-day cycle.'),
+    );
+  }
+  if (hos.provenance === '') {
+    issues.push(
+      issue(
+        'hos.provenance',
+        'Identify whether the HOS facts were user-entered or imported.',
+      ),
+    );
+  }
+  const minuteFields: readonly [string, number][] = [
+    [
+      'hos.drivenSinceQualifyingInterruptionMinutes',
+      hos.drivenSinceQualifyingInterruptionMinutes,
+    ],
+    ['hos.onDutyCurrentShiftMinutes', hos.onDutyCurrentShiftMinutes],
+    ['hos.offDutyBeforeDepartureMinutes', hos.offDutyBeforeDepartureMinutes],
+    ['hos.carrierMaximumDrivingMinutes', hos.carrierMaximumDrivingMinutes],
+    ['hos.carrierMaximumDutyMinutes', hos.carrierMaximumDutyMinutes],
+  ];
+  minuteFields.forEach(([path, value]): void => {
+    validateNonnegativeMinutes(issues, path, value);
+  });
+  if (hos.carrierMaximumDrivingMinutes === 0) {
+    issues.push(
+      issue(
+        'hos.carrierMaximumDrivingMinutes',
+        'Carrier maximum driving time must be greater than zero.',
+      ),
+    );
+  }
+  if (hos.carrierMaximumDutyMinutes === 0) {
+    issues.push(
+      issue(
+        'hos.carrierMaximumDutyMinutes',
+        'Carrier maximum duty time must be greater than zero.',
+      ),
+    );
+  }
+  if (hos.carrierMaximumDrivingMinutes > hos.carrierMaximumDutyMinutes) {
+    issues.push(
+      issue(
+        'hos.carrierMaximumDrivingMinutes',
+        'Carrier driving target cannot exceed the carrier duty target.',
+      ),
+    );
+  }
+  validatePriorDutyTotals(hos, issues);
+  hos.cycleRecaps.forEach((recap, index): void => {
     if (recap.availableAt === '') {
-      issues.push({
-        path: `hos.cycleRecaps.${String(index)}.availableAt`,
-        message: 'Enter when recap hours return.',
-        severity: 'error',
-      });
+      issues.push(
+        issue(
+          `hos.cycleRecaps.${String(index)}.availableAt`,
+          'Enter when recap hours return.',
+        ),
+      );
     }
     validateNonnegativeMinutes(
       issues,
@@ -435,38 +431,44 @@ function validateHos(state: TripSetupState): readonly ValidationIssue[] {
       recap.minutesReturning,
     );
   });
-  if (state.hos.splitSleeperEnabled && !state.hos.sleeperBerthEligible) {
-    issues.push({
-      path: 'hos.splitSleeperEnabled',
-      message: 'Split sleeper cannot be enabled when the driver is not eligible.',
-      severity: 'error',
-    });
+  if (hos.splitSleeperEnabled && !hos.sleeperBerthEligible) {
+    issues.push(
+      issue(
+        'hos.splitSleeperEnabled',
+        'Split sleeper cannot be enabled when the driver is not eligible.',
+      ),
+    );
   }
-  state.hos.existingSleeperPeriods.forEach((period, index): void => {
+  hos.existingSleeperPeriods.forEach((period, index): void => {
     if (period.startAt === '' || period.endAt === '') {
-      issues.push({
-        path: `hos.existingSleeperPeriods.${String(index)}`,
-        message: 'Enter both the start and end of each sleeper period.',
-        severity: 'error',
-      });
-    } else if (Date.parse(period.endAt) <= Date.parse(period.startAt)) {
-      issues.push({
-        path: `hos.existingSleeperPeriods.${String(index)}.endAt`,
-        message: 'Sleeper period end must be after its start.',
-        severity: 'error',
-      });
+      issues.push(
+        issue(
+          `hos.existingSleeperPeriods.${String(index)}`,
+          'Enter both the start and end of each sleeper period.',
+        ),
+      );
+      return;
+    }
+    if (Date.parse(period.endAt) <= Date.parse(period.startAt)) {
+      issues.push(
+        issue(
+          `hos.existingSleeperPeriods.${String(index)}.endAt`,
+          'Sleeper period end must be after its start.',
+        ),
+      );
     }
   });
   if (
-    state.hos.restPreference.enabled &&
-    (state.hos.restPreference.startLocalTime === '' ||
-      state.hos.restPreference.endLocalTime === '')
+    hos.restPreference.enabled &&
+    (hos.restPreference.startLocalTime === '' ||
+      hos.restPreference.endLocalTime === '')
   ) {
-    issues.push({
-      path: 'hos.restPreference',
-      message: 'Enter both preferred nightly rest times or disable the preference.',
-      severity: 'error',
-    });
+    issues.push(
+      issue(
+        'hos.restPreference',
+        'Enter both preferred nightly rest times or disable the preference.',
+      ),
+    );
   }
   return issues;
 }
@@ -475,43 +477,52 @@ function validateService(stop: TripStopDraft): readonly ValidationIssue[] {
   const issues: ValidationIssue[] = [];
   if (
     stop.service.mode === 'exact' &&
-    !(
-      Number.isFinite(stop.service.exactMinutes) &&
-      (stop.service.exactMinutes ?? 0) >= 0
-    )
+    (!Number.isFinite(stop.service.exactMinutes) ||
+      (stop.service.exactMinutes ?? -1) < 0)
   ) {
-    issues.push({
-      path: `stops.${String(stop.sequence)}.service.exactMinutes`,
-      message: 'Enter an exact service duration.',
-      severity: 'error',
-    });
+    issues.push(
+      issue(
+        `stops.${String(stop.sequence)}.service.exactMinutes`,
+        'Enter an exact service duration.',
+      ),
+    );
   }
   if (
     stop.service.mode === 'expected' &&
-    !(
-      Number.isFinite(stop.service.expectedMinutes) &&
-      (stop.service.expectedMinutes ?? 0) >= 0
-    )
+    (!Number.isFinite(stop.service.expectedMinutes) ||
+      (stop.service.expectedMinutes ?? -1) < 0)
   ) {
-    issues.push({
-      path: `stops.${String(stop.sequence)}.service.expectedMinutes`,
-      message: 'Enter an expected service duration.',
-      severity: 'error',
-    });
+    issues.push(
+      issue(
+        `stops.${String(stop.sequence)}.service.expectedMinutes`,
+        'Enter an expected service duration.',
+      ),
+    );
   }
   if (stop.service.mode === 'range') {
     const minimum = stop.service.minimumMinutes ?? -1;
     const maximum = stop.service.maximumMinutes ?? -1;
     if (minimum < 0 || maximum < minimum) {
-      issues.push({
-        path: `stops.${String(stop.sequence)}.service`,
-        message:
+      issues.push(
+        issue(
+          `stops.${String(stop.sequence)}.service`,
           'Service range must have a nonnegative minimum and a maximum at least as large.',
-        severity: 'error',
-      });
+        ),
+      );
     }
   }
   return issues;
+}
+
+function validateClocks(state: TripSetupState, issues: ValidationIssue[]): void {
+  const fields: readonly [string, number][] = [
+    ['driveMinutesRemaining', state.clocks.driveMinutesRemaining],
+    ['shiftMinutesRemaining', state.clocks.shiftMinutesRemaining],
+    ['cycleMinutesRemaining', state.clocks.cycleMinutesRemaining],
+  ];
+  fields.forEach(([key, value]): void => {
+    validateNonnegativeMinutes(issues, `clocks.${key}`, value);
+  });
 }
 
 export function validateTripSetup(
@@ -519,94 +530,70 @@ export function validateTripSetup(
 ): readonly ValidationIssue[] {
   const issues: ValidationIssue[] = [];
   if (state.driver.selectedId === '') {
-    issues.push({
-      path: 'driver',
-      message: 'Select or create a driver.',
-      severity: 'error',
-    });
+    issues.push(issue('driver', 'Select or create a driver.'));
   }
   if (state.tractor.selectedId === '') {
-    issues.push({
-      path: 'tractor',
-      message: 'Select or create a tractor.',
-      severity: 'error',
-    });
+    issues.push(issue('tractor', 'Select or create a tractor.'));
   }
   if (state.trailer.selectedId === '') {
-    issues.push({
-      path: 'trailer',
-      message: 'Select or create a trailer.',
-      severity: 'error',
-    });
+    issues.push(issue('trailer', 'Select or create a trailer.'));
   }
   if (state.load.selectedId === '') {
-    issues.push({
-      path: 'load',
-      message: 'Select or create a load profile.',
-      severity: 'error',
-    });
+    issues.push(issue('load', 'Select or create a load profile.'));
   }
   if (state.departureAt === '') {
-    issues.push({
-      path: 'departureAt',
-      message: 'Enter a departure date and time.',
-      severity: 'error',
-    });
+    issues.push(issue('departureAt', 'Enter a departure date and time.'));
   }
   if (state.currentDutyStatus === '') {
-    issues.push({
-      path: 'currentDutyStatus',
-      message: 'Choose the current duty status. It is never defaulted silently.',
-      severity: 'error',
-    });
+    issues.push(
+      issue(
+        'currentDutyStatus',
+        'Choose the current duty status. It is never defaulted silently.',
+      ),
+    );
   }
   if (state.currentDutyStatusBeganAt === '') {
-    issues.push({
-      path: 'currentDutyStatusBeganAt',
-      message: 'Enter when the current duty status began.',
-      severity: 'error',
-    });
+    issues.push(
+      issue('currentDutyStatusBeganAt', 'Enter when the current duty status began.'),
+    );
   }
-  for (const [key, value] of Object.entries(state.clocks)) {
-    validateNonnegativeMinutes(issues, `clocks.${key}`, value);
-  }
+  validateClocks(state, issues);
   issues.push(...validateHos(state));
   if (state.stops.length < 2) {
-    issues.push({
-      path: 'stops',
-      message: 'A trip requires at least a start and final destination.',
-      severity: 'error',
-    });
+    issues.push(issue('stops', 'A trip requires at least a start and final destination.'));
   }
   state.stops.forEach((stop): void => {
     const sequence = String(stop.sequence);
     if (stop.address.trim() === '') {
-      issues.push({
-        path: `stops.${sequence}.address`,
-        message: `Stop ${String(stop.sequence + 1)} needs a location or address.`,
-        severity: 'error',
-      });
+      issues.push(
+        issue(
+          `stops.${sequence}.address`,
+          `Stop ${String(stop.sequence + 1)} needs a location or address.`,
+        ),
+      );
     }
     if (
       stop.appointment.mode === 'fixed' &&
       stop.appointment.fixedAt === undefined
     ) {
-      issues.push({
-        path: `stops.${sequence}.appointment.fixedAt`,
-        message: 'Enter the fixed appointment time.',
-        severity: 'error',
-      });
+      issues.push(
+        issue(
+          `stops.${sequence}.appointment.fixedAt`,
+          'Enter the fixed appointment time.',
+        ),
+      );
     }
     if (
       stop.appointment.mode === 'window' &&
       (stop.appointment.earliestAt === undefined ||
         stop.appointment.latestAt === undefined)
     ) {
-      issues.push({
-        path: `stops.${sequence}.appointment`,
-        message: 'Enter both ends of the appointment window.',
-        severity: 'error',
-      });
+      issues.push(
+        issue(
+          `stops.${sequence}.appointment`,
+          'Enter both ends of the appointment window.',
+        ),
+      );
     }
     issues.push(...validateService(stop));
   });
@@ -617,45 +604,48 @@ export function serializeDraft(state: TripSetupState): string {
   return JSON.stringify(state);
 }
 
+function isDraftObject(value: unknown): value is Partial<TripSetupState> & {
+  readonly stops: readonly TripStopDraft[];
+} {
+  return (
+    typeof value === 'object' &&
+    value !== null &&
+    'stops' in value &&
+    Array.isArray(value.stops)
+  );
+}
+
 export function restoreDraft(serialized: string): TripSetupState | undefined {
   try {
-    const value = JSON.parse(serialized) as unknown;
-    if (
-      typeof value !== 'object' ||
-      value === null ||
-      !('stops' in value) ||
-      !Array.isArray((value as { stops?: unknown }).stops)
-    ) {
-      return undefined;
-    }
-    const state = value as Partial<TripSetupState>;
+    const value: unknown = JSON.parse(serialized);
+    if (!isDraftObject(value)) return undefined;
     const initial = createInitialTripSetupState();
     return {
       ...initial,
-      ...state,
-      clocks: { ...initial.clocks, ...state.clocks },
+      ...value,
+      clocks: { ...initial.clocks, ...value.clocks },
       hos: {
         ...initial.hos,
-        ...state.hos,
-        priorDutyTotals: Array.isArray(state.hos?.priorDutyTotals)
-          ? state.hos.priorDutyTotals
+        ...value.hos,
+        priorDutyTotals: Array.isArray(value.hos?.priorDutyTotals)
+          ? value.hos.priorDutyTotals
           : [],
-        cycleRecaps: Array.isArray(state.hos?.cycleRecaps)
-          ? state.hos.cycleRecaps
+        cycleRecaps: Array.isArray(value.hos?.cycleRecaps)
+          ? value.hos.cycleRecaps
           : [],
         existingSleeperPeriods: Array.isArray(
-          state.hos?.existingSleeperPeriods,
+          value.hos?.existingSleeperPeriods,
         )
-          ? state.hos.existingSleeperPeriods
+          ? value.hos.existingSleeperPeriods
           : [],
         restPreference: {
           ...initial.hos.restPreference,
-          ...state.hos?.restPreference,
+          ...value.hos?.restPreference,
         },
       },
-      stops: state.stops as readonly TripStopDraft[],
-      deletedServerStopIds: Array.isArray(state.deletedServerStopIds)
-        ? state.deletedServerStopIds
+      stops: value.stops,
+      deletedServerStopIds: Array.isArray(value.deletedServerStopIds)
+        ? value.deletedServerStopIds
         : [],
     };
   } catch {
