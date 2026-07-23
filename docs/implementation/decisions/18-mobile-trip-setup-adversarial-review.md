@@ -28,12 +28,24 @@ The current UI cannot yet submit a complete validated real-world calculation wit
 6. B-002 remains open, so a production commercial-routing provider may return an explicit provider-setup failure. Stage 18 must handle that honestly but must not invent a consumer-routing fallback.
 7. Existing saved stop edits, deletions, and reorders are not yet synchronized through the corresponding immutable Stage 17 revision endpoints after the initial save.
 
+## Architecture decision
+
+Decision `D18-001` in `docs/implementation/decisions/18-trip-planning-orchestration.md` requires the browser to submit entered facts and the server to assemble the normalized commercial route, HOS, compliance, operational-event, and ETA inputs through accepted packages.
+
+The browser must not fabricate legal or provider-derived objects merely to satisfy the low-level Stage 17 calculation contract.
+
+## Continuation handoff
+
+The exact remaining implementation sequence and closure checklist are recorded in:
+
+`docs/implementation/handoffs/18-mobile-trip-setup.md`
+
 ## Decision
 
-Do not merge, ledger-close, or advance to Stage 19 merely because the repository gate passes. Continue Stage 18 until a user can enter all mandatory facts, persist and revise the complete setup, request commercial route validation, and submit the accepted calculation contract without editing raw JSON.
+Do not merge, ledger-close, or advance to Stage 19 merely because the repository gate passes. Continue Stage 18 until a user can enter all mandatory facts, persist and revise the complete setup, request server-authoritative commercial planning, and submit the accepted calculation workflow without editing raw JSON.
 
-The map, results visualization, detailed timeline display, and result-oriented clock cards remain Stage 19 scope. Stage 18 may assemble and submit the required route and calculation requests, but it must not implement Stage 19 presentation behavior.
+The map, results visualization, detailed timeline display, and result-oriented clock cards remain Stage 19 scope. Stage 18 must produce the immutable calculated revision consumed by Stage 19, but it must not implement Stage 19 presentation behavior.
 
 ## Verification evidence
 
-Permanent CI run `1542` (`29947658330`) passed on head `3ca3d13715302672132995c7e71052de26dfac2e`, including frozen install, Prisma generation and validation, clean PostgreSQL migration deployment, lint, type-check, full tests, and production build. This evidence verifies the implemented subset only; it does not override the blocking requirement gaps above.
+Permanent CI run `1544` (`29947818779`) passed on the verified partial implementation and adversarial-review documentation, including frozen install, Prisma generation and validation, clean PostgreSQL migration deployment, lint, type-check, full tests, and production build. This evidence verifies the implemented subset only; it does not override the blocking requirement gaps above.
