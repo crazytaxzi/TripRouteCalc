@@ -33,16 +33,20 @@ The implemented subset is repository-green but the Stage 18 exit gate is not yet
   - persisted-stop deletion tracking;
   - backward-compatible local draft restoration, including drafts created before the HOS model existed.
 - `packages/web/src/app.ts`
-  - mobile-first form shell;
-  - driver/departure, equipment references, stops, appointments, service, warnings, focus management, and controlled recalculation UI;
-  - local draft persistence.
+  - mobile-first driver, departure, and complete visible HOS form;
+  - explicit cycle and provenance controls;
+  - interruption, current-shift duty, preceding off-duty, carrier-limit, break, sleeper, restart, and rest-preference controls;
+  - editable prior-duty, recap, and sleeper-period entry areas with documented line formats;
+  - equipment references, stops, appointments, service, warnings, focus management, and controlled recalculation UI;
+  - local draft persistence across render, save, calculation, and request failures.
 - `packages/web/src/api-client.ts`
   - structured authenticated requests;
   - driver and trip creation;
   - equipment-reference patching;
   - sequential stop creation with immutable revision tracking;
   - persisted stop patch, delete, and reorder synchronization;
-  - correct singular `/calculate` transport.
+  - correct singular `/calculate` transport;
+  - complete entered HOS facts included in the current browser payload without browser-side legal arithmetic.
 - `packages/web/test/model.test.ts`
   - stop-editor state behavior;
   - independent clocks;
@@ -65,6 +69,7 @@ The implemented subset is repository-green but the Stage 18 exit gate is not yet
 - Added immutable persisted-stop patch, delete, and reorder synchronization without discarding the local draft on failure.
 - Added explicit HOS cycle/provenance validation and rejected contradictory split-sleeper and carrier-limit inputs.
 - Preserved older browser drafts by filling newly introduced HOS fields from the current schema defaults.
+- Exposed every required Stage 18 HOS departure fact in the mobile form rather than leaving the complete model inaccessible.
 - Removed all temporary diagnostic workflows after extracting exact lint and test evidence.
 
 ## Required remaining implementation
@@ -87,17 +92,16 @@ Required workflow tests:
 - tenant isolation and opaque identifiers;
 - idempotent retry behavior.
 
-### 2. Complete visible HOS departure form
+### 2. Improve repeating HOS row controls
 
-The complete HOS state and validation contract are implemented. The remaining HOS work is to expose every field in the mobile-first form, including editable prior-duty rows, recap rows, sleeper-period rows, carrier limits, provenance, restart choices, and optional nightly rest preferences.
+The full HOS form is visible and functional. Before Stage 18 closure, replace or supplement the documented line-entry fields for prior-duty totals, recaps, and sleeper periods with accessible add/remove row controls, while preserving the verified state contract and backward-compatible draft format.
 
-The form must:
+The final controls must:
 
 - preserve the three primary clocks as independent values;
-- use accessible add/remove controls for repeating history rows;
 - surface field-level validation without color-only meaning;
 - preserve entered data across save, calculation, and provider failures;
-- serialize the entered facts to the server-authoritative `/plan` request rather than constructing legal-engine JSON in the browser.
+- serialize entered facts to the server-authoritative `/plan` request rather than constructing legal-engine JSON in the browser.
 
 ### 3. Complete reusable equipment and load forms
 
@@ -121,9 +125,9 @@ Add a browser workflow acceptance test proving a user can enter a complete real-
 
 ## Verification evidence to date
 
-Permanent CI run `1582` (`29998771877`) passed frozen install, Prisma generation and validation, clean PostgreSQL migration deployment, lint, type-check, complete tests, and build on commit `e4d4be5c79ec030dae0cfc5cf0a2cde91938cb8d`.
+Permanent CI run `1586` (`30041512795`) passed frozen install, Prisma generation and validation, clean PostgreSQL migration deployment, lint, type-check, complete tests, and build on commit `a4ffe302f8e9d58ba9a35ee7d0064b45a52b8302`.
 
-This verifies the complete HOS state/validation slice, persisted-stop synchronization, and all prior implemented work. It is not Stage 18 exit-gate evidence because the visible HOS form, equipment/load forms, stop resolution, and server `/plan` orchestration remain incomplete.
+This verifies the complete visible HOS form, the HOS state/validation slice, persisted-stop synchronization, and all prior implemented work. It is not Stage 18 exit-gate evidence because server `/plan` orchestration, reusable equipment/load forms, stop resolution, improved repeating-row controls, and final workflow acceptance remain incomplete.
 
 ## Closure checklist
 
