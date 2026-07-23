@@ -21,10 +21,17 @@ The implemented subset is repository-green but the Stage 18 exit gate is not yet
 
 - `packages/web/src/model.ts`
   - independent drive, shift, and cycle clocks;
+  - complete Stage 18 HOS departure-state model;
+  - cycle type and HOS-fact provenance;
+  - interruption, current-shift duty, immediately preceding off-duty, and qualifying-break facts;
+  - prior daily duty totals and cycle recap returns;
+  - sleeper eligibility, existing sleeper periods, split-sleeper choice, and planned restart;
+  - carrier driving/duty targets and optional nightly rest preference;
+  - adversarial validation for inconsistent sleeper, carrier-target, prior-history, recap, and rest-preference inputs;
   - local trip setup state;
   - accessible stop add, insert, duplicate, remove, and reorder operations;
   - persisted-stop deletion tracking;
-  - backward-compatible local draft restoration.
+  - backward-compatible local draft restoration, including drafts created before the HOS model existed.
 - `packages/web/src/app.ts`
   - mobile-first form shell;
   - driver/departure, equipment references, stops, appointments, service, warnings, focus management, and controlled recalculation UI;
@@ -37,11 +44,16 @@ The implemented subset is repository-green but the Stage 18 exit gate is not yet
   - persisted stop patch, delete, and reorder synchronization;
   - correct singular `/calculate` transport.
 - `packages/web/test/model.test.ts`
-  - stop-editor state behavior.
+  - stop-editor state behavior;
+  - independent clocks;
+  - complete HOS-history validation;
+  - invalid sleeper and carrier constraints;
+  - legacy-draft recovery.
 - `packages/web/test/api-client.test.ts`
   - accepted calculation endpoint;
   - driver/trip/stop creation and revision chaining;
   - persisted delete, patch, and reorder revision chaining;
+  - complete-HOS calculation fixture;
   - stop payload serialization.
 - `packages/web/index.html`, `packages/web/styles.css`, `packages/web/tsconfig.json`, and root TypeScript reference integration.
 
@@ -51,7 +63,9 @@ The implemented subset is repository-green but the Stage 18 exit gate is not yet
 - Added actual driver creation, trip creation, stop persistence, and revision chaining instead of requiring a preexisting trip identifier.
 - Added structured Stage 17 API error-envelope handling.
 - Added immutable persisted-stop patch, delete, and reorder synchronization without discarding the local draft on failure.
-- Removed all temporary diagnostic workflows after extracting exact lint and compiler evidence.
+- Added explicit HOS cycle/provenance validation and rejected contradictory split-sleeper and carrier-limit inputs.
+- Preserved older browser drafts by filling newly introduced HOS fields from the current schema defaults.
+- Removed all temporary diagnostic workflows after extracting exact lint and test evidence.
 
 ## Required remaining implementation
 
@@ -73,25 +87,17 @@ Required workflow tests:
 - tenant isolation and opaque identifiers;
 - idempotent retry behavior.
 
-### 2. Complete HOS departure form
+### 2. Complete visible HOS departure form
 
-Add every field required by Source 18, including:
+The complete HOS state and validation contract are implemented. The remaining HOS work is to expose every field in the mobile-first form, including editable prior-duty rows, recap rows, sleeper-period rows, carrier limits, provenance, restart choices, and optional nightly rest preferences.
 
-- cycle type;
-- driven since the last qualifying interruption;
-- current-shift on-duty time;
-- immediately preceding off-duty time;
-- qualifying ten-hour-break completion;
-- seven/eight-day prior-duty totals;
-- recap returns;
-- sleeper eligibility and existing sleeper periods;
-- split-sleeper choice;
-- planned 34-hour restart;
-- carrier driving and duty targets;
-- optional rest preference;
-- provenance for user-entered or imported facts.
+The form must:
 
-The three primary clocks remain independent.
+- preserve the three primary clocks as independent values;
+- use accessible add/remove controls for repeating history rows;
+- surface field-level validation without color-only meaning;
+- preserve entered data across save, calculation, and provider failures;
+- serialize the entered facts to the server-authoritative `/plan` request rather than constructing legal-engine JSON in the browser.
 
 ### 3. Complete reusable equipment and load forms
 
@@ -115,9 +121,9 @@ Add a browser workflow acceptance test proving a user can enter a complete real-
 
 ## Verification evidence to date
 
-Permanent CI run `1562` (`29997269820`) passed frozen install, Prisma generation and validation, clean PostgreSQL migration deployment, lint, type-check, complete tests, and build on commit `897388c3405932c4a9c4066045b497634910b09f`.
+Permanent CI run `1582` (`29998771877`) passed frozen install, Prisma generation and validation, clean PostgreSQL migration deployment, lint, type-check, complete tests, and build on commit `e4d4be5c79ec030dae0cfc5cf0a2cde91938cb8d`.
 
-This verifies the persisted-stop synchronization slice and prior implemented work. It is not Stage 18 exit-gate evidence.
+This verifies the complete HOS state/validation slice, persisted-stop synchronization, and all prior implemented work. It is not Stage 18 exit-gate evidence because the visible HOS form, equipment/load forms, stop resolution, and server `/plan` orchestration remain incomplete.
 
 ## Closure checklist
 
