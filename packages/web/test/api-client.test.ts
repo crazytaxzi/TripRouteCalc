@@ -27,6 +27,16 @@ function completeState(): TripSetupState {
       shiftMinutesRemaining: 780,
       cycleMinutesRemaining: 3_600,
     },
+    hos: {
+      ...initial.hos,
+      cycleType: '70_in_8',
+      provenance: 'user_entered',
+      qualifyingTenHourBreakCompleted: true,
+      priorDutyTotals: Array.from({ length: 7 }, (_, index) => ({
+        date: `2026-07-${String(index + 15).padStart(2, '0')}`,
+        onDutyMinutes: 480,
+      })),
+    },
     stops: initial.stops.map((stop, index) => ({
       ...stop,
       serverId: `stop-public-id-${String(index + 1)}`,
