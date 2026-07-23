@@ -42,6 +42,13 @@ function jsonResponse(body: unknown, status = 200): Response {
   });
 }
 
+function tripResponse(revisionNumber: number): Response {
+  return jsonResponse({
+    tripId: 'trip-1',
+    currentRevision: { revisionNumber },
+  });
+}
+
 afterEach((): void => {
   vi.unstubAllGlobals();
   vi.restoreAllMocks();
@@ -96,6 +103,7 @@ describe('Stage 18 API transport', () => {
         },
         201,
       ),
+      tripResponse(5),
     ];
     const fetchMock = vi.fn<typeof fetch>((): Promise<Response> => {
       const response = responses.shift();
@@ -117,14 +125,54 @@ describe('Stage 18 API transport', () => {
     });
 
     expect(saved.tripId).toBe('trip-1');
-    expect(saved.revisionNumber).toBe(4);
+    expect(saved.revisionNumber).toBe(5);
     expect(saved.driver.selectedId).toBe('driver-1');
     expect(saved.stops.map((stop) => stop.serverId)).toEqual([
       'stop-1',
       'stop-2',
       'stop-3',
     ]);
-    expect(fetchMock).toHaveBeenCalledTimes(5);
+    expect(fetchMock).toHaveBeenCalledTimes(6);
+    expect(fetchMock.mock.calls[5]?.[0]).toBe('/api/trips/trip-1/stops/reorder');
+  });
+
+  it('synchronizes persisted deletes, patches, and reorder revisions', async (): Promise<void> => {
+    const state = completeState();
+    const responses = [
+      tripResponse(8),
+      tripResponse(9),
+      tripResponse(10),
+      tripResponse(11),
+      tripResponse(12),
+    ];
+    const fetchMock = vi.fn<typeof fetch>((): Promise<Response> => {
+      const response = responses.shift();
+      return response === undefined
+        ? Promise.reject(new Error('Unexpected request.'))
+        : Promise.resolve(response);
+    });
+    vi.stubGlobal('fetch', fetchMock);
+    const client = new TripSetupApiClient('/api', (): string => 'token');
+
+    const saved = await client.save({
+      ...state,
+      deletedServerStopIds: ['removed-stop-id'],
+      stops: state.stops.map((stop, index) => ({
+        ...stop,
+        label: `Updated ${String(index + 1)}`,
+      })),
+    });
+
+    expect(saved.revisionNumber).toBe(12);
+    expect(saved.deletedServerStopIds).toEqual([]);
+    expect(fetchMock.mock.calls.map((call) => call[0])).toEqual([
+      '/api/trips/trip-public-id',
+      '/api/trips/trip-public-id/stops/removed-stop-id',
+      '/api/trips/trip-public-id/stops/stop-public-id-1',
+      '/api/trips/trip-public-id/stops/stop-public-id-2',
+      '/api/trips/trip-public-id/stops/stop-public-id-3',
+      '/api/trips/trip-public-id/stops/reorder',
+    ]);
   });
 
   it('serializes stop fields into the accepted Stage 17 contract', (): void => {
