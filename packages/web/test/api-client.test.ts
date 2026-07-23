@@ -144,6 +144,7 @@ describe('Stage 18 API transport', () => {
       tripResponse(10),
       tripResponse(11),
       tripResponse(12),
+      tripResponse(13),
     ];
     const fetchMock = vi.fn<typeof fetch>((): Promise<Response> => {
       const response = responses.shift();
@@ -163,7 +164,7 @@ describe('Stage 18 API transport', () => {
       })),
     });
 
-    expect(saved.revisionNumber).toBe(12);
+    expect(saved.revisionNumber).toBe(13);
     expect(saved.deletedServerStopIds).toEqual([]);
     expect(fetchMock.mock.calls.map((call) => call[0])).toEqual([
       '/api/trips/trip-public-id',
