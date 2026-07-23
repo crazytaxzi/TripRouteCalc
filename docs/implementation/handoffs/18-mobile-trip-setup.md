@@ -32,6 +32,12 @@ The implemented subset is repository-green but the Stage 18 exit gate is not yet
   - accessible stop add, insert, duplicate, remove, and reorder operations;
   - persisted-stop deletion tracking;
   - backward-compatible local draft restoration, including drafts created before the HOS model existed.
+- `packages/web/src/hos-row-operations.ts`
+  - immutable add, update, and remove operations for prior-duty totals;
+  - cycle-aware six-day or seven-day prior-duty row limits;
+  - immutable add, update, and remove operations for cycle recaps;
+  - immutable add, update, and remove operations for sleeper periods;
+  - invalid row indexes return the original state without mutation.
 - `packages/web/src/app.ts`
   - mobile-first driver, departure, and complete visible HOS form;
   - explicit cycle and provenance controls;
@@ -47,18 +53,31 @@ The implemented subset is repository-green but the Stage 18 exit gate is not yet
   - persisted stop patch, delete, and reorder synchronization;
   - correct singular `/calculate` transport;
   - complete entered HOS facts included in the current browser payload without browser-side legal arithmetic.
+- `packages/api/src/contracts.ts`
+  - strict `PlanTripBodySchema` for entered planning facts;
+  - offset-aware departure and duty-status timestamps;
+  - explicit rejection of browser-authored route, simulation, operational-event, and compliance objects.
 - `packages/web/test/model.test.ts`
   - stop-editor state behavior;
   - independent clocks;
   - complete HOS-history validation;
   - invalid sleeper and carrier constraints;
   - legacy-draft recovery.
+- `packages/web/test/hos-row-operations.test.ts`
+  - immutable row operations;
+  - selected-cycle row limits;
+  - invalid-index behavior.
 - `packages/web/test/api-client.test.ts`
   - accepted calculation endpoint;
   - driver/trip/stop creation and revision chaining;
   - persisted delete, patch, and reorder revision chaining;
   - complete-HOS calculation fixture;
   - stop payload serialization.
+- `packages/api/test/plan-trip-contract.test.ts`
+  - valid entered-fact request acceptance;
+  - contradictory sleeper and carrier-limit rejection;
+  - offset-less timestamp rejection;
+  - rejection of server-owned legal-engine objects.
 - `packages/web/index.html`, `packages/web/styles.css`, `packages/web/tsconfig.json`, and root TypeScript reference integration.
 
 ## Adversarial defects already corrected
@@ -70,6 +89,7 @@ The implemented subset is repository-green but the Stage 18 exit gate is not yet
 - Added explicit HOS cycle/provenance validation and rejected contradictory split-sleeper and carrier-limit inputs.
 - Preserved older browser drafts by filling newly introduced HOS fields from the current schema defaults.
 - Exposed every required Stage 18 HOS departure fact in the mobile form rather than leaving the complete model inaccessible.
+- Added pure repeating-row operations so malformed indexes and cycle-limit overflow cannot corrupt HOS draft state.
 - Removed all temporary diagnostic workflows after extracting exact lint and test evidence.
 
 ## Required remaining implementation
@@ -80,7 +100,7 @@ Implement decision `D18-001` as a server-authoritative operation equivalent to:
 
 `POST /api/trips/:tripId/plan`
 
-The browser submits entered facts. The server must validate and assemble route, HOS, compliance, operational-event, and ETA inputs through accepted packages. Do not move legal or provider-derived construction into the browser.
+The strict request contract now exists. The remaining work is to expose the HTTP route and implement the application-service orchestration that validates and assembles route, HOS, compliance, operational-event, and ETA inputs through accepted packages. Do not move legal or provider-derived construction into the browser.
 
 Required workflow tests:
 
@@ -92,9 +112,9 @@ Required workflow tests:
 - tenant isolation and opaque identifiers;
 - idempotent retry behavior.
 
-### 2. Improve repeating HOS row controls
+### 2. Wire accessible repeating HOS row controls
 
-The full HOS form is visible and functional. Before Stage 18 closure, replace or supplement the documented line-entry fields for prior-duty totals, recaps, and sleeper periods with accessible add/remove row controls, while preserving the verified state contract and backward-compatible draft format.
+The pure row-state operations are implemented and verified. The remaining UI work is to replace or supplement the documented line-entry fields for prior-duty totals, recaps, and sleeper periods with accessible add/remove row controls wired to those operations.
 
 The final controls must:
 
@@ -125,9 +145,9 @@ Add a browser workflow acceptance test proving a user can enter a complete real-
 
 ## Verification evidence to date
 
-Permanent CI run `1586` (`30041512795`) passed frozen install, Prisma generation and validation, clean PostgreSQL migration deployment, lint, type-check, complete tests, and build on commit `a4ffe302f8e9d58ba9a35ee7d0064b45a52b8302`.
+Permanent CI run `1596` (`30043745366`) passed frozen install, Prisma generation and validation, clean PostgreSQL migration deployment, lint, type-check, complete tests, and build on commit `a940aab0001b9cc16271f99a1a50de3619641a2f`.
 
-This verifies the complete visible HOS form, the HOS state/validation slice, persisted-stop synchronization, and all prior implemented work. It is not Stage 18 exit-gate evidence because server `/plan` orchestration, reusable equipment/load forms, stop resolution, improved repeating-row controls, and final workflow acceptance remain incomplete.
+This verifies the HOS repeating-row state operations, strict `/plan` request contract, complete visible HOS form, HOS state/validation, persisted-stop synchronization, and all prior implemented work. It is not Stage 18 exit-gate evidence because the `/plan` HTTP/application orchestration, reusable equipment/load forms, stop resolution, visible repeating-row controls, and final workflow acceptance remain incomplete.
 
 ## Closure checklist
 
