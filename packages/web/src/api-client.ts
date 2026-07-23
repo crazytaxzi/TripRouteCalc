@@ -96,9 +96,8 @@ function servicePayload(settings: ServiceSettings): Readonly<Record<string, unkn
   return { mode: 'expected', duration: duration(settings.expectedMinutes ?? 0) };
 }
 
-export function createStopPayload(stop: TripStopDraft): Readonly<Record<string, unknown>> {
+function stopFields(stop: TripStopDraft): Readonly<Record<string, unknown>> {
   return {
-    sequence: stop.sequence + 1,
     type: publicStopType(stop.type),
     required: stop.required,
     lockedPosition: stop.lockedPosition,
@@ -119,6 +118,14 @@ export function createStopPayload(stop: TripStopDraft): Readonly<Record<string, 
     overnightParkingAllowed: stop.appointment.overnightParkingAllowed,
     ...(stop.notes.trim() === '' ? {} : { notes: stop.notes }),
   };
+}
+
+export function createStopPayload(stop: TripStopDraft): Readonly<Record<string, unknown>> {
+  return { sequence: stop.sequence + 1, ...stopFields(stop) };
+}
+
+export function createStopPatchPayload(stop: TripStopDraft): Readonly<Record<string, unknown>> {
+  return stopFields(stop);
 }
 
 class ApiProblemError extends Error implements ApiProblem {
@@ -163,7 +170,7 @@ export class TripSetupApiClient {
     return payload as T;
   }
 
-  async #write<T>(path: string, method: 'POST' | 'PATCH', body: unknown): Promise<T> {
+  async #write<T>(path: string, method: 'POST' | 'PATCH' | 'DELETE', body: unknown): Promise<T> {
     return this.#request<T>(path, {
       method,
       headers: { 'idempotency-key': crypto.randomUUID() },
@@ -197,24 +204,55 @@ export class TripSetupApiClient {
       revisionNumber = created.currentRevision.revisionNumber;
     }
 
+    const encodedTripId = encodeURIComponent(tripId);
     const equipmentPatch: Record<string, unknown> = { expectedRevisionNumber: revisionNumber };
     if (state.tractor.selectedId !== '') equipmentPatch.tractorId = state.tractor.selectedId;
     if (state.trailer.selectedId !== '') equipmentPatch.trailerId = state.trailer.selectedId;
     if (state.load.selectedId !== '') equipmentPatch.loadId = state.load.selectedId;
     if (Object.keys(equipmentPatch).length > 1) {
-      const patched = await this.#write<TripResponse>(`/trips/${encodeURIComponent(tripId)}`, 'PATCH', equipmentPatch);
+      const patched = await this.#write<TripResponse>(`/trips/${encodedTripId}`, 'PATCH', equipmentPatch);
       revisionNumber = patched.currentRevision.revisionNumber;
     }
 
-    for (const [index, stop] of stops.entries()) {
-      if (stop.serverId !== undefined) continue;
-      const added = await this.#write<AddedStopResponse>(
-        `/trips/${encodeURIComponent(tripId)}/stops`,
-        'POST',
-        { expectedRevisionNumber: revisionNumber, stop: createStopPayload(stop) },
+    for (const deletedStopId of state.deletedServerStopIds) {
+      const deleted = await this.#write<TripResponse>(
+        `/trips/${encodedTripId}/stops/${encodeURIComponent(deletedStopId)}`,
+        'DELETE',
+        { expectedRevisionNumber: revisionNumber },
       );
-      revisionNumber = added.trip.currentRevision.revisionNumber;
-      stops[index] = { ...stop, serverId: added.stop.id };
+      revisionNumber = deleted.currentRevision.revisionNumber;
+    }
+
+    for (const [index, stop] of stops.entries()) {
+      if (stop.serverId === undefined) {
+        const added = await this.#write<AddedStopResponse>(
+          `/trips/${encodedTripId}/stops`,
+          'POST',
+          { expectedRevisionNumber: revisionNumber, stop: createStopPayload(stop) },
+        );
+        revisionNumber = added.trip.currentRevision.revisionNumber;
+        stops[index] = { ...stop, serverId: added.stop.id };
+        continue;
+      }
+      const patched = await this.#write<TripResponse>(
+        `/trips/${encodedTripId}/stops/${encodeURIComponent(stop.serverId)}`,
+        'PATCH',
+        { expectedRevisionNumber: revisionNumber, patch: createStopPatchPayload(stop) },
+      );
+      revisionNumber = patched.currentRevision.revisionNumber;
+    }
+
+    const stopIds = stops.map((stop): string => {
+      if (stop.serverId === undefined) throw new Error('Saved stop is missing its server identifier.');
+      return stop.serverId;
+    });
+    if (stopIds.length > 0) {
+      const reordered = await this.#write<TripResponse>(
+        `/trips/${encodedTripId}/stops/reorder`,
+        'POST',
+        { expectedRevisionNumber: revisionNumber, stopIds },
+      );
+      revisionNumber = reordered.currentRevision.revisionNumber;
     }
 
     return {
@@ -223,6 +261,7 @@ export class TripSetupApiClient {
       revisionNumber,
       driver,
       stops,
+      deletedServerStopIds: [],
       dirty: false,
       lastError: undefined,
     };
