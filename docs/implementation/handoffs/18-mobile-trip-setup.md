@@ -38,13 +38,24 @@ The implemented subset is repository-green but the Stage 18 exit gate is not yet
   - immutable add, update, and remove operations for cycle recaps;
   - immutable add, update, and remove operations for sleeper periods;
   - invalid row indexes return the original state without mutation.
+- `packages/web/src/hos-row-editor.ts`
+  - accessible add/remove row rendering for prior-duty totals, cycle recaps, and sleeper periods;
+  - explicit empty states and non-color-only labels;
+  - HTML escaping for entered values;
+  - cycle-aware prior-duty add limits.
+- `packages/web/src/hos-row-enhancement.ts`
+  - installs the accessible row editor into the existing app without replacing private application state;
+  - preserves the legacy textarea draft format as the compatibility boundary;
+  - mirrors row edits through the existing app input path across synchronous rerenders;
+  - safely narrows cycle and row-kind DOM values without unchecked assertions.
 - `packages/web/src/app.ts`
   - mobile-first driver, departure, and complete visible HOS form;
   - explicit cycle and provenance controls;
   - interruption, current-shift duty, preceding off-duty, carrier-limit, break, sleeper, restart, and rest-preference controls;
-  - editable prior-duty, recap, and sleeper-period entry areas with documented line formats;
   - equipment references, stops, appointments, service, warnings, focus management, and controlled recalculation UI;
   - local draft persistence across render, save, calculation, and request failures.
+- `packages/web/src/index.ts`
+  - installs the HOS repeating-row enhancement after the application shell initializes.
 - `packages/web/src/api-client.ts`
   - structured authenticated requests;
   - driver and trip creation;
@@ -67,6 +78,12 @@ The implemented subset is repository-green but the Stage 18 exit gate is not yet
   - immutable row operations;
   - selected-cycle row limits;
   - invalid-index behavior.
+- `packages/web/test/hos-row-editor.test.ts`
+  - accessible rendering, empty states, cycle limits, and HTML escaping.
+- `packages/web/test/hos-row-enhancement.test.ts`
+  - compatibility-format parsing and serialization;
+  - immutable add/remove transforms;
+  - selected-cycle limits and invalid-index behavior.
 - `packages/web/test/api-client.test.ts`
   - accepted calculation endpoint;
   - driver/trip/stop creation and revision chaining;
@@ -90,7 +107,9 @@ The implemented subset is repository-green but the Stage 18 exit gate is not yet
 - Preserved older browser drafts by filling newly introduced HOS fields from the current schema defaults.
 - Exposed every required Stage 18 HOS departure fact in the mobile form rather than leaving the complete model inaccessible.
 - Added pure repeating-row operations so malformed indexes and cycle-limit overflow cannot corrupt HOS draft state.
-- Removed all temporary diagnostic workflows after extracting exact lint and test evidence.
+- Replaced line-only HOS entry with accessible add/remove row controls while preserving the accepted draft serialization boundary.
+- Replayed textarea updates against each newly rendered form so synchronous application rerenders cannot drop recap or sleeper changes.
+- Removed all temporary diagnostic workflows and restored the permanent CI workflow after extracting exact lint evidence.
 
 ## Required remaining implementation
 
@@ -112,22 +131,11 @@ Required workflow tests:
 - tenant isolation and opaque identifiers;
 - idempotent retry behavior.
 
-### 2. Wire accessible repeating HOS row controls
-
-The pure row-state operations are implemented and verified. The remaining UI work is to replace or supplement the documented line-entry fields for prior-duty totals, recaps, and sleeper periods with accessible add/remove row controls wired to those operations.
-
-The final controls must:
-
-- preserve the three primary clocks as independent values;
-- surface field-level validation without color-only meaning;
-- preserve entered data across save, calculation, and provider failures;
-- serialize entered facts to the server-authoritative `/plan` request rather than constructing legal-engine JSON in the browser.
-
-### 3. Complete reusable equipment and load forms
+### 2. Complete reusable equipment and load forms
 
 Implement select/create/edit flows matching accepted equipment schemas and Source 18. Critical route measurements and axle weights must be explicit. Missing critical facts must block or reduce confidence through server validation, never nominal browser defaults.
 
-### 4. Stop resolution and complete stop facts
+### 3. Stop resolution and complete stop facts
 
 Add:
 
@@ -139,15 +147,15 @@ Add:
 - check-in duration;
 - instructions distinct from notes.
 
-### 5. Stage 18 exit-gate acceptance
+### 4. Stage 18 exit-gate acceptance
 
 Add a browser workflow acceptance test proving a user can enter a complete real-world plan and submit it without editing raw JSON. Test mobile and desktop layout behavior, keyboard reorder, focus management, non-color severity cues, reduced motion, and provider/calculation errors.
 
 ## Verification evidence to date
 
-Permanent CI run `1596` (`30043745366`) passed frozen install, Prisma generation and validation, clean PostgreSQL migration deployment, lint, type-check, complete tests, and build on commit `a940aab0001b9cc16271f99a1a50de3619641a2f`.
+Permanent CI run `1624` (`30107366947`) passed frozen install, Prisma generation and validation, clean PostgreSQL migration deployment, lint, type-check, complete tests, and build on commit `6d2668b7129ea7763751f3acd32188ec58b11b5c`.
 
-This verifies the HOS repeating-row state operations, strict `/plan` request contract, complete visible HOS form, HOS state/validation, persisted-stop synchronization, and all prior implemented work. It is not Stage 18 exit-gate evidence because the `/plan` HTTP/application orchestration, reusable equipment/load forms, stop resolution, visible repeating-row controls, and final workflow acceptance remain incomplete.
+This verifies the accessible HOS repeating-row integration, its compatibility transforms, the strict `/plan` request contract, complete visible HOS form, HOS state/validation, persisted-stop synchronization, and all prior implemented work. It is not Stage 18 exit-gate evidence because the `/plan` HTTP/application orchestration, reusable equipment/load forms, stop resolution, and final workflow acceptance remain incomplete.
 
 ## Closure checklist
 
