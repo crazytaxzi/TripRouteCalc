@@ -57,8 +57,25 @@ jobs:
       - name: Apply migrations to clean PostgreSQL database
         run: pnpm db:migrate:deploy
 
-      - name: Lint
-        run: pnpm lint:source
+      - name: Capture lint
+        run: |
+          set +e
+          pnpm lint:source > lint-output.txt 2>&1
+          echo "$?" > lint-status.txt
+          exit 0
+
+      - name: Upload lint diagnostic
+        uses: actions/upload-artifact@v4
+        with:
+          name: stage18-lint-output
+          path: |
+            lint-output.txt
+            lint-status.txt
+
+      - name: Enforce lint
+        run: |
+          cat lint-output.txt
+          exit "$(cat lint-status.txt)"
 
       - name: Type-check
         run: pnpm typecheck:source
