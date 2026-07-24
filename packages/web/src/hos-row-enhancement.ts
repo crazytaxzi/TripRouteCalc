@@ -1,4 +1,5 @@
 import { renderHosRepeatingRows } from './hos-row-editor.js';
+import type { HosRepeatingRows } from './hos-row-editor.js';
 import type { CycleType, DriverHosInputs } from './model.js';
 
 type HosRowKind = 'prior-duty' | 'cycle-recap' | 'sleeper-period';
@@ -13,6 +14,18 @@ function lines(value: string): readonly string[] {
     .split(/\r?\n/u)
     .map((line): string => line.trim())
     .filter((line): boolean => line !== '');
+}
+
+function cycleType(value: string | undefined): CycleType {
+  return value === '60_in_7' || value === '70_in_8' ? value : '';
+}
+
+function isHosRowKind(value: string | undefined): value is HosRowKind {
+  return (
+    value === 'prior-duty' ||
+    value === 'cycle-recap' ||
+    value === 'sleeper-period'
+  );
 }
 
 export function parseHosRowText(
@@ -63,10 +76,10 @@ export function serializeHosRowText(rows: ParsedRows): Readonly<{
 export function addHosRow(
   rows: ParsedRows,
   kind: HosRowKind,
-  cycleType: CycleType,
+  selectedCycle: CycleType,
 ): ParsedRows {
   if (kind === 'prior-duty') {
-    const maximum = cycleType === '60_in_7' ? 6 : 7;
+    const maximum = selectedCycle === '60_in_7' ? 6 : 7;
     if (rows.priorDutyTotals.length >= maximum) return rows;
     return {
       ...rows,
@@ -163,7 +176,7 @@ function dispatchSerializedRows(
   root: HTMLElement,
   serialized: ReturnType<typeof serializeHosRowText>,
 ): void {
-  const pending: Array<readonly [string, string]> = [
+  const pending: (readonly [string, string])[] = [
     ['hos.priorDutyTotals', serialized.priorDutyText],
     ['hos.cycleRecaps', serialized.recapText],
     ['hos.existingSleeperPeriods', serialized.sleeperText],
@@ -196,16 +209,16 @@ function enhance(root: HTMLElement): void {
   );
   if (priorDuty === null || recaps === null || sleepers === null) return;
 
-  const cycleType = root.querySelector<HTMLSelectElement>(
-    'select[name="hos.cycleType"]',
-  )?.value as CycleType | undefined;
+  const selectedCycle = cycleType(
+    root.querySelector<HTMLSelectElement>('select[name="hos.cycleType"]')?.value,
+  );
   const rows = parseHosRowText(priorDuty.value, recaps.value, sleepers.value);
-  const hos = {
-    cycleType: cycleType ?? '',
+  const hos: HosRepeatingRows = {
+    cycleType: selectedCycle,
     priorDutyTotals: rows.priorDutyTotals,
     cycleRecaps: rows.cycleRecaps,
     existingSleeperPeriods: rows.existingSleeperPeriods,
-  } as DriverHosInputs;
+  };
   const host = document.createElement('div');
   host.dataset.hosRepeatingEnhanced = 'true';
   host.innerHTML = renderHosRepeatingRows(hos);
@@ -226,11 +239,11 @@ function enhance(root: HTMLElement): void {
     const target = event.target;
     if (!(target instanceof HTMLButtonElement)) return;
     const action = target.dataset.hosRowAction;
-    const kind = target.dataset.hosRowKind as HosRowKind | undefined;
-    if (kind === undefined) return;
+    const kind = target.dataset.hosRowKind;
+    if (!isHosRowKind(kind)) return;
     const current = rowsFromEditor(host);
     if (action === 'add') {
-      commit(addHosRow(current, kind, cycleType ?? ''));
+      commit(addHosRow(current, kind, selectedCycle));
     } else if (action === 'remove') {
       commit(removeHosRow(current, kind, Number(target.dataset.hosRowIndex)));
     }
