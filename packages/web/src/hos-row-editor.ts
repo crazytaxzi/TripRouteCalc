@@ -1,5 +1,10 @@
 import type { DriverHosInputs } from './model.js';
 
+export type HosRepeatingRows = Pick<
+  DriverHosInputs,
+  'cycleType' | 'priorDutyTotals' | 'cycleRecaps' | 'existingSleeperPeriods'
+>;
+
 function escapeHtml(value: string): string {
   return value.replace(
     /[&<>'"]/g,
@@ -18,7 +23,7 @@ function removeButton(kind: string, index: number, label: string): string {
   return `<button type="button" data-hos-row-action="remove" data-hos-row-kind="${kind}" data-hos-row-index="${String(index)}" aria-label="${escapeHtml(label)}">Remove</button>`;
 }
 
-export function renderPriorDutyRows(hos: DriverHosInputs): string {
+export function renderPriorDutyRows(hos: HosRepeatingRows): string {
   const maximum = hos.cycleType === '60_in_7' ? 6 : 7;
   const rows = hos.priorDutyTotals
     .map(
@@ -37,7 +42,7 @@ export function renderPriorDutyRows(hos: DriverHosInputs): string {
   </section>`;
 }
 
-export function renderCycleRecapRows(hos: DriverHosInputs): string {
+export function renderCycleRecapRows(hos: HosRepeatingRows): string {
   const rows = hos.cycleRecaps
     .map(
       (entry, index): string => `<div class="grid three hos-row" data-hos-row-kind="cycle-recap" data-hos-row-index="${String(index)}">
@@ -53,7 +58,7 @@ export function renderCycleRecapRows(hos: DriverHosInputs): string {
   </section>`;
 }
 
-export function renderSleeperPeriodRows(hos: DriverHosInputs): string {
+export function renderSleeperPeriodRows(hos: HosRepeatingRows): string {
   const rows = hos.existingSleeperPeriods
     .map(
       (entry, index): string => `<div class="grid three hos-row" data-hos-row-kind="sleeper-period" data-hos-row-index="${String(index)}">
@@ -69,6 +74,6 @@ export function renderSleeperPeriodRows(hos: DriverHosInputs): string {
   </section>`;
 }
 
-export function renderHosRepeatingRows(hos: DriverHosInputs): string {
+export function renderHosRepeatingRows(hos: HosRepeatingRows): string {
   return `<div class="hos-repeatable-rows">${renderPriorDutyRows(hos)}${renderCycleRecapRows(hos)}${renderSleeperPeriodRows(hos)}</div>`;
 }
