@@ -252,7 +252,9 @@ function enhance(root: HTMLElement): void {
 
 export function installHosRowEnhancement(root: HTMLElement): MutationObserver {
   const observer = new MutationObserver((): void => {
-    queueMicrotask((): void => enhance(root));
+    queueMicrotask((): void => {
+      enhance(root);
+    });
   });
   observer.observe(root, { childList: true, subtree: true });
   enhance(root);
