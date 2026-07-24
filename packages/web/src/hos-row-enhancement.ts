@@ -127,12 +127,11 @@ export function removeHosRow(
   };
 }
 
-function inputValue(
-  row: Element,
-  field: string,
-): string {
-  return row.querySelector<HTMLInputElement>(`[data-hos-row-field="${field}"]`)
-    ?.value ?? '';
+function inputValue(row: Element, field: string): string {
+  return (
+    row.querySelector<HTMLInputElement>(`[data-hos-row-field="${field}"]`)
+      ?.value ?? ''
+  );
 }
 
 function rowsFromEditor(host: HTMLElement): ParsedRows {
@@ -160,9 +159,28 @@ function rowsFromEditor(host: HTMLElement): ParsedRows {
   };
 }
 
-function dispatchTextarea(textarea: HTMLTextAreaElement, value: string): void {
-  textarea.value = value;
-  textarea.dispatchEvent(new Event('input', { bubbles: true }));
+function dispatchSerializedRows(
+  root: HTMLElement,
+  serialized: ReturnType<typeof serializeHosRowText>,
+): void {
+  const pending: Array<readonly [string, string]> = [
+    ['hos.priorDutyTotals', serialized.priorDutyText],
+    ['hos.cycleRecaps', serialized.recapText],
+    ['hos.existingSleeperPeriods', serialized.sleeperText],
+  ];
+  const dispatchNext = (): void => {
+    const next = pending.shift();
+    if (next === undefined) return;
+    const [name, value] = next;
+    const textarea = root.querySelector<HTMLTextAreaElement>(
+      `textarea[name="${name}"]`,
+    );
+    if (textarea === null) return;
+    textarea.value = value;
+    textarea.dispatchEvent(new Event('input', { bubbles: true }));
+    queueMicrotask(dispatchNext);
+  };
+  dispatchNext();
 }
 
 function enhance(root: HTMLElement): void {
@@ -178,10 +196,9 @@ function enhance(root: HTMLElement): void {
   );
   if (priorDuty === null || recaps === null || sleepers === null) return;
 
-  const cycleType =
-    root.querySelector<HTMLSelectElement>('select[name="hos.cycleType"]')?.value as
-      | CycleType
-      | undefined;
+  const cycleType = root.querySelector<HTMLSelectElement>(
+    'select[name="hos.cycleType"]',
+  )?.value as CycleType | undefined;
   const rows = parseHosRowText(priorDuty.value, recaps.value, sleepers.value);
   const hos = {
     cycleType: cycleType ?? '',
@@ -199,10 +216,7 @@ function enhance(root: HTMLElement): void {
   priorDuty.closest('.grid')?.after(host);
 
   const commit = (next: ParsedRows): void => {
-    const serialized = serializeHosRowText(next);
-    dispatchTextarea(priorDuty, serialized.priorDutyText);
-    dispatchTextarea(recaps, serialized.recapText);
-    dispatchTextarea(sleepers, serialized.sleeperText);
+    dispatchSerializedRows(root, serializeHosRowText(next));
   };
 
   host.addEventListener('input', (): void => {
