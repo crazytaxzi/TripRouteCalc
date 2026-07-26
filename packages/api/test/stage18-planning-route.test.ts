@@ -64,7 +64,7 @@ function authenticator(): BearerAuthenticator {
 
 function rateLimiter(): RateLimiter {
   return {
-    consume: (principalKey) => {
+    consume: (principalKey): ReturnType<RateLimiter['consume']> => {
       expect(principalKey).toBe(
         `${authenticatedPrincipal.carrierId}:${authenticatedPrincipal.actorUserId}:${authenticatedPrincipal.tokenId}`,
       );
@@ -134,10 +134,10 @@ describe('Stage 18 planning HTTP boundary', () => {
       method: 'GET',
       url: '/openapi-stage18.json',
     });
-    const document = response.json() as {
+    const document = response.json<{
       readonly info?: { readonly version?: string };
       readonly paths?: Readonly<Record<string, unknown>>;
-    };
+    }>();
 
     expect(response.statusCode).toBe(200);
     expect(document.info?.version).toBe('18.0.0');
