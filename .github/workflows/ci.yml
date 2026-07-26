@@ -58,21 +58,7 @@ jobs:
         run: pnpm db:migrate:deploy
 
       - name: Lint
-        id: lint
-        continue-on-error: true
-        run: pnpm lint:source > lint-output.txt 2>&1
-
-      - name: Upload lint diagnostics
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: lint-diagnostics-${{ github.sha }}
-          path: lint-output.txt
-          if-no-files-found: error
-
-      - name: Fail when lint failed
-        if: steps.lint.outcome == 'failure'
-        run: exit 1
+        run: pnpm lint:source
 
       - name: Type-check
         run: pnpm typecheck:source
