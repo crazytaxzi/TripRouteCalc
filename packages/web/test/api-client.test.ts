@@ -100,7 +100,7 @@ describe('Stage 18 API transport', () => {
       hos: {
         cycleType: '70_in_8',
         provenance: 'user_entered',
-        priorDutyTotals: expect.any(Array),
+        priorDutyTotals: completeState().hos.priorDutyTotals,
       },
     });
     expect(body).not.toHaveProperty('simulation');

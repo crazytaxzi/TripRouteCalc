@@ -44,7 +44,7 @@ function issuesList(root: HTMLElement): HTMLUListElement | undefined {
 
 export function synchronizePriorDutyValidation(root: HTMLElement): void {
   root.querySelectorAll<HTMLLIElement>('.issues li').forEach((item): void => {
-    if (LEGACY_MESSAGES.some((message) => item.textContent?.includes(message))) {
+    if (LEGACY_MESSAGES.some((message) => item.innerText.includes(message))) {
       item.remove();
     }
   });

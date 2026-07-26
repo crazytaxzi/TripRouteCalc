@@ -5,9 +5,12 @@ import {
   createPlanPayload,
   localDateTimeWithOffset,
 } from '../src/planning-payload.js';
-import { createInitialTripSetupState } from '../src/model.js';
+import {
+  createInitialTripSetupState,
+  type TripSetupState,
+} from '../src/model.js';
 
-function completeState() {
+function completeState(): TripSetupState {
   const initial = createInitialTripSetupState();
   return {
     ...initial,
@@ -103,7 +106,7 @@ describe('Stage 18 planning payload', () => {
       hos: {
         cycleType: '70_in_8',
         provenance: 'user_entered',
-        priorDutyTotals: expect.any(Array),
+        priorDutyTotals: completeState().hos.priorDutyTotals,
         cycleRecaps: [
           {
             availableAt: '2026-07-24T00:00:00-06:00',

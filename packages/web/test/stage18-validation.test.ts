@@ -1,9 +1,15 @@
 import { describe, expect, it } from 'vitest';
 
-import { createInitialTripSetupState } from '../src/model.js';
+import {
+  createInitialTripSetupState,
+  type TripSetupState,
+} from '../src/model.js';
 import { validateStage18TripSetup } from '../src/stage18-validation.js';
 
-function stateWithHistory(cycleType: '60_in_7' | '70_in_8', count: number) {
+function stateWithHistory(
+  cycleType: '60_in_7' | '70_in_8',
+  count: number,
+): TripSetupState {
   const initial = createInitialTripSetupState();
   const startDay = cycleType === '60_in_7' ? 16 : 15;
   return {
