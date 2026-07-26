@@ -1,9 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
-import {
-  TripSetupApiClient,
-  createStopPayload,
-} from '../src/api-client.js';
+import { TripSetupApiClient, createStopPayload } from '../src/api-client.js';
 import {
   createInitialTripSetupState,
   type TripSetupState,
@@ -16,12 +13,19 @@ function completeState(): TripSetupState {
     tripId: 'trip-public-id',
     revisionNumber: 7,
     driver: { selectedId: 'driver-public-id', displayName: 'Driver One' },
-    tractor: { selectedId: 'tractor-public-id', displayName: 'tractor-public-id' },
-    trailer: { selectedId: 'trailer-public-id', displayName: 'trailer-public-id' },
+    tractor: {
+      selectedId: 'tractor-public-id',
+      displayName: 'tractor-public-id',
+    },
+    trailer: {
+      selectedId: 'trailer-public-id',
+      displayName: 'trailer-public-id',
+    },
     load: { selectedId: 'load-public-id', displayName: 'load-public-id' },
-    departureAt: '2026-07-22T10:00',
+    departureAt: '2026-07-23T10:00',
+    departureTimeZone: 'America/Boise',
     currentDutyStatus: 'on_duty_not_driving',
-    currentDutyStatusBeganAt: '2026-07-22T09:30',
+    currentDutyStatusBeganAt: '2026-07-23T09:30',
     clocks: {
       driveMinutesRemaining: 600,
       shiftMinutesRemaining: 780,
@@ -32,7 +36,8 @@ function completeState(): TripSetupState {
       cycleType: '70_in_8',
       provenance: 'user_entered',
       qualifyingTenHourBreakCompleted: true,
-      priorDutyTotals: Array.from({ length: 7 }, (_, index) => ({
+      offDutyBeforeDepartureMinutes: 600,
+      priorDutyTotals: Array.from({ length: 8 }, (_, index) => ({
         date: `2026-07-${String(index + 15).padStart(2, '0')}`,
         onDutyMinutes: 480,
       })),
@@ -65,7 +70,7 @@ afterEach((): void => {
 });
 
 describe('Stage 18 API transport', () => {
-  it('uses the accepted singular calculate endpoint', async (): Promise<void> => {
+  it('uses the entered-facts-only plan endpoint with explicit offsets', async (): Promise<void> => {
     const fetchMock = vi.fn<typeof fetch>((): Promise<Response> =>
       Promise.resolve(
         jsonResponse(
@@ -81,8 +86,27 @@ describe('Stage 18 API transport', () => {
 
     expect(fetchMock).toHaveBeenCalledTimes(1);
     expect(fetchMock.mock.calls[0]?.[0]).toBe(
-      '/api/trips/trip-public-id/calculate',
+      '/api/trips/trip-public-id/plan',
     );
+    const request = fetchMock.mock.calls[0]?.[1];
+    if (request?.body === undefined || typeof request.body !== 'string') {
+      throw new Error('Planning request did not contain a JSON body.');
+    }
+    const body = JSON.parse(request.body) as Record<string, unknown>;
+    expect(body).toMatchObject({
+      expectedRevisionNumber: 7,
+      departureAt: '2026-07-23T10:00:00-06:00',
+      currentDutyStatusBeganAt: '2026-07-23T09:30:00-06:00',
+      hos: {
+        cycleType: '70_in_8',
+        provenance: 'user_entered',
+        priorDutyTotals: expect.any(Array),
+      },
+    });
+    expect(body).not.toHaveProperty('simulation');
+    expect(body).not.toHaveProperty('route');
+    expect(body).not.toHaveProperty('operationalEvents');
+    expect(body).not.toHaveProperty('complianceActions');
   });
 
   it('creates driver, trip, and stops while chaining revisions', async (): Promise<void> => {
@@ -143,7 +167,9 @@ describe('Stage 18 API transport', () => {
       'stop-3',
     ]);
     expect(fetchMock).toHaveBeenCalledTimes(6);
-    expect(fetchMock.mock.calls[5]?.[0]).toBe('/api/trips/trip-1/stops/reorder');
+    expect(fetchMock.mock.calls[5]?.[0]).toBe(
+      '/api/trips/trip-1/stops/reorder',
+    );
   });
 
   it('synchronizes persisted deletes, patches, and reorder revisions', async (): Promise<void> => {

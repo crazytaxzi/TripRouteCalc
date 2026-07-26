@@ -5,7 +5,11 @@ import type {
   TripStopDraft,
   ValidationIssue,
 } from './model.js';
-import { validateTripSetup } from './model.js';
+import {
+  PlanningPayloadError,
+  createPlanPayload,
+} from './planning-payload.js';
+import { validateStage18TripSetup } from './stage18-validation.js';
 
 export interface ApiProblem {
   readonly status: number;
@@ -52,7 +56,9 @@ function publicDutyStatus(status: ServiceSettings['dutyStatus']): string {
   return status.toUpperCase();
 }
 
-function appointmentPayload(settings: AppointmentSettings): Readonly<Record<string, unknown>> {
+function appointmentPayload(
+  settings: AppointmentSettings,
+): Readonly<Record<string, unknown>> {
   const lateTolerance = duration(settings.lateToleranceMinutes);
   if (settings.mode === 'fixed' && settings.fixedAt !== undefined) {
     return {
@@ -69,8 +75,14 @@ function appointmentPayload(settings: AppointmentSettings): Readonly<Record<stri
     return {
       mode: 'window',
       window: {
-        start: { localDateTime: settings.earliestAt, timeZone: settings.timeZone },
-        end: { localDateTime: settings.latestAt, timeZone: settings.timeZone },
+        start: {
+          localDateTime: settings.earliestAt,
+          timeZone: settings.timeZone,
+        },
+        end: {
+          localDateTime: settings.latestAt,
+          timeZone: settings.timeZone,
+        },
       },
       lateTolerance,
     };
@@ -78,14 +90,22 @@ function appointmentPayload(settings: AppointmentSettings): Readonly<Record<stri
   return { mode: 'none' };
 }
 
-function servicePayload(settings: ServiceSettings): Readonly<Record<string, unknown>> {
+function servicePayload(
+  settings: ServiceSettings,
+): Readonly<Record<string, unknown>> {
   if (settings.mode === 'exact') {
-    return { mode: 'exact', duration: duration(settings.exactMinutes ?? 0) };
+    return {
+      mode: 'exact',
+      duration: duration(settings.exactMinutes ?? 0),
+    };
   }
   if (settings.mode === 'range') {
     const minimum = settings.minimumMinutes ?? 0;
     const maximum = settings.maximumMinutes ?? minimum;
-    const expected = Math.max(minimum, Math.min(settings.expectedMinutes ?? minimum, maximum));
+    const expected = Math.max(
+      minimum,
+      Math.min(settings.expectedMinutes ?? minimum, maximum),
+    );
     return {
       mode: 'range',
       minimum: duration(minimum),
@@ -93,7 +113,10 @@ function servicePayload(settings: ServiceSettings): Readonly<Record<string, unkn
       maximum: duration(maximum),
     };
   }
-  return { mode: 'expected', duration: duration(settings.expectedMinutes ?? 0) };
+  return {
+    mode: 'expected',
+    duration: duration(settings.expectedMinutes ?? 0),
+  };
 }
 
 function stopFields(stop: TripStopDraft): Readonly<Record<string, unknown>> {
@@ -120,11 +143,15 @@ function stopFields(stop: TripStopDraft): Readonly<Record<string, unknown>> {
   };
 }
 
-export function createStopPayload(stop: TripStopDraft): Readonly<Record<string, unknown>> {
+export function createStopPayload(
+  stop: TripStopDraft,
+): Readonly<Record<string, unknown>> {
   return { sequence: stop.sequence + 1, ...stopFields(stop) };
 }
 
-export function createStopPatchPayload(stop: TripStopDraft): Readonly<Record<string, unknown>> {
+export function createStopPatchPayload(
+  stop: TripStopDraft,
+): Readonly<Record<string, unknown>> {
   return stopFields(stop);
 }
 
@@ -147,7 +174,7 @@ export class TripSetupApiClient {
   readonly #getToken: () => string;
 
   public constructor(baseUrl: string, getToken: () => string) {
-    this.#baseUrl = baseUrl.replace(/\/$/, '');
+    this.#baseUrl = baseUrl.replace(/\/$/u, '');
     this.#getToken = getToken;
   }
 
@@ -155,7 +182,10 @@ export class TripSetupApiClient {
     const headers = new Headers(init.headers);
     headers.set('content-type', 'application/json');
     headers.set('authorization', `Bearer ${this.#getToken()}`);
-    const response = await fetch(`${this.#baseUrl}${path}`, { ...init, headers });
+    const response = await fetch(`${this.#baseUrl}${path}`, {
+      ...init,
+      headers,
+    });
     const payload = (await response.json()) as unknown;
     if (!response.ok) {
       const envelope = payload as { readonly error?: Partial<ApiProblem> };
@@ -170,7 +200,11 @@ export class TripSetupApiClient {
     return payload as T;
   }
 
-  async #write<T>(path: string, method: 'POST' | 'PATCH' | 'DELETE', body: unknown): Promise<T> {
+  async #write<T>(
+    path: string,
+    method: 'POST' | 'PATCH' | 'DELETE',
+    body: unknown,
+  ): Promise<T> {
     return this.#request<T>(path, {
       method,
       headers: { 'idempotency-key': crypto.randomUUID() },
@@ -183,13 +217,20 @@ export class TripSetupApiClient {
     if (driver.selectedId === '') {
       if (driver.displayName.trim() === '') {
         throw new TripSetupValidationError([
-          { path: 'driver', message: 'Enter a driver name or identifier.', severity: 'error' },
+          {
+            path: 'driver',
+            message: 'Enter a driver name or identifier.',
+            severity: 'error',
+          },
         ]);
       }
       const created = await this.#write<DriverResponse>('/drivers', 'POST', {
         displayName: driver.displayName.trim(),
       });
-      driver = { selectedId: created.driverId, displayName: created.displayName };
+      driver = {
+        selectedId: created.driverId,
+        displayName: created.displayName,
+      };
     }
 
     let tripId = state.tripId;
@@ -205,12 +246,24 @@ export class TripSetupApiClient {
     }
 
     const encodedTripId = encodeURIComponent(tripId);
-    const equipmentPatch: Record<string, unknown> = { expectedRevisionNumber: revisionNumber };
-    if (state.tractor.selectedId !== '') equipmentPatch.tractorId = state.tractor.selectedId;
-    if (state.trailer.selectedId !== '') equipmentPatch.trailerId = state.trailer.selectedId;
-    if (state.load.selectedId !== '') equipmentPatch.loadId = state.load.selectedId;
+    const equipmentPatch: Record<string, unknown> = {
+      expectedRevisionNumber: revisionNumber,
+    };
+    if (state.tractor.selectedId !== '') {
+      equipmentPatch.tractorId = state.tractor.selectedId;
+    }
+    if (state.trailer.selectedId !== '') {
+      equipmentPatch.trailerId = state.trailer.selectedId;
+    }
+    if (state.load.selectedId !== '') {
+      equipmentPatch.loadId = state.load.selectedId;
+    }
     if (Object.keys(equipmentPatch).length > 1) {
-      const patched = await this.#write<TripResponse>(`/trips/${encodedTripId}`, 'PATCH', equipmentPatch);
+      const patched = await this.#write<TripResponse>(
+        `/trips/${encodedTripId}`,
+        'PATCH',
+        equipmentPatch,
+      );
       revisionNumber = patched.currentRevision.revisionNumber;
     }
 
@@ -228,7 +281,10 @@ export class TripSetupApiClient {
         const added = await this.#write<AddedStopResponse>(
           `/trips/${encodedTripId}/stops`,
           'POST',
-          { expectedRevisionNumber: revisionNumber, stop: createStopPayload(stop) },
+          {
+            expectedRevisionNumber: revisionNumber,
+            stop: createStopPayload(stop),
+          },
         );
         revisionNumber = added.trip.currentRevision.revisionNumber;
         stops[index] = { ...stop, serverId: added.stop.id };
@@ -237,13 +293,18 @@ export class TripSetupApiClient {
       const patched = await this.#write<TripResponse>(
         `/trips/${encodedTripId}/stops/${encodeURIComponent(stop.serverId)}`,
         'PATCH',
-        { expectedRevisionNumber: revisionNumber, patch: createStopPatchPayload(stop) },
+        {
+          expectedRevisionNumber: revisionNumber,
+          patch: createStopPatchPayload(stop),
+        },
       );
       revisionNumber = patched.currentRevision.revisionNumber;
     }
 
     const stopIds = stops.map((stop): string => {
-      if (stop.serverId === undefined) throw new Error('Saved stop is missing its server identifier.');
+      if (stop.serverId === undefined) {
+        throw new Error('Saved stop is missing its server identifier.');
+      }
       return stop.serverId;
     });
     if (stopIds.length > 0) {
@@ -268,20 +329,34 @@ export class TripSetupApiClient {
   }
 
   public async calculate(state: TripSetupState): Promise<CalculationResponse> {
-    const issues = validateTripSetup(state).filter((issue): boolean => issue.severity === 'error');
+    const issues = validateStage18TripSetup(state).filter(
+      (issue): boolean => issue.severity === 'error',
+    );
     if (issues.length > 0) throw new TripSetupValidationError(issues);
     if (state.tripId === undefined) {
       throw new TripSetupValidationError([
-        { path: 'tripId', message: 'Save the trip before calculation.', severity: 'error' },
+        {
+          path: 'tripId',
+          message: 'Save the trip before calculation.',
+          severity: 'error',
+        },
       ]);
     }
+    let payload: Record<string, unknown>;
+    try {
+      payload = createPlanPayload(state);
+    } catch (error) {
+      if (error instanceof PlanningPayloadError) {
+        throw new TripSetupValidationError([
+          { path: error.path, message: error.message, severity: 'error' },
+        ]);
+      }
+      throw error;
+    }
     return this.#write<CalculationResponse>(
-      `/trips/${encodeURIComponent(state.tripId)}/calculate`,
+      `/trips/${encodeURIComponent(state.tripId)}/plan`,
       'POST',
-      {
-        expectedRevisionNumber: state.revisionNumber,
-        simulation: createSimulationPayload(state),
-      },
+      payload,
     );
   }
 }
@@ -296,24 +371,28 @@ export class TripSetupValidationError extends Error {
   }
 }
 
-export function createSimulationPayload(state: TripSetupState): Record<string, unknown> {
+export function createSimulationPayload(
+  state: TripSetupState,
+): Record<string, unknown> {
   return {
     departureAt: state.departureAt,
     departureTimeZone: state.departureTimeZone,
     currentDutyStatus: state.currentDutyStatus,
     currentDutyStatusBeganAt: state.currentDutyStatusBeganAt,
     clocks: state.clocks,
-    stops: state.stops.map((stop): Readonly<Record<string, unknown>> => ({
-      id: stop.serverId,
-      type: stop.type,
-      sequence: stop.sequence,
-      address: stop.address,
-      required: stop.required,
-      lockedPosition: stop.lockedPosition,
-      appointment: stop.appointment,
-      service: stop.service,
-      notes: stop.notes,
-    })),
+    stops: state.stops.map(
+      (stop): Readonly<Record<string, unknown>> => ({
+        id: stop.serverId,
+        type: stop.type,
+        sequence: stop.sequence,
+        address: stop.address,
+        required: stop.required,
+        lockedPosition: stop.lockedPosition,
+        appointment: stop.appointment,
+        service: stop.service,
+        notes: stop.notes,
+      }),
+    ),
   };
 }
 

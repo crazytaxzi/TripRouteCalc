@@ -1,3 +1,4 @@
+import { requiredPriorDutyDayCount } from './hos-requirements.js';
 import type { DriverHosInputs } from './model.js';
 
 export type HosRepeatingRows = Pick<
@@ -24,20 +25,24 @@ function removeButton(kind: string, index: number, label: string): string {
 }
 
 export function renderPriorDutyRows(hos: HosRepeatingRows): string {
-  const maximum = hos.cycleType === '60_in_7' ? 6 : 7;
+  const maximum = requiredPriorDutyDayCount(hos.cycleType);
   const rows = hos.priorDutyTotals
     .map(
       (entry, index): string => `<div class="grid three hos-row" data-hos-row-kind="prior-duty" data-hos-row-index="${String(index)}">
         <label class="field"><span>Date</span><input type="date" data-hos-row-field="date" value="${escapeHtml(entry.date)}"></label>
-        <label class="field"><span>On-duty minutes</span><input type="number" min="0" step="1" inputmode="numeric" data-hos-row-field="onDutyMinutes" value="${String(entry.onDutyMinutes)}"></label>
+        <label class="field"><span>On-duty minutes</span><input type="number" min="0" max="1440" step="1" inputmode="numeric" data-hos-row-field="onDutyMinutes" value="${String(entry.onDutyMinutes)}"></label>
         <div class="field row-action">${removeButton('prior-duty', index, `Remove prior-duty row ${String(index + 1)}`)}</div>
       </div>`,
     )
     .join('');
-  const disabled = hos.priorDutyTotals.length >= maximum ? ' disabled' : '';
+  const disabled = maximum === 0 || hos.priorDutyTotals.length >= maximum ? ' disabled' : '';
+  const guidance =
+    maximum === 0
+      ? 'Choose a cycle before entering prior-day history.'
+      : `Enter ${String(maximum)} prior days for the selected cycle.`;
   return `<section class="repeatable-group" aria-labelledby="prior-duty-heading">
     <div class="section-heading"><h3 id="prior-duty-heading">Prior daily duty totals</h3><button type="button" data-hos-row-action="add" data-hos-row-kind="prior-duty"${disabled}>Add day</button></div>
-    <p class="hint">Enter ${String(maximum)} prior days for the selected cycle.</p>
+    <p class="hint">${guidance}</p>
     ${rows === '' ? '<p class="empty-state">No prior-duty rows entered.</p>' : rows}
   </section>`;
 }

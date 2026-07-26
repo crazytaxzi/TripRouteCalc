@@ -36,13 +36,28 @@ describe('Stage 18 HOS repeating-row operations', () => {
     expect(removed.hos.priorDutyTotals).toEqual([]);
   });
 
-  it('enforces the selected cycle prior-day maximum', () => {
-    let state = createInitialTripSetupState();
-    state = { ...state, hos: { ...state.hos, cycleType: '60_in_7' } };
-    for (let index = 0; index < 6; index += 1) state = addPriorDutyTotal(state);
+  it('enforces seven prior days for 60-in-7 and eight for 70-in-8', () => {
+    let sixty = createInitialTripSetupState();
+    sixty = { ...sixty, hos: { ...sixty.hos, cycleType: '60_in_7' } };
+    for (let index = 0; index < 7; index += 1) {
+      sixty = addPriorDutyTotal(sixty);
+    }
 
-    expect(state.hos.priorDutyTotals).toHaveLength(6);
-    expect(addPriorDutyTotal(state)).toBe(state);
+    let seventy = createInitialTripSetupState();
+    seventy = { ...seventy, hos: { ...seventy.hos, cycleType: '70_in_8' } };
+    for (let index = 0; index < 8; index += 1) {
+      seventy = addPriorDutyTotal(seventy);
+    }
+
+    expect(sixty.hos.priorDutyTotals).toHaveLength(7);
+    expect(addPriorDutyTotal(sixty)).toBe(sixty);
+    expect(seventy.hos.priorDutyTotals).toHaveLength(8);
+    expect(addPriorDutyTotal(seventy)).toBe(seventy);
+  });
+
+  it('does not add prior-duty rows until a cycle is selected', () => {
+    const initial = createInitialTripSetupState();
+    expect(addPriorDutyTotal(initial)).toBe(initial);
   });
 
   it('adds, updates, and removes recap rows', () => {

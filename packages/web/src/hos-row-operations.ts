@@ -1,3 +1,4 @@
+import { requiredPriorDutyDayCount } from './hos-requirements.js';
 import type {
   CycleRecap,
   DailyDutyTotal,
@@ -21,8 +22,8 @@ function updateAt<T>(items: readonly T[], index: number, value: T): readonly T[]
 }
 
 export function addPriorDutyTotal(state: TripSetupState): TripSetupState {
-  const maximum = state.hos.cycleType === '60_in_7' ? 6 : 7;
-  if (state.hos.priorDutyTotals.length >= maximum) return state;
+  const maximum = requiredPriorDutyDayCount(state.hos.cycleType);
+  if (maximum === 0 || state.hos.priorDutyTotals.length >= maximum) return state;
   return withHos(state, {
     ...state.hos,
     priorDutyTotals: [...state.hos.priorDutyTotals, { date: '', onDutyMinutes: 0 }],

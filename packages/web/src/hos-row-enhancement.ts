@@ -1,3 +1,4 @@
+import { requiredPriorDutyDayCount } from './hos-requirements.js';
 import { renderHosRepeatingRows } from './hos-row-editor.js';
 import type { HosRepeatingRows } from './hos-row-editor.js';
 import type { CycleType, DriverHosInputs } from './model.js';
@@ -79,8 +80,8 @@ export function addHosRow(
   selectedCycle: CycleType,
 ): ParsedRows {
   if (kind === 'prior-duty') {
-    const maximum = selectedCycle === '60_in_7' ? 6 : 7;
-    if (rows.priorDutyTotals.length >= maximum) return rows;
+    const maximum = requiredPriorDutyDayCount(selectedCycle);
+    if (maximum === 0 || rows.priorDutyTotals.length >= maximum) return rows;
     return {
       ...rows,
       priorDutyTotals: [
@@ -149,13 +150,17 @@ function inputValue(row: Element, field: string): string {
 
 function rowsFromEditor(host: HTMLElement): ParsedRows {
   return {
-    priorDutyTotals: [...host.querySelectorAll('[data-hos-row-kind="prior-duty"]')]
+    priorDutyTotals: [
+      ...host.querySelectorAll('[data-hos-row-kind="prior-duty"]'),
+    ]
       .filter((row): boolean => row.hasAttribute('data-hos-row-index'))
       .map((row) => ({
         date: inputValue(row, 'date'),
         onDutyMinutes: Number(inputValue(row, 'onDutyMinutes')),
       })),
-    cycleRecaps: [...host.querySelectorAll('[data-hos-row-kind="cycle-recap"]')]
+    cycleRecaps: [
+      ...host.querySelectorAll('[data-hos-row-kind="cycle-recap"]'),
+    ]
       .filter((row): boolean => row.hasAttribute('data-hos-row-index'))
       .map((row) => ({
         availableAt: inputValue(row, 'availableAt'),

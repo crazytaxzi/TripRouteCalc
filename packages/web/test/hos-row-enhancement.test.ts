@@ -36,14 +36,19 @@ describe('Stage 18 HOS row enhancement transforms', () => {
     });
   });
 
-  it('enforces the six-day prior-duty limit for a 60-in-7 cycle', () => {
+  it('enforces the seven-day prior-duty limit for a 60-in-7 cycle', () => {
     let rows = parseHosRowText('', '', '');
-    for (let index = 0; index < 6; index += 1) {
+    for (let index = 0; index < 7; index += 1) {
       rows = addHosRow(rows, 'prior-duty', '60_in_7');
     }
 
-    expect(rows.priorDutyTotals).toHaveLength(6);
+    expect(rows.priorDutyTotals).toHaveLength(7);
     expect(addHosRow(rows, 'prior-duty', '60_in_7')).toBe(rows);
+  });
+
+  it('requires a selected cycle before adding prior-duty rows', () => {
+    const rows = parseHosRowText('', '', '');
+    expect(addHosRow(rows, 'prior-duty', '')).toBe(rows);
   });
 
   it('removes only the requested row and ignores invalid indexes', () => {
