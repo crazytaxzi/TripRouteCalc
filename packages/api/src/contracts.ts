@@ -10,6 +10,8 @@ const nonEmptyText = z.string().trim().min(1);
 const publicIdentifier = z.string().trim().min(8).max(512);
 const expectedRevisionNumber = z.number().int().nonnegative();
 const jsonObject = z.record(z.unknown());
+const nonnegativeMinutes = z.number().int().nonnegative();
+const offsetDateTime = z.string().datetime({ offset: true });
 
 export const IdempotencyKeySchema = z.string().trim().min(8).max(256);
 
@@ -87,6 +89,97 @@ export const ReorderStopsBodySchema = z
     }
   });
 
+const PlanDutyStatusSchema = z.enum([
+  'off_duty',
+  'sleeper_berth',
+  'driving',
+  'on_duty_not_driving',
+]);
+
+const PlanHosFactsSchema = z
+  .object({
+    cycleType: z.enum(['70_in_8', '60_in_7']),
+    provenance: z.enum(['user_entered', 'imported_eld', 'carrier_record']),
+    drivenSinceQualifyingInterruptionMinutes: nonnegativeMinutes,
+    onDutyCurrentShiftMinutes: nonnegativeMinutes,
+    offDutyBeforeDepartureMinutes: nonnegativeMinutes,
+    qualifyingTenHourBreakCompleted: z.boolean(),
+    priorDutyTotals: z.array(
+      z
+        .object({ date: z.string().date(), onDutyMinutes: nonnegativeMinutes })
+        .strict(),
+    ),
+    cycleRecaps: z.array(
+      z
+        .object({
+          availableAt: offsetDateTime,
+          minutesReturning: nonnegativeMinutes,
+        })
+        .strict(),
+    ),
+    sleeperBerthEligible: z.boolean(),
+    existingSleeperPeriods: z.array(
+      z.object({ startAt: offsetDateTime, endAt: offsetDateTime }).strict(),
+    ),
+    splitSleeperEnabled: z.boolean(),
+    plannedThirtyFourHourRestart: z.boolean(),
+    carrierMaximumDrivingMinutes: nonnegativeMinutes.positive(),
+    carrierMaximumDutyMinutes: nonnegativeMinutes.positive(),
+    restPreference: z
+      .object({
+        enabled: z.boolean(),
+        startLocalTime: z.string(),
+        endLocalTime: z.string(),
+      })
+      .strict(),
+  })
+  .strict()
+  .superRefine((value, context) => {
+    if (value.carrierMaximumDrivingMinutes > value.carrierMaximumDutyMinutes) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['carrierMaximumDrivingMinutes'],
+        message: 'Carrier driving target cannot exceed the carrier duty target.',
+      });
+    }
+    if (value.splitSleeperEnabled && !value.sleeperBerthEligible) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['splitSleeperEnabled'],
+        message: 'Split sleeper cannot be enabled for an ineligible driver.',
+      });
+    }
+    if (
+      value.restPreference.enabled &&
+      (value.restPreference.startLocalTime.trim() === '' ||
+        value.restPreference.endLocalTime.trim() === '')
+    ) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['restPreference'],
+        message: 'Enabled rest preference requires both local times.',
+      });
+    }
+  });
+
+export const PlanTripBodySchema = z
+  .object({
+    expectedRevisionNumber,
+    departureAt: offsetDateTime,
+    departureTimeZone: nonEmptyText,
+    currentDutyStatus: PlanDutyStatusSchema,
+    currentDutyStatusBeganAt: offsetDateTime,
+    clocks: z
+      .object({
+        driveMinutesRemaining: nonnegativeMinutes,
+        shiftMinutesRemaining: nonnegativeMinutes,
+        cycleMinutesRemaining: nonnegativeMinutes,
+      })
+      .strict(),
+    hos: PlanHosFactsSchema,
+  })
+  .strict();
+
 export const CalculateTripBodySchema = z
   .object({
     expectedRevisionNumber,
@@ -124,6 +217,7 @@ export type CreateStopBody = z.infer<typeof CreateStopBodySchema>;
 export type PatchStopBody = z.infer<typeof PatchStopBodySchema>;
 export type DeleteStopBody = z.infer<typeof DeleteStopBodySchema>;
 export type ReorderStopsBody = z.infer<typeof ReorderStopsBodySchema>;
+export type PlanTripBody = z.infer<typeof PlanTripBodySchema>;
 export type CalculateTripBody = z.infer<typeof CalculateTripBodySchema>;
 export type CreateDriverBody = z.infer<typeof CreateDriverBodySchema>;
 export type RegulationVersionQuery = z.infer<typeof RegulationVersionQuerySchema>;
