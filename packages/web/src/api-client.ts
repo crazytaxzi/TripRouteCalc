@@ -1,6 +1,14 @@
+import {
+  completeStopPayload,
+  ensureStopPlanningFacts,
+  loadProfilePayload,
+  loadStage18CompleteFacts,
+  saveStage18CompleteFacts,
+  tractorProfilePayload,
+  trailerProfilePayload,
+} from './stage18-details.js';
+import type { Stage18CompleteFacts } from './stage18-details.js';
 import type {
-  AppointmentSettings,
-  ServiceSettings,
   TripSetupState,
   TripStopDraft,
   ValidationIssue,
@@ -19,15 +27,25 @@ export interface ApiProblem {
 }
 
 export interface CalculationResponse {
-  readonly calculationId: string;
-  readonly revisionNumber: number;
-  readonly status: string;
+  readonly calculationId?: string;
+  readonly revisionNumber?: number;
+  readonly status?: string;
   readonly warnings?: readonly unknown[];
+  readonly trip?: Readonly<Record<string, unknown>>;
+  readonly calculation?: Readonly<Record<string, unknown>>;
+  readonly calculationStatus?: string;
 }
 
 interface DriverResponse {
   readonly driverId: string;
   readonly displayName: string;
+}
+
+interface EquipmentResponse {
+  readonly tractorId?: string;
+  readonly trailerId?: string;
+  readonly loadId?: string;
+  readonly profile?: unknown;
 }
 
 interface TripRevisionResponse {
@@ -44,115 +62,27 @@ interface AddedStopResponse {
   readonly stop: { readonly id: string };
 }
 
-function duration(minutes: number): Readonly<{ value: number; unit: 'minute' }> {
-  return { value: minutes, unit: 'minute' };
+function errors(issues: readonly ValidationIssue[]): readonly ValidationIssue[] {
+  return issues.filter((issue): boolean => issue.severity === 'error');
 }
 
-function publicStopType(type: TripStopDraft['type']): string {
-  return type.replaceAll('_', '-');
-}
-
-function publicDutyStatus(status: ServiceSettings['dutyStatus']): string {
-  return status.toUpperCase();
-}
-
-function appointmentPayload(
-  settings: AppointmentSettings,
-): Readonly<Record<string, unknown>> {
-  const lateTolerance = duration(settings.lateToleranceMinutes);
-  if (settings.mode === 'fixed' && settings.fixedAt !== undefined) {
-    return {
-      mode: 'fixed',
-      at: { localDateTime: settings.fixedAt, timeZone: settings.timeZone },
-      lateTolerance,
-    };
-  }
-  if (
-    settings.mode === 'window' &&
-    settings.earliestAt !== undefined &&
-    settings.latestAt !== undefined
-  ) {
-    return {
-      mode: 'window',
-      window: {
-        start: {
-          localDateTime: settings.earliestAt,
-          timeZone: settings.timeZone,
-        },
-        end: {
-          localDateTime: settings.latestAt,
-          timeZone: settings.timeZone,
-        },
-      },
-      lateTolerance,
-    };
-  }
-  return { mode: 'none' };
-}
-
-function servicePayload(
-  settings: ServiceSettings,
-): Readonly<Record<string, unknown>> {
-  if (settings.mode === 'exact') {
-    return {
-      mode: 'exact',
-      duration: duration(settings.exactMinutes ?? 0),
-    };
-  }
-  if (settings.mode === 'range') {
-    const minimum = settings.minimumMinutes ?? 0;
-    const maximum = settings.maximumMinutes ?? minimum;
-    const expected = Math.max(
-      minimum,
-      Math.min(settings.expectedMinutes ?? minimum, maximum),
-    );
-    return {
-      mode: 'range',
-      minimum: duration(minimum),
-      expected: duration(expected),
-      maximum: duration(maximum),
-    };
-  }
-  return {
-    mode: 'expected',
-    duration: duration(settings.expectedMinutes ?? 0),
-  };
-}
-
-function stopFields(stop: TripStopDraft): Readonly<Record<string, unknown>> {
-  return {
-    type: publicStopType(stop.type),
-    required: stop.required,
-    lockedPosition: stop.lockedPosition,
-    location: {
-      description: stop.label.trim() === '' ? stop.address : stop.label,
-      addressText: stop.address,
-      timeZone: stop.appointment.timeZone,
-      resolutionStatus: 'user-confirmed',
-    },
-    appointment: appointmentPayload(stop.appointment),
-    facilityHours: { windows: [] },
-    checkInDuration: duration(0),
-    serviceDuration: servicePayload(stop.service),
-    waitingDutyStatus: publicDutyStatus(stop.service.dutyStatus),
-    checkInDutyStatus: 'ON_DUTY_NOT_DRIVING',
-    serviceDutyStatus: publicDutyStatus(stop.service.dutyStatus),
-    earlyParkingAllowed: stop.appointment.earlyParkingAllowed,
-    overnightParkingAllowed: stop.appointment.overnightParkingAllowed,
-    ...(stop.notes.trim() === '' ? {} : { notes: stop.notes }),
-  };
+function stopFacts(stop: TripStopDraft): ReturnType<typeof ensureStopPlanningFacts> {
+  return ensureStopPlanningFacts(stop.localId, stop);
 }
 
 export function createStopPayload(
   stop: TripStopDraft,
 ): Readonly<Record<string, unknown>> {
-  return { sequence: stop.sequence + 1, ...stopFields(stop) };
+  return {
+    sequence: stop.sequence + 1,
+    ...completeStopPayload(stop, stopFacts(stop)),
+  };
 }
 
 export function createStopPatchPayload(
   stop: TripStopDraft,
 ): Readonly<Record<string, unknown>> {
-  return stopFields(stop);
+  return completeStopPayload(stop, stopFacts(stop));
 }
 
 class ApiProblemError extends Error implements ApiProblem {
@@ -212,26 +142,157 @@ export class TripSetupApiClient {
     });
   }
 
-  public async save(state: TripSetupState): Promise<TripSetupState> {
-    let driver = state.driver;
-    if (driver.selectedId === '') {
-      if (driver.displayName.trim() === '') {
-        throw new TripSetupValidationError([
-          {
-            path: 'driver',
-            message: 'Enter a driver name or identifier.',
-            severity: 'error',
-          },
-        ]);
-      }
+  async #materializeDriver(
+    state: TripSetupState,
+    facts: Stage18CompleteFacts,
+  ): Promise<Readonly<{
+    driver: TripSetupState['driver'];
+    facts: Stage18CompleteFacts;
+  }>> {
+    const enteredName =
+      facts.driver.displayName.trim() === ''
+        ? state.driver.displayName.trim()
+        : facts.driver.displayName.trim();
+    let id = facts.driver.id ?? state.driver.selectedId;
+    let displayName = enteredName;
+    if (id === '') {
       const created = await this.#write<DriverResponse>('/drivers', 'POST', {
-        displayName: driver.displayName.trim(),
+        displayName,
       });
-      driver = {
-        selectedId: created.driverId,
-        displayName: created.displayName,
-      };
+      id = created.driverId;
+      displayName = created.displayName;
+    } else if (facts.driver.dirty) {
+      const updated = await this.#write<DriverResponse>(
+        `/drivers/${encodeURIComponent(id)}`,
+        'PATCH',
+        { displayName },
+      );
+      displayName = updated.displayName;
     }
+    return {
+      driver: { selectedId: id, displayName },
+      facts: {
+        ...facts,
+        driver: { id, displayName, dirty: false },
+      },
+    };
+  }
+
+  async #materializeEquipment(
+    state: TripSetupState,
+    facts: Stage18CompleteFacts,
+  ): Promise<Readonly<{
+    tractorId: string;
+    trailerId: string;
+    loadId: string;
+    facts: Stage18CompleteFacts;
+  }>> {
+    let next = facts;
+
+    let tractorId = next.tractor.id ?? state.tractor.selectedId;
+    const tractorNeedsWrite =
+      next.tractor.id !== undefined || state.tractor.selectedId === '';
+    if (tractorId === '') {
+      const created = await this.#write<EquipmentResponse>(
+        '/equipment/tractors',
+        'POST',
+        tractorProfilePayload(next.tractor),
+      );
+      tractorId = created.tractorId ?? '';
+    } else if (tractorNeedsWrite && next.tractor.dirty) {
+      await this.#write<EquipmentResponse>(
+        `/equipment/tractors/${encodeURIComponent(tractorId)}`,
+        'PATCH',
+        tractorProfilePayload(next.tractor),
+      );
+    }
+    if (tractorId === '') {
+      throw new Error('The tractor profile response omitted its public identifier.');
+    }
+    next = {
+      ...next,
+      tractor: { ...next.tractor, id: tractorId, dirty: false },
+    };
+
+    let trailerId = next.trailer.id ?? state.trailer.selectedId;
+    const trailerNeedsWrite =
+      next.trailer.id !== undefined || state.trailer.selectedId === '';
+    if (trailerId === '') {
+      const created = await this.#write<EquipmentResponse>(
+        '/equipment/trailers',
+        'POST',
+        trailerProfilePayload(next.trailer),
+      );
+      trailerId = created.trailerId ?? '';
+    } else if (trailerNeedsWrite && next.trailer.dirty) {
+      await this.#write<EquipmentResponse>(
+        `/equipment/trailers/${encodeURIComponent(trailerId)}`,
+        'PATCH',
+        trailerProfilePayload(next.trailer),
+      );
+    }
+    if (trailerId === '') {
+      throw new Error('The trailer profile response omitted its public identifier.');
+    }
+    next = {
+      ...next,
+      trailer: { ...next.trailer, id: trailerId, dirty: false },
+    };
+
+    let loadId = next.load.id ?? state.load.selectedId;
+    const loadNeedsWrite = next.load.id !== undefined || state.load.selectedId === '';
+    if (loadId === '') {
+      const created = await this.#write<EquipmentResponse>(
+        '/equipment/loads',
+        'POST',
+        loadProfilePayload(next.load),
+      );
+      loadId = created.loadId ?? '';
+    } else if (loadNeedsWrite && next.load.dirty) {
+      await this.#write<EquipmentResponse>(
+        `/equipment/loads/${encodeURIComponent(loadId)}`,
+        'PATCH',
+        loadProfilePayload(next.load),
+      );
+    }
+    if (loadId === '') {
+      throw new Error('The load profile response omitted its public identifier.');
+    }
+    next = {
+      ...next,
+      load: { ...next.load, id: loadId, dirty: false },
+    };
+
+    return { tractorId, trailerId, loadId, facts: next };
+  }
+
+  public async save(state: TripSetupState): Promise<TripSetupState> {
+    const validation = errors(validateStage18TripSetup(state));
+    if (validation.length > 0) throw new TripSetupValidationError(validation);
+
+    const driverResult = await this.#materializeDriver(
+      state,
+      loadStage18CompleteFacts(),
+    );
+    const equipment = await this.#materializeEquipment(
+      state,
+      driverResult.facts,
+    );
+    saveStage18CompleteFacts(equipment.facts);
+
+    const driver = driverResult.driver;
+    const tractor = {
+      selectedId: equipment.tractorId,
+      displayName: equipment.facts.tractor.unitNumber,
+    };
+    const trailer = {
+      selectedId: equipment.trailerId,
+      displayName: equipment.facts.trailer.trailerNumber,
+    };
+    const load = {
+      selectedId: equipment.loadId,
+      displayName: equipment.facts.load.loadIdentifier,
+    };
 
     let tripId = state.tripId;
     let revisionNumber = state.revisionNumber;
@@ -246,26 +307,17 @@ export class TripSetupApiClient {
     }
 
     const encodedTripId = encodeURIComponent(tripId);
-    const equipmentPatch: Record<string, unknown> = {
-      expectedRevisionNumber: revisionNumber,
-    };
-    if (state.tractor.selectedId !== '') {
-      equipmentPatch.tractorId = state.tractor.selectedId;
-    }
-    if (state.trailer.selectedId !== '') {
-      equipmentPatch.trailerId = state.trailer.selectedId;
-    }
-    if (state.load.selectedId !== '') {
-      equipmentPatch.loadId = state.load.selectedId;
-    }
-    if (Object.keys(equipmentPatch).length > 1) {
-      const patched = await this.#write<TripResponse>(
-        `/trips/${encodedTripId}`,
-        'PATCH',
-        equipmentPatch,
-      );
-      revisionNumber = patched.currentRevision.revisionNumber;
-    }
+    const patched = await this.#write<TripResponse>(
+      `/trips/${encodedTripId}`,
+      'PATCH',
+      {
+        expectedRevisionNumber: revisionNumber,
+        tractorId: tractor.selectedId,
+        trailerId: trailer.selectedId,
+        loadId: load.selectedId,
+      },
+    );
+    revisionNumber = patched.currentRevision.revisionNumber;
 
     for (const deletedStopId of state.deletedServerStopIds) {
       const deleted = await this.#write<TripResponse>(
@@ -290,7 +342,7 @@ export class TripSetupApiClient {
         stops[index] = { ...stop, serverId: added.stop.id };
         continue;
       }
-      const patched = await this.#write<TripResponse>(
+      const updated = await this.#write<TripResponse>(
         `/trips/${encodedTripId}/stops/${encodeURIComponent(stop.serverId)}`,
         'PATCH',
         {
@@ -298,7 +350,7 @@ export class TripSetupApiClient {
           patch: createStopPatchPayload(stop),
         },
       );
-      revisionNumber = patched.currentRevision.revisionNumber;
+      revisionNumber = updated.currentRevision.revisionNumber;
     }
 
     const stopIds = stops.map((stop): string => {
@@ -321,6 +373,9 @@ export class TripSetupApiClient {
       tripId,
       revisionNumber,
       driver,
+      tractor,
+      trailer,
+      load,
       stops,
       deletedServerStopIds: [],
       dirty: false,
@@ -329,10 +384,8 @@ export class TripSetupApiClient {
   }
 
   public async calculate(state: TripSetupState): Promise<CalculationResponse> {
-    const issues = validateStage18TripSetup(state).filter(
-      (issue): boolean => issue.severity === 'error',
-    );
-    if (issues.length > 0) throw new TripSetupValidationError(issues);
+    const validation = errors(validateStage18TripSetup(state));
+    if (validation.length > 0) throw new TripSetupValidationError(validation);
     if (state.tripId === undefined) {
       throw new TripSetupValidationError([
         {
@@ -344,7 +397,12 @@ export class TripSetupApiClient {
     }
     let payload: Record<string, unknown>;
     try {
-      payload = createPlanPayload(state);
+      const facts = loadStage18CompleteFacts();
+      payload = {
+        ...createPlanPayload(state),
+        routePolicy: facts.route.policy,
+        avoidances: facts.route.avoidances,
+      };
     } catch (error) {
       if (error instanceof PlanningPayloadError) {
         throw new TripSetupValidationError([

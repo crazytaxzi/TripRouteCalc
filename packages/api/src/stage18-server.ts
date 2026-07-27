@@ -1,22 +1,17 @@
 import type { FastifyInstance } from 'fastify';
 
-import { PlanTripBodySchema, TripPathSchema } from './contracts.js';
+import { TripPathSchema } from './contracts.js';
 import { stage18OpenApiDocument } from './stage18-openapi.js';
+import { Stage18PlanTripBodySchema } from './stage18-plan-contract.js';
 import type { Stage18PlanningOperation } from './stage18-planning.js';
-import {
-  registerStage18ProfileRoutes,
-} from './stage18-profile-routes.js';
-import type {
-  Stage18ProfileRouteDependencies,
-} from './stage18-profile-routes.js';
+import { registerStage18ProfileRoutes } from './stage18-profile-routes.js';
+import type { Stage18ProfileRouteDependencies } from './stage18-profile-routes.js';
 import {
   sendStage18Operation,
   stage18IdempotencyKey,
   stage18Principal,
 } from './stage18-route-support.js';
-import type {
-  Stage18AuthenticatedRouteDependencies,
-} from './stage18-route-support.js';
+import type { Stage18AuthenticatedRouteDependencies } from './stage18-route-support.js';
 import { createStage17Api } from './server.js';
 import type { Stage17ApiServerDependencies } from './server.js';
 
@@ -46,7 +41,7 @@ export function registerStage18PlanningRoutes(
       await dependencies.planning.planTrip(
         principal,
         params.tripId,
-        PlanTripBodySchema.parse(request.body),
+        Stage18PlanTripBodySchema.parse(request.body),
         stage18IdempotencyKey(request),
       ),
     );

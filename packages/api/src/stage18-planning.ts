@@ -1,6 +1,6 @@
 import type { ApplicationOperationResult } from './application.js';
-import type { PlanTripBody } from './contracts.js';
 import type { AuthenticatedPrincipal } from './security.js';
+import type { Stage18PlanTripBody } from './stage18-plan-contract.js';
 
 /**
  * Server-authoritative Stage 18 planning boundary.
@@ -13,7 +13,7 @@ export interface Stage18PlanningOperation {
   planTrip(
     principal: AuthenticatedPrincipal,
     publicTripId: string,
-    body: PlanTripBody,
+    body: Stage18PlanTripBody,
     idempotencyKey: string,
   ): Promise<ApplicationOperationResult>;
 }

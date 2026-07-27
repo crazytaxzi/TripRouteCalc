@@ -42,6 +42,8 @@ function validPlanningBody(): Record<string, unknown> {
         endLocalTime: '',
       },
     },
+    routePolicy: 'balanced-compliant',
+    avoidances: ['ferries', 'unpaved-roads'],
   };
 }
 
@@ -79,12 +81,14 @@ function rateLimiter(): RateLimiter {
 }
 
 describe('Stage 18 planning HTTP boundary', () => {
-  it('authenticates, validates entered facts, and delegates without browser-authored legal objects', async () => {
+  it('authenticates, validates entered facts, and delegates explicit route choices without browser-authored legal objects', async () => {
     const planTrip = vi.fn<Stage18PlanningOperation['planTrip']>(
       (_principal, tripId, body, key) => {
         expect(tripId).toBe('trip-public-identifier');
         expect(body.expectedRevisionNumber).toBe(12);
         expect(body.hos.cycleType).toBe('70_in_8');
+        expect(body.routePolicy).toBe('balanced-compliant');
+        expect(body.avoidances).toEqual(['ferries', 'unpaved-roads']);
         expect(key).toBe('stage-18-plan-key');
         expect('route' in body).toBe(false);
         expect('simulation' in body).toBe(false);
@@ -120,7 +124,32 @@ describe('Stage 18 planning HTTP boundary', () => {
     await app.close();
   });
 
-  it('publishes the Stage 18 plan endpoint separately from the accepted Stage 17 document', async () => {
+  it('rejects missing route choices before planning delegation', async () => {
+    const planTrip = vi.fn<Stage18PlanningOperation['planTrip']>();
+    const app = registerStage18PlanningRoutes(Fastify(), {
+      planning: { planTrip },
+      authenticator: authenticator(),
+      rateLimiter: rateLimiter(),
+    });
+    const body = validPlanningBody();
+    delete body.routePolicy;
+
+    const response = await app.inject({
+      method: 'POST',
+      url: '/api/trips/trip-public-identifier/plan',
+      headers: {
+        authorization: 'Bearer route-test-token',
+        'idempotency-key': 'stage-18-plan-key',
+      },
+      payload: body,
+    });
+
+    expect(response.statusCode).toBe(400);
+    expect(planTrip).not.toHaveBeenCalled();
+    await app.close();
+  });
+
+  it('publishes the Stage 18 plan and reusable profile endpoints separately from the accepted Stage 17 document', async () => {
     const app = registerStage18PlanningRoutes(Fastify(), {
       planning: {
         planTrip: (): Promise<never> =>
@@ -142,6 +171,7 @@ describe('Stage 18 planning HTTP boundary', () => {
     expect(response.statusCode).toBe(200);
     expect(document.info?.version).toBe('18.0.0');
     expect(document.paths).toHaveProperty('/api/trips/{tripId}/plan');
+    expect(document.paths).toHaveProperty('/api/equipment/tractors/{tractorId}');
     await app.close();
   });
 });

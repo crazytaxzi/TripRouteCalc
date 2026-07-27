@@ -1,3 +1,4 @@
+import { validateStage18CompleteFacts } from './stage18-details.js';
 import type { TripSetupState, ValidationIssue } from './model.js';
 import { validateTripSetup as validateLegacyTripSetup } from './model.js';
 import {
@@ -56,7 +57,16 @@ export function validateStage18TripSetup(
   state: TripSetupState,
 ): readonly ValidationIssue[] {
   const legacyIssues = validateLegacyTripSetup(state).filter(
-    (candidate): boolean => candidate.path !== 'hos.priorDutyTotals',
+    (candidate): boolean =>
+      candidate.path !== 'hos.priorDutyTotals' &&
+      candidate.path !== 'driver' &&
+      candidate.path !== 'tractor' &&
+      candidate.path !== 'trailer' &&
+      candidate.path !== 'load',
   );
-  return [...legacyIssues, ...priorDutyIssues(state)];
+  return [
+    ...legacyIssues,
+    ...priorDutyIssues(state),
+    ...validateStage18CompleteFacts(state),
+  ];
 }
