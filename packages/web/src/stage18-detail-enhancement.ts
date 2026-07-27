@@ -44,9 +44,13 @@ function setLegacyEquipmentId(root: HTMLElement, kind: EquipmentKind, id: string
 }
 
 function profileById(kind: EquipmentKind, id: string): ProfileOption | undefined {
-  return getStage18ProfileCache()[`${kind}s` as 'tractors' | 'trailers' | 'loads'].find(
-    (candidate): boolean => candidate.id === id,
-  );
+  const profiles =
+    kind === 'tractor'
+      ? getStage18ProfileCache().tractors
+      : kind === 'trailer'
+        ? getStage18ProfileCache().trailers
+        : getStage18ProfileCache().loads;
+  return profiles.find((candidate): boolean => candidate.id === id);
 }
 
 function chooseEquipmentProfile(root: HTMLElement, kind: EquipmentKind, id: string): void {
@@ -92,7 +96,7 @@ function updateStopField(localId: string, field: string, value: unknown): void {
       [localId]: {
         ...(facts.stops[localId] ?? ensureStopPlanningFacts(localId)),
         [field]: value,
-      } as StopPlanningFacts,
+      },
     },
   }));
 }
@@ -115,7 +119,9 @@ function issueList(root: HTMLElement): HTMLUListElement | undefined {
 }
 
 function synchronizeIssues(root: HTMLElement): void {
-  root.querySelectorAll('[data-stage18-complete-issue]').forEach((node): void => node.remove());
+  root.querySelectorAll('[data-stage18-complete-issue]').forEach((node): void => {
+    node.remove();
+  });
   const state = legacyState();
   if (state === undefined) return;
   const issues = validateStage18CompleteFacts(state);
@@ -174,26 +180,30 @@ function enhanceStops(root: HTMLElement): void {
     const serviceDuty = card.querySelector<HTMLSelectElement>(
       '[data-field="service.dutyStatus"]',
     );
+    const appointmentMode = card.querySelector<HTMLSelectElement>(
+      '[data-field="appointment.mode"]',
+    )?.value;
+    const fixedAt = card.querySelector<HTMLInputElement>(
+      '[data-field="appointment.fixedAt"]',
+    )?.value;
+    const earliestAt = card.querySelector<HTMLInputElement>(
+      '[data-field="appointment.earliestAt"]',
+    )?.value;
+    const latestAt = card.querySelector<HTMLInputElement>(
+      '[data-field="appointment.latestAt"]',
+    )?.value;
     const facts = ensureStopPlanningFacts(localId, {
       appointment: {
         mode:
-          card.querySelector<HTMLSelectElement>('[data-field="appointment.mode"]')
-            ?.value === 'fixed'
+          appointmentMode === 'fixed'
             ? 'fixed'
-            : card.querySelector<HTMLSelectElement>('[data-field="appointment.mode"]')
-                  ?.value === 'window'
+            : appointmentMode === 'window'
               ? 'window'
               : 'none',
         timeZone: timeZoneInput?.value ?? '',
-        ...(card.querySelector<HTMLInputElement>('[data-field="appointment.fixedAt"]')?.value
-          ? { fixedAt: card.querySelector<HTMLInputElement>('[data-field="appointment.fixedAt"]')?.value as string }
-          : {}),
-        ...(card.querySelector<HTMLInputElement>('[data-field="appointment.earliestAt"]')?.value
-          ? { earliestAt: card.querySelector<HTMLInputElement>('[data-field="appointment.earliestAt"]')?.value as string }
-          : {}),
-        ...(card.querySelector<HTMLInputElement>('[data-field="appointment.latestAt"]')?.value
-          ? { latestAt: card.querySelector<HTMLInputElement>('[data-field="appointment.latestAt"]')?.value as string }
-          : {}),
+        ...(fixedAt === undefined || fixedAt === '' ? {} : { fixedAt }),
+        ...(earliestAt === undefined || earliestAt === '' ? {} : { earliestAt }),
+        ...(latestAt === undefined || latestAt === '' ? {} : { latestAt }),
         lateToleranceMinutes: Number(
           card.querySelector<HTMLInputElement>(
             '[data-field="appointment.lateToleranceMinutes"]',
@@ -250,6 +260,10 @@ function enhance(root: HTMLElement): void {
   synchronizeIssues(root);
 }
 
+function stringValue(value: unknown, fallback: string): string {
+  return typeof value === 'string' ? value : fallback;
+}
+
 function loadProfiles(root: HTMLElement): Promise<void> {
   loading ??= (async (): Promise<void> => {
     const baseUrl = (root.dataset.apiBaseUrl ?? '/api').replace(/\/$/u, '');
@@ -288,10 +302,10 @@ function loadProfiles(root: HTMLElement): Promise<void> {
           : [];
       });
     const nextCache: ProfileCache = {
-      drivers: options(drivers.drivers, 'driverId', (_profile, row) => String(row.displayName ?? 'Driver')),
-      tractors: options(tractors.tractors, 'tractorId', (profile) => String(profile.unitNumber ?? 'Tractor')),
-      trailers: options(trailers.trailers, 'trailerId', (profile) => String(profile.trailerNumber ?? 'Trailer')),
-      loads: options(loads.loads, 'loadId', (profile) => String(profile.loadIdentifier ?? 'Load')),
+      drivers: options(drivers.drivers, 'driverId', (_profile, row) => stringValue(row.displayName, 'Driver')),
+      tractors: options(tractors.tractors, 'tractorId', (profile) => stringValue(profile.unitNumber, 'Tractor')),
+      trailers: options(trailers.trailers, 'trailerId', (profile) => stringValue(profile.trailerNumber, 'Trailer')),
+      loads: options(loads.loads, 'loadId', (profile) => stringValue(profile.loadIdentifier, 'Load')),
     };
     setStage18ProfileCache(nextCache);
     root.querySelector('[data-stage18-driver-enhanced]')?.remove();

@@ -334,7 +334,7 @@ export function isRecord(value: unknown): value is Record<string, unknown> {
 
 function mergeStop(value: unknown): StopPlanningFacts {
   const initial = defaultStopPlanningFacts();
-  return isRecord(value) ? ({ ...initial, ...value } as StopPlanningFacts) : initial;
+  return isRecord(value) ? { ...initial, ...value } : initial;
 }
 
 export function restoreStage18CompleteFacts(
@@ -352,19 +352,19 @@ export function restoreStage18CompleteFacts(
     return {
       version: 1,
       driver: isRecord(value.driver)
-        ? ({ ...initial.driver, ...value.driver } as DriverProfileFacts)
+        ? { ...initial.driver, ...value.driver }
         : initial.driver,
       tractor: isRecord(value.tractor)
-        ? ({ ...initial.tractor, ...value.tractor } as TractorProfileFacts)
+        ? { ...initial.tractor, ...value.tractor }
         : initial.tractor,
       trailer: isRecord(value.trailer)
-        ? ({ ...initial.trailer, ...value.trailer } as TrailerProfileFacts)
+        ? { ...initial.trailer, ...value.trailer }
         : initial.trailer,
       load: isRecord(value.load)
-        ? ({ ...initial.load, ...value.load } as LoadProfileFacts)
+        ? { ...initial.load, ...value.load }
         : initial.load,
       route: isRecord(value.route)
-        ? ({ ...initial.route, ...value.route } as Stage18CompleteFacts['route'])
+        ? { ...initial.route, ...value.route }
         : initial.route,
       stops,
     };
@@ -413,3 +413,4 @@ export function ensureStopPlanningFacts(
   });
   return created;
 }
+

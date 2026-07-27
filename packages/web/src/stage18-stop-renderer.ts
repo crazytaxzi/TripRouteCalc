@@ -17,7 +17,7 @@ function stopField(
   value: string,
   type = 'text',
 ): string {
-  return `<label class="field"><span>${label}</span><input data-stage18-stop-id="${escapeHtml(localId)}" data-stage18-stop-field="${String(name)}" type="${type}" value="${escapeHtml(value)}"></label>`;
+  return `<label class="field"><span>${label}</span><input data-stage18-stop-id="${escapeHtml(localId)}" data-stage18-stop-field="${name}" type="${type}" value="${escapeHtml(value)}"></label>`;
 }
 
 function stopNumber(
@@ -26,7 +26,7 @@ function stopNumber(
   label: string,
   value: number | null,
 ): string {
-  return `<label class="field"><span>${label}</span><input data-stage18-stop-id="${escapeHtml(localId)}" data-stage18-stop-field="${String(name)}" type="number" step="any" inputmode="decimal" value="${numeric(value)}"></label>`;
+  return `<label class="field"><span>${label}</span><input data-stage18-stop-id="${escapeHtml(localId)}" data-stage18-stop-field="${name}" type="number" step="any" inputmode="decimal" value="${numeric(value)}"></label>`;
 }
 
 function dutyOptions(value: DutyStatus): string {

@@ -1,6 +1,6 @@
 import type { TripSetupState, ValidationIssue } from './model.js';
 import { loadStage18CompleteFacts } from './stage18-detail-types.js';
-import type { EvidenceFacts, Stage18CompleteFacts } from './stage18-detail-types.js';
+import type { EvidenceFacts } from './stage18-detail-types.js';
 
 function issue(path: string, message: string): ValidationIssue {
   return { path, message, severity: 'error' };
